@@ -543,8 +543,15 @@
         const bgPhoto = document.getElementById('bg-photo');
         let client = null;
 
-        // Radio streaming URL - UK7 Direct Stream for LIVE movedahouse.com
-        const RADIO_STREAM_URL = "http://uk7.internet-radio.com:8000/";
+        // Radio streaming URLs - Multiple formats for UK7 (LIVE movedahouse.com)
+        const RADIO_STREAMS = [
+            "http://uk7.internet-radio.com:8000/stream.mp3",
+            "http://uk7.internet-radio.com:8000/listen.mp3",
+            "http://uk7.internet-radio.com:8000/live.mp3",
+            "http://uk7.internet-radio.com:8000/",
+            "http://uk7.internet-radio.com:8000"
+        ];
+        let currentStreamIndex = 0;
         const RADIO_STATION_NAME = "LIVE - movedahouse.com";
 
         // Media player elements
@@ -724,6 +731,33 @@
         });
 
         // --- RADIO LISTENER ---
+        function tryNextStream() {
+            if (currentStreamIndex < RADIO_STREAMS.length) {
+                const url = RADIO_STREAMS[currentStreamIndex];
+                log(`BANDOME SRAUTĄ: ${url}`, 'system-msg');
+                radioPlayer.src = url;
+                radioPlayer.crossOrigin = "anonymous";
+                radioPlayer.load();
+                
+                const playPromise = radioPlayer.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(err => {
+                        currentStreamIndex++;
+                        if (currentStreamIndex < RADIO_STREAMS.length) {
+                            log(`SRAUTAS NEPAVYKO, BANDOME KITĄ...`, 'system-msg');
+                            tryNextStream();
+                        } else {
+                            log("VISOS SRAUTŲ VERSIJOS NEPAVYKO. PATIKRINKITE URL.", 'error-msg');
+                            listenBtn.textContent = 'LISTEN';
+                            listenBtn.disabled = false;
+                            mediaContainer.classList.remove('active');
+                            isPlaying = false;
+                        }
+                    });
+                }
+            }
+        }
+
         listenBtn.addEventListener('click', function () {
             if (isPlaying) {
                 radioPlayer.pause();
@@ -732,51 +766,25 @@
                 listenBtn.textContent = 'LISTEN';
                 mediaContainer.classList.remove('active');
                 isPlaying = false;
+                currentStreamIndex = 0;
                 log("RADIJO SRAUTAS SUSTABDYTAS ⏹", 'system-msg');
             } else {
                 listenBtn.textContent = 'CONNECTING...';
                 listenBtn.disabled = true;
                 mediaContainer.classList.add('active');
-                
-                radioPlayer.src = RADIO_STREAM_URL;
-                radioPlayer.crossOrigin = "anonymous";
-                
-                const playPromise = radioPlayer.play();
-                
-                if (playPromise !== undefined) {
-                    playPromise
-                        .then(() => {
-                            listenBtn.classList.add('playing');
-                            listenBtn.textContent = 'STOP ⏹';
-                            listenBtn.disabled = false;
-                            isPlaying = true;
-                            log("RADIJAS GROJA ♫ " + RADIO_STATION_NAME, 'greeting-msg');
-                        })
-                        .catch(err => {
-                            log("RADIJO KLAIDA: " + err.name + " (" + err.code + ")", 'error-msg');
-                            listenBtn.textContent = 'LISTEN';
-                            listenBtn.disabled = false;
-                            mediaContainer.classList.remove('active');
-                            isPlaying = false;
-                            console.error('Radio playback error:', err);
-                        });
-                }
+                currentStreamIndex = 0;
+                tryNextStream();
             }
         });
 
         // Media player controls
         playBtn.addEventListener('click', function() {
             if (!isPlaying) {
-                radioPlayer.src = RADIO_STREAM_URL;
-                radioPlayer.crossOrigin = "anonymous";
-                radioPlayer.play().then(() => {
-                    isPlaying = true;
-                    listenBtn.classList.add('playing');
-                    listenBtn.textContent = 'STOP ⏹';
-                    log("RADIJAS GROJA ♫ " + RADIO_STATION_NAME, 'greeting-msg');
-                }).catch(err => {
-                    log("RADIJO KLAIDA: " + err.name, 'error-msg');
-                });
+                listenBtn.textContent = 'CONNECTING...';
+                listenBtn.disabled = true;
+                currentStreamIndex = 0;
+                tryNextStream();
+                isPlaying = true;
             }
         });
 
@@ -794,12 +802,24 @@
             listenBtn.textContent = 'LISTEN';
             mediaContainer.classList.remove('active');
             isPlaying = false;
+            currentStreamIndex = 0;
             log("RADIJO SRAUTAS SUSTABDYTAS ⏹", 'system-msg');
         });
 
         volumeSlider.addEventListener('input', function() {
             radioPlayer.volume = this.value / 100;
             volumeLabel.textContent = this.value + '%';
+        });
+
+        // Handle successful playback
+        radioPlayer.addEventListener('play', function() {
+            if (!isPlaying) {
+                isPlaying = true;
+                listenBtn.classList.add('playing');
+                listenBtn.textContent = 'STOP ⏹';
+                listenBtn.disabled = false;
+                log("RADIJAS GROJA ♫ " + RADIO_STATION_NAME + " - " + RADIO_STREAMS[currentStreamIndex], 'greeting-msg');
+            }
         });
 
         // Set initial volume
