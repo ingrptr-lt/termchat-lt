@@ -543,14 +543,19 @@
         const bgPhoto = document.getElementById('bg-photo');
         let client = null;
 
-        // Radio streaming URLs - Multiple formats for UK7 (LIVE movedahouse.com)
+        // Radio streaming URLs - Multiple formats for UK stations
         const RADIO_STREAMS = [
-            "http://player.internet-radio.com/?server=uk2.internet-radio.com:8024",
-            "http://uk7.internet-radio.com:8000/stream.mp3",
-            "http://uk7.internet-radio.com:8000/listen.mp3",
-            "http://uk7.internet-radio.com:8000/live.mp3",
+            // UK2 Direct Streams
+            "http://uk2.internet-radio.com:8024/",
+            "http://uk2.internet-radio.com:8024/stream",
+            "http://uk2.internet-radio.com:8024/listen.pls",
+            "http://uk2.internet-radio.com:8024/listen.m3u",
+            // UK7 Streams (alternative endpoints)
+            "http://uk7.internet-radio.com:8000/stream",
             "http://uk7.internet-radio.com:8000/",
-            "http://uk7.internet-radio.com:8000"
+            // CORS Proxy alternatives
+            "https://cors-anywhere.herokuapp.com/http://uk2.internet-radio.com:8024/",
+            "https://api.allorigins.win/raw?url=http://uk2.internet-radio.com:8024/"
         ];
         let currentStreamIndex = 0;
         const RADIO_STATION_NAME = "LIVE - movedahouse.com";
@@ -735,7 +740,8 @@
         function tryNextStream() {
             if (currentStreamIndex < RADIO_STREAMS.length) {
                 const url = RADIO_STREAMS[currentStreamIndex];
-                log(`BANDOME SRAUTĄ: ${url}`, 'system-msg');
+                const streamNum = currentStreamIndex + 1;
+                log(`[${streamNum}/${RADIO_STREAMS.length}] BANDOME: ${url.substring(0, 60)}...`, 'system-msg');
                 radioPlayer.src = url;
                 radioPlayer.crossOrigin = "anonymous";
                 radioPlayer.load();
@@ -746,9 +752,10 @@
                         currentStreamIndex++;
                         if (currentStreamIndex < RADIO_STREAMS.length) {
                             log(`SRAUTAS NEPAVYKO, BANDOME KITĄ...`, 'system-msg');
-                            tryNextStream();
+                            setTimeout(() => tryNextStream(), 500);
                         } else {
-                            log("VISOS SRAUTŲ VERSIJOS NEPAVYKO. PATIKRINKITE URL.", 'error-msg');
+                            log("❌ VISOS SRAUTŲ VERSIJOS NEPAVYKO", 'error-msg');
+                            log("Patikrinkite URL arba bandykite vėliau", 'error-msg');
                             listenBtn.textContent = 'LISTEN';
                             listenBtn.disabled = false;
                             mediaContainer.classList.remove('active');
@@ -774,6 +781,7 @@
                 listenBtn.disabled = true;
                 mediaContainer.classList.add('active');
                 currentStreamIndex = 0;
+                log(`BANDAU PRISIJUNGTI PER ${RADIO_STREAMS.length} SKIRTINGUS SRAUTUS...`, 'system-msg');
                 tryNextStream();
             }
         });
@@ -784,6 +792,7 @@
                 listenBtn.textContent = 'CONNECTING...';
                 listenBtn.disabled = true;
                 currentStreamIndex = 0;
+                log(`BANDAU PRISIJUNGTI PER ${RADIO_STREAMS.length} SKIRTINGUS SRAUTUS...`, 'system-msg');
                 tryNextStream();
                 isPlaying = true;
             }
@@ -819,7 +828,9 @@
                 listenBtn.classList.add('playing');
                 listenBtn.textContent = 'STOP ⏹';
                 listenBtn.disabled = false;
-                log("RADIJAS GROJA ♫ " + RADIO_STATION_NAME + " - " + RADIO_STREAMS[currentStreamIndex], 'greeting-msg');
+                const successUrl = RADIO_STREAMS[currentStreamIndex];
+                log("✅ RADIJAS GROJA! ♫ " + RADIO_STATION_NAME, 'greeting-msg');
+                log("SRAUTAS: " + successUrl, 'system-msg');
             }
         });
 
