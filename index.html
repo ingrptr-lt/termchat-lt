@@ -223,44 +223,6 @@
             opacity: 0.5;
         }
 
-        #listen-btn {
-            background: transparent;
-            border: 2px solid var(--term-green);
-            color: var(--term-green);
-            font-family: var(--font-stack);
-            font-size: 12px;
-            padding: 8px 14px;
-            cursor: pointer;
-            text-shadow: var(--term-glow);
-            font-weight: bold;
-            text-transform: uppercase;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            letter-spacing: 1px;
-            box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.1);
-        }
-
-        #listen-btn:hover {
-            background-color: rgba(0, 255, 0, 0.1);
-            box-shadow: 0 0 15px var(--term-glow), inset 0 0 15px rgba(0, 255, 0, 0.2);
-            transform: scale(1.05);
-        }
-
-        #listen-btn:active {
-            transform: scale(0.95);
-        }
-
-        #listen-btn.playing {
-            background-color: var(--term-green);
-            color: var(--term-bg);
-            box-shadow: 0 0 20px var(--term-glow-strong), inset 0 0 20px rgba(0, 255, 0, 0.4);
-            animation: pulse 1s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 20px var(--term-glow-strong), inset 0 0 20px rgba(0, 255, 0, 0.4); }
-            50% { box-shadow: 0 0 30px var(--term-glow-strong), inset 0 0 30px rgba(0, 255, 0, 0.6); }
-        }
-
         /* Header Title */
         .header-title {
             position: fixed;
@@ -374,10 +336,7 @@
     <div id="input-area">
         <span class="prompt">></span>
         <input type="text" id="msg-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="RAŠYKITE ŽINUTĘ...">
-        <button id="listen-btn">LISTEN</button>
     </div>
-
-    <audio id="radio-player"></audio>
 
     <script>
         const BROKER_HOST = "broker.emqx.io";
@@ -387,16 +346,9 @@
 
         const screen = document.getElementById('screen');
         const input = document.getElementById('msg-input');
-        const listenBtn = document.getElementById('listen-btn');
-        const radioPlayer = document.getElementById('radio-player');
         const statusDot = document.getElementById('status-dot');
         const userDisplay = document.getElementById('user-display');
         let client = null;
-
-        // Radio streaming URL (online radio)
-        // Using SomaFM - known to work with browsers
-        const RADIO_STREAM = "http://stream.somafm.com/groovesalad128.m3u";
-        let isPlaying = false;
 
         // --- TYPEWRITER EFFECT ---
         function typeWriter(text, element, speed = 30) {
@@ -537,87 +489,6 @@
 
         input.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') sendMessage();
-        });
-
-        // --- RADIO LISTENER ---
-        listenBtn.addEventListener('click', function () {
-            if (isPlaying) {
-                radioPlayer.pause();
-                radioPlayer.currentTime = 0;
-                listenBtn.classList.remove('playing');
-                listenBtn.textContent = 'LISTEN';
-                isPlaying = false;
-                log("RADIJO SRAUTAS SUSTABDYTAS ⏹", 'system-msg');
-            } else {
-                listenBtn.textContent = 'CONNECTING...';
-                listenBtn.disabled = true;
-                
-                // Set multiple attributes for best compatibility
-                radioPlayer.src = RADIO_STREAM;
-                radioPlayer.type = "audio/mpeg";
-                radioPlayer.crossOrigin = "anonymous";
-                radioPlayer.preload = "metadata";
-                
-                // Try with a small delay
-                setTimeout(() => {
-                    const playPromise = radioPlayer.play();
-                    
-                    if (playPromise !== undefined) {
-                        playPromise
-                            .then(() => {
-                                listenBtn.classList.add('playing');
-                                listenBtn.textContent = 'STOP ⏸';
-                                listenBtn.disabled = false;
-                                isPlaying = true;
-                                log("RADIJAS GROJA ♫ SOMA FM", 'greeting-msg');
-                            })
-                            .catch(err => {
-                                log("RADIJO KLAIDA: " + err.name, 'error-msg');
-                                log("BANDOMAS PROXY SRAUTAS...", 'system-msg');
-                                
-                                // Try with CORS proxy
-                                radioPlayer.src = "https://cors-anywhere.herokuapp.com/" + RADIO_STREAM;
-                                radioPlayer.play().catch(err2 => {
-                                    log("RADIJO NEPAVYKO. PRAŠOME PASITIKRINTI INTERNETO RYŠĮ", 'error-msg');
-                                    listenBtn.textContent = 'LISTEN';
-                                    listenBtn.disabled = false;
-                                    isPlaying = false;
-                                });
-                            });
-                    }
-                }, 100);
-            }
-        });
-
-        // Handle audio player events
-        radioPlayer.addEventListener('play', () => {
-            console.log('Radio started playing');
-        });
-
-        radioPlayer.addEventListener('error', (e) => {
-            const errorCodes = {
-                1: 'MEDIA_ERR_ABORTED',
-                2: 'MEDIA_ERR_NETWORK',
-                3: 'MEDIA_ERR_DECODE',
-                4: 'MEDIA_ERR_SRC_NOT_SUPPORTED'
-            };
-            const errorCode = radioPlayer.error ? radioPlayer.error.code : 'unknown';
-            const errorName = errorCodes[errorCode] || 'Unknown Error';
-            
-            log("RADIJO KLAIDA: " + errorName + " (" + errorCode + ")", 'error-msg');
-            listenBtn.classList.remove('playing');
-            listenBtn.textContent = 'LISTEN';
-            listenBtn.disabled = false;
-            isPlaying = false;
-            console.error('Radio error:', errorName, radioPlayer.error);
-        });
-
-        radioPlayer.addEventListener('loadstart', () => {
-            log("RADIJO KRAUNASI...", 'system-msg');
-        });
-
-        radioPlayer.addEventListener('canplay', () => {
-            log("RADIJO PARUOŠTAS GROJIMUI ✓", 'system-msg');
         });
 
         window.onload = bootSystem;
