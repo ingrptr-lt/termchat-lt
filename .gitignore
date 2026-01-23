@@ -1,0 +1,7 @@
+.env
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+termchat_logs.jsonl
+termAi.egg-info/
