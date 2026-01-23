@@ -14,6 +14,8 @@
 
     <!-- MQTT Library for Real-time Chat -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
+    <!-- Puter.js AI Library -->
+    <script src="https://js.puter.com/v2/"></script>
 
     <style>
         :root {
@@ -591,31 +593,18 @@
         let reconnectAttempts = 0;
         const MAX_RECONNECT_ATTEMPTS = 5;
         
-        // AI Integration
-        let aiEnabled = false;
+        // AI Configuration
         const AI_USER_ID = "TERMAI";
         
-        // Initialize AI if available
-        async function initAI() {
+        // Fixed AI function
+        async function getAIResponse(userMessage) {
             try {
-                aiEnabled = true;
-                log("AI SISTEMA AKTYVUOTA", 'greeting-msg');
-            } catch (e) {
-                log("AI NEPASIEKIAMAS - NAUDOJAMAS LOKALUS REŽIMAS", 'system-msg');
+                const response = await puter.ai.chat(`Tu esi TermAi. Atsakyk lietuviškai: ${userMessage}`);
+                return response || 'Labas!';
+            } catch (error) {
+                console.error('[AI] Error:', error);
+                return 'AI nepasiekiamas';
             }
-        }
-        
-        async function getAIResponse(message) {
-            if (!aiEnabled) return null;
-            // Simple AI responses for demo
-            const responses = [
-                "Labas! Kaip galiu padėti?",
-                "Įdomu! Papasakok daugiau.",
-                "Suprantu. Ką dar norėtum žinoti?",
-                "TermChat LT yra puikus!",
-                "Ačiū už klausimą!"
-            ];
-            return responses[Math.floor(Math.random() * responses.length)];
         }
 
         // --- TYPEWRITER EFFECT ---
@@ -733,22 +722,34 @@
                     log(msgHTML, payload.id === AI_USER_ID ? 'greeting-msg' : 'stranger-msg');
                     
                     // AI responds to messages mentioning it or questions
-                    if (aiEnabled && payload.id !== AI_USER_ID && 
+                    if (payload.id !== AI_USER_ID && 
                         (sanitizedMsg.toLowerCase().includes('ai') || 
                          sanitizedMsg.toLowerCase().includes('termai') || 
                          sanitizedMsg.includes('?'))) {
-                        setTimeout(async () => {
-                            const aiResponse = await getAIResponse(sanitizedMsg);
-                            if (aiResponse) {
-                                const aiMsg = new Paho.MQTT.Message(JSON.stringify({
-                                    type: 'chat',
-                                    id: AI_USER_ID,
-                                    msg: aiResponse
-                                }));
-                                aiMsg.destinationName = TOPIC;
-                                client.send(aiMsg);
+                        
+                        console.log('[DEBUG] AI trigger detected for:', sanitizedMsg);
+                        
+                        (async () => {
+                            try {
+                                const aiResponse = await getAIResponse(sanitizedMsg);
+                                console.log('[DEBUG] AI response received:', aiResponse);
+                                
+                                if (aiResponse && client && client.isConnected()) {
+                                    const aiMsg = new Paho.MQTT.Message(JSON.stringify({
+                                        type: 'chat',
+                                        id: AI_USER_ID,
+                                        msg: aiResponse
+                                    }));
+                                    aiMsg.destinationName = TOPIC;
+                                    client.send(aiMsg);
+                                    console.log('[DEBUG] AI message sent via MQTT');
+                                } else {
+                                    console.log('[DEBUG] No AI response or client not connected');
+                                }
+                            } catch (error) {
+                                console.error('[DEBUG] AI error:', error);
                             }
-                        }, 1500);
+                        })();
                     }
                     
                 } else if (payload.type === 'avatar') {
@@ -992,7 +993,6 @@
             userID = username;
             document.getElementById('login-screen').style.display = 'none';
             loadAvatarFromStorage();
-            initAI(); // Initialize AI after login
             bootSystem();
         }
 
@@ -1001,9 +1001,21 @@
             if (e.key === 'Enter') doLogin();
         });
 
+        // Test AI on page load
         window.onload = function() {
+            setTimeout(async () => {
+                try {
+                    const test = await puter.ai.chat('hello');
+                    console.log('AI Works:', test);
+                } catch (e) {
+                    console.error('AI Failed:', e);
+                }
+            }, 2000);
+            
             document.getElementById('username-input').focus();
         };
+
+
 
         // Send leave message when user closes/refreshes page
         window.addEventListener('beforeunload', function() {

@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from backend import get_ai_response
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
+import socket
 
 # Load Config
 load_dotenv()
@@ -13,6 +14,13 @@ MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_TOPIC = "term-chat/global/v3"
 AI_USER_ID = os.getenv("AI_USER_ID", "TERMAI")
 PORT = int(os.getenv("PORT", 10000))
+
+# GLOBAL CONVERSATION MEMORY
+conversation_history = []
+SYSTEM_INSTRUCTION = {
+    "role": "system",
+    "content": "You are TERMAI, a friendly AI assistant in TermChat LT, a Lithuanian terminal chat room. You speak both Lithuanian and English. Remember previous conversations and be helpful and conversational."
+}
 
 print(f"🚀 Starting TermChat AI Bot on port {PORT}")
 
@@ -28,8 +36,8 @@ class HealthHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
-def on_connect(client, userdata, flags, rc):
-    if rc == 0:
+def on_connect(client, userdata, flags, reason_code, properties):
+    if reason_code == 0:
         print("✅ MQTT Connected!")
         client.subscribe(MQTT_TOPIC)
         # Announce AI presence
@@ -37,9 +45,11 @@ def on_connect(client, userdata, flags, rc):
         client.publish(MQTT_TOPIC, join_msg)
         print(f"🤖 {AI_USER_ID} is now online!")
     else:
-        print(f"❌ MQTT Failed: {rc}")
+        print(f"❌ MQTT Failed: {reason_code}")
 
-def on_message(client, userdata, msg):
+def on_message(client, userdata, msg, properties):
+    global conversation_history
+    
     try:
         payload = json.loads(msg.payload.decode())
         
@@ -54,8 +64,17 @@ def on_message(client, userdata, msg):
                 
                 print(f"💬 {sender_id}: {user_message}")
                 
-                # Get AI response
-                ai_response = get_ai_response(user_message, use_api=False)
+                # Add user message to history
+                conversation_history.append({"role": "user", "content": f"{sender_id}: {user_message}"})
+                
+                # Prepare messages (system + last 10 messages)
+                messages_to_send = [SYSTEM_INSTRUCTION] + conversation_history[-10:]
+                
+                # Get AI response with conversation context
+                ai_response = get_ai_response(user_message, use_api=False, conversation=messages_to_send)
+                
+                # Add AI response to history
+                conversation_history.append({"role": "assistant", "content": ai_response})
                 
                 # Send response
                 response_payload = json.dumps({
@@ -69,9 +88,14 @@ def on_message(client, userdata, msg):
     except Exception as e:
         print(f"❌ Error: {e}")
 
+def find_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        return s.getsockname()[1]
+
 def start_mqtt():
     try:
-        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
+        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         client.on_connect = on_connect
         client.on_message = on_message
         client.connect(MQTT_BROKER, MQTT_PORT, 60)
@@ -84,7 +108,12 @@ if __name__ == "__main__":
     mqtt_thread = threading.Thread(target=start_mqtt, daemon=True)
     mqtt_thread.start()
     
-    # Start HTTP server for Render
-    server = HTTPServer(('0.0.0.0', PORT), HealthHandler)
+    # Find free port if default is taken
+    try:
+        server = HTTPServer(('0.0.0.0', PORT), HealthHandler)
+    except OSError:
+        PORT = find_free_port()
+        server = HTTPServer(('0.0.0.0', PORT), HealthHandler)
+    
     print(f"🌐 HTTP server running on port {PORT}")
     server.serve_forever()

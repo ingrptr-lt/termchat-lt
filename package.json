@@ -1,0 +1,11 @@
+{
+  "name": "termchat-lt",
+  "version": "1.0.0",
+  "main": "mqtt_service.py",
+  "scripts": {
+    "start": "python mqtt_service.py"
+  },
+  "dependencies": {
+    "mqtt": "^5.0.0"
+  }
+}
