@@ -754,78 +754,58 @@ def on_message(client, userdata, message, properties=None):
                 "text": error_msg
             }))
 
-def run_http_server():
-    """HTTP server for health checks and static files"""
-    class HealthHandler(SimpleHTTPRequestHandler):
-        def do_GET(self):
-            if self.path == '/':
-                # Serve index.html for root
-                try:
-                    with open('index.html', 'rb') as f:
-                        self.send_response(200)
-                        self.send_header('Content-type', 'text/html')
-                        self.end_headers()
-                        self.wfile.write(f.read())
-                except FileNotFoundError:
-                    self.send_response(404)
+class CustomHTTPRequestHandler(SimpleHTTPRequestHandler):
+    """Custom Handler to Explicitly Serve index.html"""
+    def do_GET(self):
+        # EXPLICITLY SERVE INDEX.HTML
+        if self.path == '/':
+            try:
+                with open("index.html", "rb") as f:
+                    self.send_response(200)
+                    self.send_header('Content-type', 'text/html')
                     self.end_headers()
-                    self.wfile.write(b'index.html not found')
-            elif self.path == '/health':
-                # Health check endpoint
-                self.send_response(200)
-                self.send_header('Content-type', 'text/html')
+                    self.wfile.write(f.read())
+                    print(f"[HTTP] Served index.html successfully.")
+                    return
+            except FileNotFoundError:
+                self.send_response(404)
                 self.end_headers()
-                status = f"""
-                <h1>TermOS LT - God Mode Backend</h1>
-                <p>Status: ONLINE</p>
-                <p>Current Room: {current_room}</p>
-                <p>Active Users: {len(active_users)}</p>
-                <p>Conversation History: {len(conv_history)} messages</p>
-                """
-                self.wfile.write(status.encode())
-            else:
-                # Serve static files
-                super().do_GET()
-    
-    server = HTTPServer(('0.0.0.0', PORT), HealthHandler)
-    print(f"[HTTP] Server running on port {PORT}")
-    server.serve_forever()
-
-# --- STARTUP ---
-if __name__ == '__main__':
-    print("[TERMOS] Starting God Mode Backend...")
-    
-    # Start cleanup timer
-    start_cleanup_timer()
-    
-    # Start HTTP server in background
-    http_thread = threading.Thread(target=run_http_server)
-    http_thread.daemon = True
-    http_thread.start()
-    
-    # Start MQTT client
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-    client.on_connect = on_connect
-    client.on_disconnect = on_disconnect
-    client.on_message = on_message
-    
-    try:
-        client.connect("broker.emqx.io", 1883, 60)
-        print("[MQTT] Connected to broker")
-        
-        # For Render, we need to handle the event loop differently
-        if 'RENDER' in os.environ:
-            print("[RENDER] Starting MQTT loop for cloud deployment")
-            client.loop_start()
-            # Keep the main thread alive
-            while True:
-                time.sleep(1)
+                self.wfile.write(b"404 Not Found: index.html missing.")
+        elif self.path == '/health':
+            # Health check endpoint
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            status = f"""
+            <h1>TermOS LT - God Mode Backend</h1>
+            <p>Status: ONLINE</p>
+            <p>Current Room: {current_room}</p>
+            <p>Active Users: {len(active_users)}</p>
+            <p>Conversation History: {len(conv_history)} messages</p>
+            """
+            self.wfile.write(status.encode())
         else:
-            client.loop_forever()
-            
-    except KeyboardInterrupt:
-        print("[TERMOS] Shutting down...")
-        client.disconnect()
+            # Serve static files
+            super().do_GET()
+
+# ==========================================
+# 6. STARTUP
+# ==========================================
+if __name__ == '__main__':
+    # Start Web Server
+    try:
+        server = HTTPServer(('0.0.0.0', PORT), CustomHTTPRequestHandler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        print(f"[HTTP] Server running on {PORT}")
     except Exception as e:
-        print(f"[ERROR] MQTT connection failed: {e}")
-        sys.exit(1)
+        print(f"[ERROR] HTTP Server failed: {e}")
+
+    # Start MQTT
+    mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    mqtt_client.on_connect = on_connect
+    mqtt_client.on_message = on_message
+    try:
+        mqtt_client.connect("broker.emqx.io", 1883, 60)
+        mqtt_client.loop_forever()
+    except Exception as e:
+        print(f"[ERROR] MQTT Connection failed: {e}")
