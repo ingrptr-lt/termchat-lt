@@ -2,100 +2,270 @@
 <html lang="lt">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>TermChat LT</title>
     <style>
-        body {
-            background: #050505;
-            color: #33ff00;
-            font-family: 'Courier New', monospace;
+        :root {
+            --term-color: #33ff00;
+            --term-font: 'Courier New', 'Monaco', 'Menlo', monospace;
+            --bg-color: #000;
+            --panel-bg: #0a0a0a;
+        }
+
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-color);
+            color: var(--term-color);
+            font-family: var(--term-font);
             height: 100vh;
             overflow: hidden;
+            position: relative;
+        }
+
+        /* MONITOR BEZEL EFFECT */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 20px solid #222;
+            border-radius: 15px;
+            box-shadow: 
+                inset 0 0 50px rgba(0,0,0,0.8),
+                0 0 20px rgba(51,255,0,0.1);
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* MAIN LAYOUT GRID */
+        #main-layout {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            grid-template-rows: auto 1fr auto;
+            height: 100vh;
+            padding: 25px;
+            gap: 2px;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            #main-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto auto;
+                padding: 30px 10px;
+            }
+            .side-panel {
+                display: none;
+            }
+        }
+
+        /* HEADER (ASCII) */
+        #room-header {
+            grid-column: 1 / -1;
+            border-bottom: 2px solid var(--term-color);
+            padding: 10px;
+            white-space: pre;
+            font-size: 0.8em;
+            text-shadow: 0 0 5px var(--term-color);
+        }
+
+        /* CHAT AREA */
+        #terminal-body {
+            grid-column: 1;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 14px;
+            line-height: 1.4;
+            border: 1px solid var(--term-color);
+            background: rgba(0,0,0,0.8);
+        }
+
+        /* DYNAMIC PANELS */
+        #multiverse-panel {
+            grid-column: 2;
+            border-left: 2px solid var(--term-color);
+            background: var(--panel-bg);
+            padding: 10px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        #multiverse-panel.active { display: block; }
+
+        /* INPUT AREA */
+        .input-line {
+            grid-column: 1 / -1;
+            display: flex;
+            border-top: 2px solid var(--term-color);
+            padding: 10px;
+            background: rgba(0,0,0,0.9);
+        }
+
+        #chatInput {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--term-color);
+            font-family: var(--term-font);
+            font-size: 16px;
+            outline: none;
+        }
+
+        /* THEMES */
+        .theme-living { --term-color: #33ff00; }
+        .theme-library { --term-color: #ffb000; }
+        .theme-studio { --term-color: #ff00ff; }
+        .theme-workshop { --term-color: #00ffff; }
+        .theme-think { --term-color: #00ff41; }
+        .theme-lounge { --term-color: #ff3333; }
+
+        /* ANIMATIONS */
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        .cursor { 
+            display: inline-block; 
+            width: 10px; 
+            height: 1.2em; 
+            background: var(--term-color); 
+            animation: blink 1s step-end infinite; 
+            vertical-align: text-bottom; 
+        }
+
+        /* LOGIN SCREEN */
+        .login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+
+        .login-box {
+            border: 2px solid var(--term-color);
+            padding: 40px;
+            background: rgba(0,20,0,0.9);
+            text-align: center;
+        }
+
+        .login-box input {
+            background: var(--bg-color);
+            border: 1px solid var(--term-color);
+            color: var(--term-color);
+            width: 100%;
+            padding: 10px;
+            margin: 20px 0;
+            font-family: var(--term-font);
+            font-size: 16px;
+        }
+
+        .login-box button {
+            background: var(--term-color);
+            color: var(--bg-color);
+            width: 100%;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            font-family: var(--term-font);
+            font-size: 16px;
         }
     </style>
 </head>
-<body>
+<body class="theme-living">
     <script src="./paho-mqtt.min.js"></script>
+    
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-box">
+            <h2>TERMOS LT</h2>
+            <input type="text" id="usernameInput" placeholder="Username" maxlength="20">
+            <button onclick="login()">ENTER</button>
+        </div>
+    </div>
+
+    <!-- MAIN INTERFACE -->
+    <div id="main-layout" style="display: none;">
+        <div id="room-header">TERMCHAT LT - LIVING ROOM<span class="cursor"></span></div>
+        
+        <div id="terminal-body"></div>
+        
+        <div id="multiverse-panel" class="side-panel"></div>
+        
+        <div class="input-line">
+            <span style="margin-right: 10px;">&gt;</span>
+            <input id="chatInput" type="text" placeholder="Type message..." autocomplete="off">
+        </div>
+    </div>
     <script>
+        let currentRoom = 'living_room';
+        let username = '';
+        let mqttClient = null;
+
         // Boot sequence
         document.addEventListener('DOMContentLoaded', function() {
-            showLogin();
+            document.getElementById('usernameInput').focus();
+            document.getElementById('usernameInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') login();
+            });
         });
 
-        function showLogin() {
-            document.body.innerHTML = `
-                <div style="display:flex; justify-content:center; align-items:center; height:100vh; background:#050505;">
-                    <div style="border: 2px solid #33ff00; padding: 40px; background: rgba(0,20,0,0.9);">
-                        <h2 style="color:#33ff00; text-align:center; margin-bottom:20px;">TERMOS LT</h2>
-                        <input type="text" id="usernameInput" placeholder="Username" 
-                               style="background:#000; border:1px solid #33ff00; color:#33ff00; width:100%; padding:10px; margin-bottom:20px;">
-                        <button onclick="login()" 
-                                style="background:#33ff00; color:#000; width:100%; padding:10px; border:none; cursor:pointer;">ENTER</button>
-                    </div>
-                </div>
-            `;
-        }
-
         function login() {
-            const username = document.getElementById('usernameInput').value.trim();
-            if (username.length >= 3) {
-                loadChat(username);
+            const input = document.getElementById('usernameInput');
+            const user = input.value.trim();
+            if (user.length >= 3) {
+                username = user;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('main-layout').style.display = 'grid';
+                connectMQTT();
+                document.getElementById('chatInput').focus();
+                
+                // Setup input handler
+                document.getElementById('chatInput').addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') sendMessage();
+                });
             } else {
                 alert('Username must be at least 3 characters');
             }
         }
 
-        function loadChat(username) {
-            document.body.innerHTML = `
-                <div style="height:100vh; display:flex; flex-direction:column; background:#050505; color:#33ff00; padding:10px;">
-                    <div style="border-bottom:1px solid #33ff00; padding:10px; text-align:center;">
-                        <h3>TERMCHAT LT - ${username}</h3>
-                    </div>
-                    <div id="messages" style="flex:1; overflow-y:auto; padding:10px; background:#000; margin:10px 0; border:1px solid #33ff00;"></div>
-                    <div style="display:flex; gap:10px;">
-                        <input id="messageInput" type="text" placeholder="Type message..." 
-                               style="flex:1; background:#000; border:1px solid #33ff00; color:#33ff00; padding:10px;">
-                        <button onclick="sendMessage()" style="background:#33ff00; color:#000; border:none; padding:10px 20px; cursor:pointer;">SEND</button>
-                    </div>
-                </div>
-            `;
-            
-            window.username = username;
-            connectMQTT();
-            
-            document.getElementById('messageInput').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') sendMessage();
-            });
-        }
-
         function connectMQTT() {
             try {
-                const client = new Paho.MQTT.Client("broker.emqx.io", 8084, "client_" + Math.random());
+                mqttClient = new Paho.MQTT.Client("broker.emqx.io", 8084, "client_" + Math.random());
                 
-                client.onMessageArrived = function(message) {
+                mqttClient.onMessageArrived = function(message) {
                     try {
                         const data = JSON.parse(message.payloadString);
                         if (data.user && data.text) {
                             addMessage(data.user, data.text);
                         } else if (data.id && data.msg) {
                             addMessage(data.id, data.msg);
+                        } else if (data.type === 'navigation') {
+                            switchRoom(data.room);
+                            addMessage('TERMOS', data.msg);
                         }
                     } catch(e) {
                         addMessage('SYSTEM', message.payloadString);
                     }
                 };
                 
-                client.connect({
+                mqttClient.connect({
                     onSuccess: function() {
-                        addMessage('SYSTEM', 'Connected to chat!');
-                        client.subscribe('termchat/messages');
-                        client.subscribe('termchat/output');
-                        window.mqttClient = client;
+                        addMessage('SYSTEM', 'Connected to TermOS LT Multiverse!');
+                        mqttClient.subscribe('termchat/messages');
+                        mqttClient.subscribe('termchat/output');
                     },
                     onFailure: function() {
-                        addMessage('ERROR', 'Failed to connect');
+                        addMessage('ERROR', 'Failed to connect to multiverse');
                     },
                     useSSL: true
                 });
@@ -105,29 +275,64 @@
         }
 
         function sendMessage() {
-            const input = document.getElementById('messageInput');
+            const input = document.getElementById('chatInput');
             const text = input.value.trim();
-            if (text && window.mqttClient) {
+            if (text && mqttClient) {
                 const msg = { 
-                    id: window.username, 
+                    id: username, 
                     msg: text,
                     timestamp: Date.now()
                 };
                 
-                window.mqttClient.publish('termchat/messages', JSON.stringify({user: window.username, text: text}));
-                window.mqttClient.publish('termchat/input', JSON.stringify(msg));
+                mqttClient.publish('termchat/messages', JSON.stringify({user: username, text: text}));
+                mqttClient.publish('termchat/input', JSON.stringify(msg));
                 input.value = '';
             }
         }
 
         function addMessage(user, text) {
-            const messages = document.getElementById('messages');
+            const terminal = document.getElementById('terminal-body');
             const div = document.createElement('div');
             div.style.marginBottom = '5px';
-            div.style.color = user === 'SYSTEM' ? '#00ff00' : user === 'ERROR' ? '#ff0000' : user === 'TERMAI' ? '#00ff41' : '#33ff00';
+            
+            // Color coding
+            if (user === 'SYSTEM') div.style.color = '#00ff00';
+            else if (user === 'ERROR') div.style.color = '#ff0000';
+            else if (user === 'TERMAI') div.style.color = '#00ff41';
+            else if (user === 'TERMOS') div.style.color = '#ffff00';
+            else div.style.color = 'var(--term-color)';
+            
             div.textContent = `[${user}] ${text}`;
-            messages.appendChild(div);
-            messages.scrollTop = messages.scrollHeight;
+            terminal.appendChild(div);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function switchRoom(room) {
+            currentRoom = room;
+            const themes = {
+                'living_room': 'theme-living',
+                'library': 'theme-library', 
+                'studio': 'theme-studio',
+                'workshop': 'theme-workshop',
+                'think_tank': 'theme-think',
+                'lounge': 'theme-lounge'
+            };
+            
+            // Update theme
+            document.body.className = themes[room] || 'theme-living';
+            
+            // Update header
+            const roomNames = {
+                'living_room': 'LIVING ROOM',
+                'library': 'LIBRARY',
+                'studio': 'STUDIO', 
+                'workshop': 'WORKSHOP',
+                'think_tank': 'THINK TANK',
+                'lounge': 'LOUNGE'
+            };
+            
+            document.getElementById('room-header').innerHTML = 
+                `TERMCHAT LT - ${roomNames[room] || 'UNKNOWN'}<span class="cursor"></span>`;
         }
     </script>
 </body>
