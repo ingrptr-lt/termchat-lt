@@ -54,15 +54,50 @@
             gap: 2px;
         }
 
-        /* RESPONSIVE */
+        /* RESPONSIVE & MOBILE FIXES */
         @media (max-width: 768px) {
+            body::before {
+                border: 10px solid #222; /* Thinner bezel on mobile */
+            }
+            
             #main-layout {
                 grid-template-columns: 1fr;
-                grid-template-rows: auto 1fr auto auto;
-                padding: 30px 10px;
+                grid-template-rows: auto 1fr auto;
+                padding: 15px 5px;
+                height: 100vh;
+                height: 100dvh; /* Dynamic viewport height for mobile */
             }
+            
             .side-panel {
                 display: none;
+            }
+            
+            /* iOS Safari keyboard fix */
+            .input-line {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: rgba(0,0,0,0.95);
+                backdrop-filter: blur(10px);
+                z-index: 100;
+            }
+            
+            #terminal-body {
+                padding-bottom: 60px; /* Space for fixed input */
+                height: calc(100vh - 120px);
+                height: calc(100dvh - 120px);
+            }
+        }
+        
+        /* Desktop specific */
+        @media (min-width: 769px) {
+            #main-layout {
+                grid-template-columns: 1fr 350px;
+            }
+            
+            #multiverse-panel.active {
+                display: block;
             }
         }
 
@@ -114,8 +149,16 @@
             border: none;
             color: var(--term-color);
             font-family: var(--term-font);
-            font-size: 16px;
+            font-size: 16px; /* Prevents iOS zoom */
             outline: none;
+            padding: 5px;
+            -webkit-appearance: none; /* Remove iOS styling */
+            border-radius: 0; /* Remove iOS rounded corners */
+        }
+        
+        /* iOS Safari specific fixes */
+        #chatInput:focus {
+            transform: translateZ(0); /* Force hardware acceleration */
         }
 
         /* THEMES */
@@ -400,8 +443,51 @@
 
         function connectMQTT() {
             try {
-                mqttClient = new Paho.MQTT.Client("broker.emqx.io", 8084, "client_" + Math.random());
+                // Enhanced WebSocket connection with fallback
+                const clientId = "client_" + Math.random().toString(36).substr(2, 9);
+                mqttClient = new Paho.MQTT.Client("broker.emqx.io", 8084, clientId);
                 
+                // Connection options with enhanced reliability
+                const connectOptions = {
+                    onSuccess: function() {
+                        addMessage('SYSTEM', 'Connected to TermOS LT Multiverse!');
+                        // Subscribe to all channels
+                        mqttClient.subscribe('termchat/messages');
+                        mqttClient.subscribe('termchat/output');
+                        mqttClient.subscribe('termchat/admin');
+                        mqttClient.subscribe('termchat/tunnel/+');
+                        mqttClient.subscribe('termchat/webrtc/+');
+                        
+                        // Send connection announcement
+                        const connectMsg = {
+                            user: 'SYSTEM',
+                            text: `${username} joined the multiverse`,
+                            timestamp: Date.now()
+                        };
+                        mqttClient.publish('termchat/messages', JSON.stringify(connectMsg));
+                    },
+                    onFailure: function(error) {
+                        addMessage('ERROR', `Connection failed: ${error.errorMessage || 'Unknown error'}`);
+                        // Retry connection after 5 seconds
+                        setTimeout(() => {
+                            addMessage('SYSTEM', 'Retrying connection...');
+                            connectMQTT();
+                        }, 5000);
+                    },
+                    useSSL: true,
+                    timeout: 10,
+                    keepAliveInterval: 30,
+                    cleanSession: true
+                };
+                
+                // Connection lost handler
+                mqttClient.onConnectionLost = function(responseObject) {
+                    if (responseObject.errorCode !== 0) {
+                        addMessage('ERROR', `Connection lost: ${responseObject.errorMessage}`);
+                        addMessage('SYSTEM', 'Attempting to reconnect...');
+                        setTimeout(() => connectMQTT(), 3000);
+                    }
+                };
                 mqttClient.onMessageArrived = function(message) {
                     const payload = message.payloadString;
                     
@@ -474,28 +560,18 @@
                     
                     // --- TEXT CHAT LOGIC (XSS Protected) ---
                     const chatBody = document.getElementById('terminal-body');
-                    const msgDiv = document.createElement('div');
-                    msgDiv.style.marginBottom = '5px';
-                    msgDiv.style.color = 'var(--term-color)';
-                    msgDiv.textContent = payload; // SECURE - prevents XSS
-                    chatBody.appendChild(msgDiv);
-                    chatBody.scrollTop = chatBody.scrollHeight;
+                    if (chatBody) {
+                        const msgDiv = document.createElement('div');
+                        msgDiv.style.marginBottom = '5px';
+                        msgDiv.style.color = 'var(--term-color)';
+                        msgDiv.textContent = payload; // SECURE - prevents XSS
+                        chatBody.appendChild(msgDiv);
+                        chatBody.scrollTop = chatBody.scrollHeight;
+                    }
                 };
                 
-                mqttClient.connect({
-                    onSuccess: function() {
-                        addMessage('SYSTEM', 'Connected to TermOS LT Multiverse!');
-                        mqttClient.subscribe('termchat/messages');
-                        mqttClient.subscribe('termchat/output');
-                        mqttClient.subscribe('termchat/admin');
-                        mqttClient.subscribe('termchat/tunnel/+');
-                        mqttClient.subscribe('termchat/webrtc/+');
-                    },
-                    onFailure: function() {
-                        addMessage('ERROR', 'Failed to connect to multiverse');
-                    },
-                    useSSL: true
-                });
+                // Initiate connection
+                mqttClient.connect(connectOptions);
             } catch(e) {
                 addMessage('ERROR', 'MQTT Error: ' + e.message);
             }

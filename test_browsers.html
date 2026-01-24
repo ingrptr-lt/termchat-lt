@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>TermChat LT - Browser Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #33ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        .test-section {
+            border: 1px solid #33ff00;
+            margin: 20px 0;
+            padding: 15px;
+        }
+        .pass { color: #00ff00; }
+        .fail { color: #ff0000; }
+        .info { color: #ffff00; }
+        button {
+            background: #33ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+        input {
+            background: #000;
+            color: #33ff00;
+            border: 1px solid #33ff00;
+            padding: 10px;
+            font-size: 16px;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <h1>TermChat LT - Browser Compatibility Test</h1>
+    
+    <div class="test-section">
+        <h3>1. Viewport Test</h3>
+        <p id="viewport-result" class="info">Testing viewport dimensions...</p>
+        <p>Screen: <span id="screen-size"></span></p>
+        <p>Viewport: <span id="viewport-size"></span></p>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. Input Zoom Test (iOS Safari)</h3>
+        <p>Type in this input. On iOS Safari, it should NOT zoom:</p>
+        <input type="text" placeholder="Test input - no zoom" id="zoom-test">
+        <p id="zoom-result" class="info">Type to test zoom behavior</p>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. WebSocket Test</h3>
+        <button onclick="testWebSocket()">Test MQTT Connection</button>
+        <p id="websocket-result" class="info">Click to test WebSocket connectivity</p>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. Responsive Layout Test</h3>
+        <p>Resize window or rotate device:</p>
+        <div id="layout-test" style="display: grid; grid-template-columns: 1fr 200px; gap: 10px; border: 1px dashed #33ff00; padding: 10px;">
+            <div style="background: #003300; padding: 10px;">Main Content</div>
+            <div style="background: #330000; padding: 10px;" class="side-panel">Side Panel</div>
+        </div>
+        <p id="layout-result" class="info">Layout should stack on mobile, side-by-side on desktop</p>
+    </div>
+    
+    <div class="test-section">
+        <h3>5. Device Detection</h3>
+        <p>User Agent: <span id="user-agent" class="info"></span></p>
+        <p>Platform: <span id="platform" class="info"></span></p>
+        <p>Touch Support: <span id="touch-support" class="info"></span></p>
+    </div>
+    
+    <div class="test-section">
+        <h3>6. Performance Test</h3>
+        <button onclick="testPerformance()">Run Performance Test</button>
+        <p id="performance-result" class="info">Click to test rendering performance</p>
+    </div>
+    
+    <script>
+        // 1. Viewport Test
+        function updateViewportInfo() {
+            document.getElementById('screen-size').textContent = `${screen.width}x${screen.height}`;
+            document.getElementById('viewport-size').textContent = `${window.innerWidth}x${window.innerHeight}`;
+            
+            if (window.innerWidth < 768) {
+                document.getElementById('viewport-result').textContent = 'Mobile viewport detected';
+                document.getElementById('viewport-result').className = 'pass';
+            } else {
+                document.getElementById('viewport-result').textContent = 'Desktop viewport detected';
+                document.getElementById('viewport-result').className = 'pass';
+            }
+        }
+        
+        // 2. Input Zoom Test
+        document.getElementById('zoom-test').addEventListener('focus', function() {
+            setTimeout(() => {
+                const newViewport = `${window.innerWidth}x${window.innerHeight}`;
+                document.getElementById('zoom-result').textContent = `Viewport after focus: ${newViewport}`;
+                document.getElementById('zoom-result').className = 'pass';
+            }, 500);
+        });
+        
+        // 3. WebSocket Test
+        function testWebSocket() {
+            const result = document.getElementById('websocket-result');
+            result.textContent = 'Testing WebSocket connection...';
+            result.className = 'info';
+            
+            try {
+                const ws = new WebSocket('wss://broker.emqx.io:8084/mqtt');
+                
+                ws.onopen = function() {
+                    result.textContent = 'WebSocket connection successful!';
+                    result.className = 'pass';
+                    ws.close();
+                };
+                
+                ws.onerror = function() {
+                    result.textContent = 'WebSocket connection failed!';
+                    result.className = 'fail';
+                };
+                
+                setTimeout(() => {
+                    if (ws.readyState === WebSocket.CONNECTING) {
+                        result.textContent = 'WebSocket connection timeout';
+                        result.className = 'fail';
+                        ws.close();
+                    }
+                }, 5000);
+                
+            } catch (e) {
+                result.textContent = `WebSocket error: ${e.message}`;
+                result.className = 'fail';
+            }
+        }
+        
+        // 4. Responsive Layout Test
+        function updateLayoutTest() {
+            const layoutTest = document.getElementById('layout-test');
+            const result = document.getElementById('layout-result');
+            
+            if (window.innerWidth < 768) {
+                layoutTest.style.gridTemplateColumns = '1fr';
+                result.textContent = 'Mobile layout: Stacked';
+                result.className = 'pass';
+            } else {
+                layoutTest.style.gridTemplateColumns = '1fr 200px';
+                result.textContent = 'Desktop layout: Side-by-side';
+                result.className = 'pass';
+            }
+        }
+        
+        // 5. Device Detection
+        function detectDevice() {
+            document.getElementById('user-agent').textContent = navigator.userAgent;
+            document.getElementById('platform').textContent = navigator.platform;
+            document.getElementById('touch-support').textContent = 'ontouchstart' in window ? 'Yes' : 'No';
+        }
+        
+        // 6. Performance Test
+        function testPerformance() {
+            const result = document.getElementById('performance-result');
+            const startTime = performance.now();
+            
+            // Create and animate 100 elements
+            const container = document.createElement('div');
+            for (let i = 0; i < 100; i++) {
+                const div = document.createElement('div');
+                div.style.cssText = 'width:10px;height:10px;background:#33ff00;position:absolute;';
+                div.style.left = Math.random() * 200 + 'px';
+                div.style.top = Math.random() * 200 + 'px';
+                container.appendChild(div);
+            }
+            document.body.appendChild(container);
+            
+            setTimeout(() => {
+                const endTime = performance.now();
+                document.body.removeChild(container);
+                result.textContent = `Performance test completed in ${(endTime - startTime).toFixed(2)}ms`;
+                result.className = endTime - startTime < 100 ? 'pass' : 'fail';
+            }, 100);
+        }
+        
+        // Initialize tests
+        window.addEventListener('load', function() {
+            updateViewportInfo();
+            updateLayoutTest();
+            detectDevice();
+        });
+        
+        window.addEventListener('resize', function() {
+            updateViewportInfo();
+            updateLayoutTest();
+        });
+    </script>
+</body>
+</html>
