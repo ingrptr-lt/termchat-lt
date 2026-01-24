@@ -1,24 +1,42 @@
-# TermChat LT 🟢
+# TermChat LT 🌍
 
-A terminal-style real-time chat application with AI assistant built with MQTT, featuring retro aesthetics and Lithuanian language support.
+A terminal-style real-time chat application with multilingual AI assistant built with MQTT, featuring retro aesthetics and global language support.
 
 ## Features
 
 ✨ **Real-time Chat** - Connect with users worldwide via MQTT protocol  
-🤖 **AI Assistant** - TERMAI responds in Lithuanian using Zhipu GLM-4  
+🤖 **Multilingual AI Assistant** - TERMAI responds in English, Lithuanian, and more  
 🎨 **Retro Terminal UI** - Green phosphor CRT-style interface with typewriter effects  
 📻 **Radio Streaming** - Listen to online radio while chatting  
 📱 **Progressive Web App** - Install as native app on mobile and desktop  
 🌐 **No Installation Required** - Works in any modern web browser  
-🇱🇹 **Lithuanian Language Support** - Native UI and AI responses in Lithuanian
+🌍 **Multilingual Support** - AI responds in user's language automatically
 
 ## AI Assistant
 
-**TERMAI** is the built-in AI assistant that responds to:
-- Messages containing "ai" or "termai"
-- Questions ending with "?"
-- Responds in Lithuanian using Zhipu GLM-4 model
+**TERMAI** is the built-in multilingual AI assistant that:
+- Responds to messages containing "ai" or "termai"
+- Answers questions ending with "?"
+- **Auto-detects language** and responds in English, Lithuanian, etc.
+- Uses Zhipu GLM-4 model with intelligent fallbacks
 - Maintains conversation context
+- Specialized personalities for different rooms
+
+## Live Demo
+
+🚀 **Try it now**: [https://dauptr.github.io/termchat-lt/](https://dauptr.github.io/termchat-lt/)
+
+- Enter any username (3+ characters)
+- Chat with users worldwide
+- Ask TERMAI questions in English or Lithuanian
+- Experience retro terminal aesthetics
+
+## Quick Start
+
+1. Visit [https://dauptr.github.io/termchat-lt/](https://dauptr.github.io/termchat-lt/)
+2. Enter username
+3. Start chatting!
+4. Try: "Hello TERMAI" or "Labas TERMAI"
 
 ## Technical Architecture
 
@@ -73,14 +91,19 @@ python -m http.server 8000
 
 ## AI Integration
 
-**Zhipu GLM-4 Model**:
-- Lithuanian language optimization
+**Zhipu GLM-4 Model** with multilingual capabilities:
+- **Auto-language detection** - responds in user's language
+- **English & Lithuanian** optimized responses
 - Conversation context awareness
-- Trigger-based responses
-- Error handling with fallbacks
+- Trigger-based responses ("ai", "termai", "?")
+- Intelligent fallback system
+- Room-specific personalities
 
-**System Prompt**:
+**Example Interactions**:
 ```
-Tu esi TermAi, protingas asistentas TermChat LT kambaryje. 
-Kalbėk lietuviškai trumpai ir aiškiai.
+User: "Hello TERMAI, who are you?"
+TERMAI: "Hello! I'm TERMAI, your AI assistant. How can I help you?"
+
+User: "Labas TERMAI, kas tu esi?"
+TERMAI: "Labas! Aš esu TERMAI - dirbtinio intelekto asistentas."
 ```
