@@ -136,10 +136,29 @@ def on_message(mqtt_client, userdata, message):
 
         except Exception as e:
             print(f"[ERROR] AI Call Failed: {e}")
+            # Simple fallback responses
+            fallback_responses = {
+                "labas": "Labas! Kaip sekasi?",
+                "hello": "Hello! How are you?",
+                "hi": "Hi there!",
+                "ačiū": "Prašom!",
+                "thanks": "You're welcome!"
+            }
+            
+            # Check for simple greetings
+            simple_response = None
+            for word, response in fallback_responses.items():
+                if word in user_text.lower():
+                    simple_response = response
+                    break
+            
+            if not simple_response:
+                simple_response = "Labas! Aš esu TermAi. Galiu padėti su skaičiavimais ir atsakyti į klausimus."
+            
             error_payload = json.dumps({
                 "type": "chat",
                 "id": "TERMAI",
-                "msg": "Atsiprašau, šiuo metu negaliu atsakyti. / Sorry, I can't respond right now."
+                "msg": simple_response
             })
             mqtt_client.publish("term-chat/global/v3", error_payload)
             
