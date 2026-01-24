@@ -771,7 +771,7 @@
                         
                         topics.forEach(topic => {
                             mqttClient.subscribe(topic);
-                            console.log('Subscribed to:', topic);
+                            console.log('[DIAG] Subscribed to:', topic);
                         });
                         
                         // Send connection announcement
@@ -815,6 +815,8 @@
                 };
                 mqttClient.onMessageArrived = function(message) {
                     const payload = message.payloadString;
+                    const topic = message.destinationName;
+                    console.log(`[DIAG] 📩 Message from ${topic}: ${payload.substring(0, 100)}...`);
                     
                     // --- SMART ROUTER: ATTEMPT TO PARSE JSON ---
                     try {
