@@ -299,6 +299,9 @@ def on_message(client, userdata, message, properties=None):
                 pass  # Not JSON, send as regular message
             
             # Sanitize AI response
+            if reply.startswith("AI Error:"):
+                reply = get_fallback_response(messages_to_send)
+            
             reply = str(reply).replace('<', '&lt;').replace('>', '&gt;')[:500]
             
             client.publish("termchat/output", json.dumps({
