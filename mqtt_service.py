@@ -91,7 +91,7 @@ ROOM_PROMPTS = {
 def ai_call(messages, room):
     """AI API call with room context"""
     if not zhipu_client:
-        return f"AI service unavailable"
+        return get_fallback_response(messages)
     
     try:
         response = zhipu_client.chat.completions.create(
@@ -103,18 +103,23 @@ def ai_call(messages, room):
         return response.choices[0].message.content
     except Exception as e:
         print(f"[AI ERROR] {e}")
-        # Try alternative model
-        try:
-            response = zhipu_client.chat.completions.create(
-                model="chatglm_turbo",
-                messages=messages,
-                temperature=0.7,
-                max_tokens=300
-            )
-            return response.choices[0].message.content
-        except Exception as e2:
-            print(f"[AI ERROR 2] {e2}")
-            return f"Labas! Aš esu TERMAI. Kaip galiu padėti?"
+        return get_fallback_response(messages)
+
+def get_fallback_response(messages):
+    """Fallback AI responses in Lithuanian"""
+    if not messages:
+        return "Labas! Aš esu TERMAI. Kaip galiu padėti?"
+    
+    last_msg = messages[-1].get('content', '').lower() if messages else ''
+    
+    if 'labas' in last_msg or 'hello' in last_msg:
+        return "Labas! Aš esu TERMAI, jūsų AI asistentas. Kuo galiu padėti?"
+    elif 'kas tu esi' in last_msg or 'who are you' in last_msg:
+        return "Aš esu TERMAI - dirbtinio intelekto asistentas TermChat LT sistemoje. Kalbėkite su manimi lietuviškai!"
+    elif '?' in last_msg:
+        return "Tai įdomus klausimas! Deja, šiuo metu turiu ribotą funkcionalumą, bet stengiuosi padėti."
+    else:
+        return "Suprantu jus! Aš esu TERMAI ir stengiuosi atsakyti lietuviškai. Užduokite man klausimą!"
 
 def handle_admin(payload):
     """Admin command handler"""
