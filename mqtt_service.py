@@ -18,7 +18,30 @@ print(f"AI_PROVIDER: {AI_PROVIDER}")
 
 # AI Configuration
 MODEL_NAME = "glm-4"
-SYSTEM_PROMPT = """Tu esi TermAi, draugiškas AI asistentas TermChat LT kambaryje. Atsakyk trumpai ir aiškiai lietuvių kalba."""
+SYSTEM_PROMPT = """Tu esi TermAi, pažangus AI asistentas su šiomis galimybėmis:
+
+🧠 INTELEKTAS:
+- Atsakyk į bet kokius klausimus apie mokslą, istoriją, technologijas
+- Spręsk matematikos uždavinius ir logikos galvosūkius
+- Analizuok ir paaiškink sudėtingas sąvokas
+- Programuok Python, JavaScript, HTML/CSS kalbomis
+
+💬 KALBOS:
+- Kalbėk lietuviškai ir angliškai
+- Versk tekstus tarp kalbų
+- Taisyk gramatikos klaidas
+
+🎨 KŪRYBA:
+- Rašyk eilėraščius, istorijas, tekstus
+- Generuok idėjas projektams
+- Padėk su rašto darbais
+
+🔧 PRAKTIKA:
+- Programavimo pagalba ir kodo peržiūra
+- Technologijų konsultacijos
+- Problemų sprendimas žingsnis po žingsnio
+
+Atsakyk išsamiai, tiksliai ir naudingai. Jei nežinai - pasakyk atvirai."""
 zhipu_client = ZhipuAI(api_key=ZHIPU_API_KEY) if ZHIPU_API_KEY else None
 
 # Global conversation history with size limit
@@ -94,10 +117,10 @@ def on_message(mqtt_client, userdata, message):
         if len(conversation_history) > MAX_CONVERSATION_HISTORY:
             conversation_history = conversation_history[-MAX_CONVERSATION_HISTORY:]
 
-        # Keep last 20 messages for better context
+        # Keep last 30 messages for better context
         messages_to_send = [
             {"role": "system", "content": SYSTEM_PROMPT}
-        ] + conversation_history[-20:]
+        ] + conversation_history[-30:]
 
         try:
             print(f"[AI] Thinking with {MODEL_NAME}...")
@@ -105,8 +128,9 @@ def on_message(mqtt_client, userdata, message):
             response = zhipu_client.chat.completions.create(
                 model=MODEL_NAME,
                 messages=messages_to_send,
-                temperature=0.7,
-                max_tokens=150
+                temperature=0.8,
+                max_tokens=500,
+                top_p=0.9
             )
 
             ai_reply = response.choices[0].message.content
