@@ -284,6 +284,7 @@
         <div class="input-line">
             <span style="margin-right: 10px;">&gt;</span>
             <input id="chatInput" type="text" placeholder="Type message..." autocomplete="off">
+            <button id="sendButton" style="margin-left: 10px; background: var(--term-color); color: #000; border: none; padding: 5px 10px; cursor: pointer;">Send</button>
         </div>
     </div>
     <script>
@@ -543,9 +544,13 @@
                 // Setup input handler
                 const chatInput = document.getElementById('chatInput');
                 if (chatInput) {
-                    chatInput.addEventListener('keypress', function(e) {
+                    chatInput.addEventListener('keydown', function(e) {
                         if (e.key === 'Enter') sendMessage();
                     });
+                }
+                const sendButton = document.getElementById('sendButton');
+                if (sendButton) {
+                    sendButton.addEventListener('click', sendMessage);
                 }
             } else {
                 alert('Username must be at least 3 characters');
@@ -996,6 +1001,7 @@
                 mqttClient.publish(publishTopic, JSON.stringify({user: username, text: text}));
                 mqttClient.publish('termchat/input', JSON.stringify(msg));
                 input.value = '';
+                input.focus();
             }
         }
 
