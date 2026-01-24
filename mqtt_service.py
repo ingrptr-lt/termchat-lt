@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 import threading
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-from zhipuai import ZhipuAI
+# from zhipuai import ZhipuAI
 
 # Load Config
 load_dotenv()
@@ -19,7 +19,7 @@ print(f"AI_PROVIDER: {AI_PROVIDER}")
 # AI Configuration
 MODEL_NAME = "glm-4"
 SYSTEM_PROMPT = """Tu esi TermAi, draugiškas AI asistentas TermChat LT kambaryje. Atsakyk trumpai ir aiškiai lietuvių kalba."""
-zhipu_client = ZhipuAI(api_key=ZHIPU_API_KEY) if ZHIPU_API_KEY else None
+# zhipu_client = ZhipuAI(api_key=ZHIPU_API_KEY) if ZHIPU_API_KEY else None
 
 # Global conversation history with size limit
 conversation_history = []
@@ -100,28 +100,25 @@ def on_message(mqtt_client, userdata, message):
         ] + conversation_history[-20:]
 
         try:
-            # Check if AI client is available
-            if not zhipu_client:
-                print("[ERROR] AI client not initialized - missing API key")
-                error_payload = json.dumps({
-                    "type": "chat",
-                    "id": "TERMAI",
-                    "msg": "AI paslaugos nepasiekiamos. / AI services unavailable."
-                })
-                mqtt_client.publish("term-chat/global/v3", error_payload)
-                return
-                
-            print(f"[AI] Thinking with {MODEL_NAME}...")
+            # Simple AI responses without API
+            user_lower = user_text.lower()
             
-            response = zhipu_client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=messages_to_send,
-                temperature=0.7,
-                max_tokens=150
-            )
+            if "labas" in user_lower or "hello" in user_lower or "hi" in user_lower:
+                ai_reply = "Labas! Kaip sekasi? Galiu padėti su skaičiavimais ir atsakyti į klausimus."
+            elif "kaip" in user_lower and "sekasi" in user_lower:
+                ai_reply = "Ačiū, kad klausi! Aš esu TermAi ir viskas gerai. O kaip tau?"
+            elif "kas" in user_lower and ("esi" in user_lower or "tu" in user_lower):
+                ai_reply = "Aš esu TermAi - AI asistentas šiame chat kambaryje. Galiu padėti su skaičiavimais!"
+            elif "ačiū" in user_lower or "thanks" in user_lower:
+                ai_reply = "Prašom! Visada maloniai padėsiu."
+            elif "viso" in user_lower or "bye" in user_lower:
+                ai_reply = "Viso gero! Iki pasimatymo!"
+            elif "?" in user_text:
+                ai_reply = "Įdomus klausimas! Deja, dar mokausi atsakyti į sudėtingesnius klausimus."
+            else:
+                ai_reply = "Labas! Aš esu TermAi. Galiu padėti su skaičiavimais (pvz: 5+3) ir paprastais klausimais."
 
-            ai_reply = response.choices[0].message.content
-            print(f"[AI] Response: {ai_reply}")
+            print(f"[AI] Simple Response: {ai_reply}")
 
             # Add AI to History
             conversation_history.append({"role": "assistant", "content": ai_reply})
