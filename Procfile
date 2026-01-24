@@ -1,1 +1,0 @@
-web: python mqtt_service.py

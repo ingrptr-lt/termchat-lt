@@ -1,0 +1,38 @@
+name: Render Deploy Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install system deps
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Run build script (install requirements)
+        run: |
+          chmod +x ./build.sh || true
+          ./build.sh
+
+      - name: Run tests
+        run: pytest -q
+
+      - name: Validate render.yaml exists
+        run: |
+          if [ ! -f render.yaml ]; then echo "render.yaml missing" && exit 1; fi
+
+      - name: Summary
+        run: echo "Build and tests completed. render.yaml present."

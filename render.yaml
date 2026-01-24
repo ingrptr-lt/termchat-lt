@@ -1,16 +1,13 @@
 version: 1
 services:
   - type: web
-    name: termchat-mqtt-bot
+    name: termchat-lt
     env: python
     plan: free
-    buildCommand: ./build.sh
+    buildCommand: pip install -r requirements.txt
     startCommand: python mqtt_service.py
-    healthCheckPath: /
     envVars:
       - key: ZHIPU_API_KEY
         sync: false
-      - key: AI_PROVIDER
-        value: zhipu
-      - key: RENDER
-        value: true
+      - key: DEEPSEEK_API_KEY
+        sync: false
