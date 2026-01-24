@@ -755,23 +755,40 @@ def on_message(client, userdata, message, properties=None):
             }))
 
 def run_http_server():
-    """HTTP server for health checks"""
+    """HTTP server for health checks and static files"""
     class HealthHandler(SimpleHTTPRequestHandler):
         def do_GET(self):
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            status = f"""
-            <h1>TermOS LT - God Mode Backend</h1>
-            <p>Status: ONLINE</p>
-            <p>Current Room: {current_room}</p>
-            <p>Active Users: {len(active_users)}</p>
-            <p>Conversation History: {len(conv_history)} messages</p>
-            """
-            self.wfile.write(status.encode())
+            if self.path == '/':
+                # Serve index.html for root
+                try:
+                    with open('index.html', 'rb') as f:
+                        self.send_response(200)
+                        self.send_header('Content-type', 'text/html')
+                        self.end_headers()
+                        self.wfile.write(f.read())
+                except FileNotFoundError:
+                    self.send_response(404)
+                    self.end_headers()
+                    self.wfile.write(b'index.html not found')
+            elif self.path == '/health':
+                # Health check endpoint
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html')
+                self.end_headers()
+                status = f"""
+                <h1>TermOS LT - God Mode Backend</h1>
+                <p>Status: ONLINE</p>
+                <p>Current Room: {current_room}</p>
+                <p>Active Users: {len(active_users)}</p>
+                <p>Conversation History: {len(conv_history)} messages</p>
+                """
+                self.wfile.write(status.encode())
+            else:
+                # Serve static files
+                super().do_GET()
     
     server = HTTPServer(('0.0.0.0', PORT), HealthHandler)
-    print(f"[HTTP] Health server running on port {PORT}")
+    print(f"[HTTP] Server running on port {PORT}")
     server.serve_forever()
 
 # --- STARTUP ---
