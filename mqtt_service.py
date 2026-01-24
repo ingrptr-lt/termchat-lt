@@ -63,16 +63,15 @@ def ai_call(messages, room):
 
 def handle_admin(payload):
     """Admin command handler"""
+    global current_room, conv_history
     cmd = payload.replace(ADMIN_PASS, "").strip()
     
     if cmd == "status":
         return f"Users: {len(active_users)}, Room: {current_room}, History: {len(conv_history)}"
     elif cmd == "reset":
-        global conv_history
         conv_history = []
         return "System reset complete"
     elif cmd.startswith("room "):
-        global current_room
         new_room = cmd.split(" ", 1)[1]
         if new_room in ROOM_PROMPTS:
             current_room = new_room
