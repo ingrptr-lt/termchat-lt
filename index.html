@@ -764,15 +764,19 @@
         }
 
         function connectMQTT() {
+            console.log("[DIAG] Initializing Paho Client...");
+            // ✅ CHECK IF PAHO EXISTS
             if (typeof Paho === 'undefined') {
+                console.error("[DIAG] ❌ Paho library failed to load!");
+                alert("Failed to load MQTT library. Check internet connection.");
                 addMessage('ERROR', 'Paho MQTT library failed to load. Please refresh the page.');
-                return;
+                return; // STOP EXECUTION
             }
             try {
                 addMessage('SYSTEM', 'Connecting to MQTT broker...');
                 
                 // Enhanced WebSocket connection with fallback
-                const clientId = "client_" + Math.random().toString(36).substr(2, 9);
+                const clientId = "client-" + username + "-" + Math.floor(Math.random() * 1000);
                 mqttClient = new Paho.Client("broker.emqx.io", 8084, clientId);
                 
                 // Connection options with enhanced reliability
