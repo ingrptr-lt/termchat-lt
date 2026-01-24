@@ -206,6 +206,7 @@ AI_TOOLS = [
             }
         }
     }
+]
 # Plugin System Functions
 def load_plugin(plugin_name, plugin_code, triggers=None):
     """Load a plugin with restricted execution"""
