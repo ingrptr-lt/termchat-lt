@@ -710,7 +710,7 @@
         function sendAdmin() {
             const input = document.getElementById('admin-cmd');
             const cmd = input.value.trim();
-            if (cmd && mqttClient) {
+            if (cmd && mqttClient && mqttClient.isConnected()) {
                 mqttClient.publish('termchat/admin', cmd);
                 input.value = '';
                 addAdminLog(`> ${cmd}`);
@@ -737,7 +737,7 @@
                 return;
             }
             
-            if (mqttClient) {
+            if (mqttClient && mqttClient.isConnected()) {
                 const pluginData = {
                     action: 'upload_plugin',
                     name: name,
@@ -930,7 +930,7 @@
             const input = document.getElementById('chatInput');
             if (!input) return;
             const text = input.value.trim();
-            if (text && mqttClient) {
+            if (text && mqttClient && mqttClient.isConnected()) {
                 // Check for special commands
                 if (text === '/share') {
                     shareRoom();
