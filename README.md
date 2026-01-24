@@ -48,7 +48,7 @@ Level 3: Hacker    Level 5: Wizard    Level 8: Ninja
 
 ## 🌌 Live Multiverse
 
-🚀 **Enter the Multiverse**: [https://dauptr.github.io/termchat-lt/](https://dauptr.github.io/termchat-lt/)
+🚀 **Enter the Multiverse**: [https://termchat-lt.onrender.com](https://termchat-lt.onrender.com)
 
 ### 🏠 Explore Themed Rooms
 - 📚 **Library** - Learn with AI Librarian
