@@ -6,6 +6,12 @@ from dotenv import load_dotenv
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from zhipuai import ZhipuAI
 
+# ==========================================
+# GLOBAL VARIABLES (Ensure these are at the TOP of your file)
+# ==========================================
+current_room = "living_room"
+conv_history = []
+
 # Load Config
 load_dotenv()
 ZHIPU_API_KEY = os.getenv("ZHIPU_API_KEY")
@@ -20,8 +26,6 @@ print(f"[CONFIG] Port: {PORT}")
 zhipu_client = ZhipuAI(api_key=ZHIPU_API_KEY) if ZHIPU_API_KEY else None
 
 # Global State
-current_room = "living_room"
-conv_history = []
 active_users = {}
 admin_sessions = set()
 
@@ -86,25 +90,32 @@ def on_connect(client, u, flags, rc, p=None):
     client.subscribe("termchat/tunnel/+")
     client.subscribe("termchat/room/+")
 
-def on_message(client, u, msg, p=None):
-    topic, payload = msg.topic, msg.payload.decode()
+# ==========================================
+# CORRECTED FUNCTION
+# ==========================================
+
+def on_message(client, userdata, message, properties=None):
+    # 1. DECLARE GLOBALS AT THE VERY START
+    global current_room, conv_history
+    topic = message.topic
+    payload = message.payload.decode()
     
     try:
         # Parse JSON if possible
         data = json.loads(payload)
         user_id = data.get("id", "unknown")
-        message = data.get("msg", payload)
+        message_text = data.get("msg", payload)
     except:
         # Fallback to plain text
         user_id = "system"
-        message = payload
+        message_text = payload
 
-    print(f"[MQTT] {topic}: {user_id} -> {message[:50]}...")
+    print(f"[MQTT] {topic}: {user_id} -> {message_text[:50]}...")
 
-    # 1. ADMIN SECURITY
+    # 2. ADMIN SECURITY CHECK
     if topic == "termchat/admin":
-        if message.startswith(ADMIN_PASS):
-            resp = handle_admin(message)
+        if message_text.startswith(ADMIN_PASS):
+            resp = handle_admin(message_text)
             client.publish("termchat/output", json.dumps({
                 "type": "admin",
                 "id": "ADMIN",
@@ -118,110 +129,92 @@ def on_message(client, u, msg, p=None):
             }))
         return
 
-    # 2. TUNNEL & VIDEO (Pass-through)
+    # 3. TUNNEL & VIDEO (Pass-through)
     if "termchat/tunnel" in topic or "termchat/room" in topic:
-        # Echo to main channel for public rooms
-        if not topic.endswith("/private"):
-            client.publish("termchat/output", payload)
+        # We just pass these through; frontend handles signaling
         return
 
-    # 3. USER TRACKING
-    if user_id != "system":
-        active_users[user_id] = {"last_seen": "now", "room": current_room}
-
-    # 4. NAVIGATION
-    global current_room, conv_history
-    text_lower = message.lower()
-    
-    # Lithuanian navigation keywords
+    # 4. NAVIGATION (Room Switching)
+    text_lower = message_text.lower()
     nav_map = {
-        "biblioteka": "library", 
-        "library": "library",
+        "biblioteka": "library",
         "studija": "studio", 
-        "studio": "studio",
-        "dirbtuvės": "workshop", 
-        "workshop": "workshop",
-        "poilsio": "lounge", 
-        "lounge": "lounge",
-        "laboratorija": "think_tank", 
-        "think_tank": "think_tank",
-        "think tank": "think_tank",
-        "namų": "living_room",
-        "living room": "living_room",
-        "home": "living_room"
+        "dirbtuvės": "workshop",
+        "poilsio": "lounge",
+        "laboratorija": "think_tank"
     }
-    
-    for keyword, room in nav_map.items():
-        if keyword in text_lower and ("eiti" in text_lower or "go" in text_lower or "enter" in text_lower):
-            current_room = room
-            conv_history = []  # Reset conversation for new room
+    for keyword, room_name in nav_map.items():
+        if keyword in text_lower:
+            current_room = room_name
+            conv_history = []  # Clear memory
             
             room_names = {
                 "library": "📚 Biblioteka",
                 "studio": "🎨 Studija", 
                 "workshop": "💻 Dirbtuvės",
                 "lounge": "🎭 Poilsio kambarys",
-                "think_tank": "🧠 Laboratorija",
-                "living_room": "🏠 Namų kambarys"
+                "think_tank": "🧠 Laboratorija"
             }
             
             client.publish("termchat/output", json.dumps({
                 "type": "navigation",
                 "id": "TERMOS",
-                "msg": f"Įėjote į: {room_names.get(room, room)}",
-                "room": room
+                "msg": f"Įėjote į: {room_names.get(room_name, room_name)}",
+                "room": room_name
             }))
             return
 
-    # 5. AI PROCESSING
+    # 5. AI / GAME / APP GENERATION
     # Check if AI should respond
     ai_triggers = ["ai", "termai", "?"]
     should_respond = any(trigger in text_lower for trigger in ai_triggers)
     
     if should_respond:
-        # Get room-specific system prompt
-        sys_msg = {
-            "role": "system", 
-            "content": ROOM_PROMPTS.get(current_room, ROOM_PROMPTS["living_room"])
-        }
-        
-        # Add JSON instruction for creative rooms
+        # Get System Prompt for current room
+        system_content = ROOM_PROMPTS.get(current_room, ROOM_PROMPTS["living_room"])
+        # Add JSON constraint for specific rooms
         if current_room in ["workshop", "studio", "lounge"]:
-            sys_msg["content"] += " SVARBU: Jei kuriate app/žaidimą, grąžinkite TIKTAI JSON formatą."
+            system_content += " IMPORTANT: If creating app/game, return ONLY JSON."
 
-        # Add user message to history
-        conv_history.append({"role": "user", "content": f"{user_id}: {message}"})
+        sys_msg = {"role": "system", "content": system_content}
+        # Prepare messages (System + Last 10 of History)
+        conv_history.append({"role": "user", "content": f"{user_id}: {message_text}"})
+        messages_to_send = [sys_msg] + conv_history[-10:]
         
-        # Keep last 10 messages for context
-        messages_for_ai = [sys_msg] + conv_history[-10:]
-        
-        # Get AI response
-        ai_response = ai_call(messages_for_ai, current_room)
-        
-        # Add AI response to history
-        conv_history.append({"role": "assistant", "content": ai_response})
-        
-        # Check if response is JSON (for apps/games)
+        # Call AI
         try:
-            json_response = json.loads(ai_response)
-            if json_response.get("type") in ["app", "game"]:
-                # Send as special JSON message
-                client.publish("termchat/output", json.dumps({
-                    "type": "creation",
-                    "id": "TERMAI",
-                    "msg": "Sukūriau jums:",
-                    "creation": json_response
-                }))
-                return
-        except:
-            pass  # Not JSON, send as regular message
-        
-        # Send regular AI response
-        client.publish("termchat/output", json.dumps({
-            "type": "chat",
-            "id": "TERMAI", 
-            "msg": ai_response
-        }))
+            reply = ai_call(messages_to_send, current_room)
+            
+            # Check if response is JSON (for apps/games)
+            try:
+                json_response = json.loads(reply)
+                if json_response.get("type") in ["app", "game"]:
+                    # Send as special JSON message
+                    client.publish("termchat/output", json.dumps({
+                        "type": "creation",
+                        "id": "TERMAI",
+                        "msg": "Sukūriau jums:",
+                        "creation": json_response
+                    }))
+                    conv_history.append({"role": "assistant", "content": reply})
+                    return
+            except:
+                pass  # Not JSON, send as regular message
+            
+            client.publish("termchat/output", json.dumps({
+                "type": "chat",
+                "id": "TERMAI", 
+                "msg": reply
+            }))
+            conv_history.append({"role": "assistant", "content": reply})
+            
+        except Exception as e:
+            print(f"[ERROR] AI Failed: {e}")
+            client.publish("termchat/output", json.dumps({
+                "type": "chat",
+                "id": "TERMAI",
+                "msg": f"Klaida: {str(e)}"
+            }))
 
 def run_http_server():
     """HTTP server for health checks"""
