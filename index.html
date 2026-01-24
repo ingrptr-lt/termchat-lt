@@ -765,7 +765,7 @@
                 
                 // Enhanced WebSocket connection with fallback
                 const clientId = "client_" + Math.random().toString(36).substr(2, 9);
-                mqttClient = new Paho.MQTT.Client("broker.emqx.io", 8084, clientId);
+                mqttClient = new Paho.Client("broker.emqx.io", 8084, clientId);
                 
                 // Connection options with enhanced reliability
                 const connectOptions = {

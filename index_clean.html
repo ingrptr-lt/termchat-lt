@@ -72,7 +72,7 @@
 
         function connectMQTT() {
             try {
-                const client = new Paho.MQTT.Client("broker.emqx.io", 8084, "client_" + Math.random());
+                const client = new Paho.Client("broker.emqx.io", 8084, "client_" + Math.random());
                 
                 client.onMessageArrived = function(message) {
                     try {
