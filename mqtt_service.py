@@ -30,6 +30,17 @@ except ImportError:
     VECTOR_DB_AVAILABLE = False
     print("[WARNING] Vector database not available - no memory bank")
 
+# Plugin system imports
+try:
+    import docker
+    from RestrictedPython import compile_restricted
+    from watchdog.observers import Observer
+    from watchdog.events import FileSystemEventHandler
+    PLUGIN_SYSTEM_AVAILABLE = True
+except ImportError:
+    PLUGIN_SYSTEM_AVAILABLE = False
+    print("[WARNING] Plugin system not available - no custom scripts")
+
 # Render compatibility
 if 'RENDER' in os.environ:
     print("[RENDER] Running on Render platform")
@@ -100,6 +111,19 @@ zhipu_client = ZhipuAI(api_key=ZHIPU_API_KEY) if ZHIPU_API_KEY else None
 # Global State
 active_users = {}
 admin_sessions = set()
+loaded_plugins = {}
+plugin_triggers = {}
+
+# Plugin system setup
+if PLUGIN_SYSTEM_AVAILABLE:
+    try:
+        docker_client = docker.from_env()
+        plugins_dir = os.path.join(os.getcwd(), 'plugins')
+        os.makedirs(plugins_dir, exist_ok=True)
+        print("[PLUGINS] Plugin system initialized")
+    except Exception as e:
+        print(f"[PLUGINS] Docker not available: {e}")
+        PLUGIN_SYSTEM_AVAILABLE = False
 
 # User activity cleanup task
 def cleanup_inactive_users():
@@ -182,7 +206,129 @@ AI_TOOLS = [
             }
         }
     }
-def execute_ai_function(function_name, arguments, user_id):
+# Plugin System Functions
+def load_plugin(plugin_name, plugin_code, triggers=None):
+    """Load a plugin with restricted execution"""
+    if not PLUGIN_SYSTEM_AVAILABLE:
+        return False, "Plugin system not available"
+    
+    try:
+        # Compile with restrictions
+        compiled_code = compile_restricted(plugin_code, filename=f"{plugin_name}.py", mode='exec')
+        if compiled_code.errors:
+            return False, f"Compilation errors: {compiled_code.errors}"
+        
+        # Create safe execution environment
+        safe_globals = {
+            '__builtins__': {
+                'print': print,
+                'len': len,
+                'str': str,
+                'int': int,
+                'float': float,
+                'bool': bool,
+                'list': list,
+                'dict': dict,
+                'range': range,
+                'enumerate': enumerate,
+                'zip': zip,
+            },
+            'json': json,
+            'time': time,
+            'random': random,
+        }
+        
+        # Execute plugin code
+        plugin_locals = {}
+        exec(compiled_code.code, safe_globals, plugin_locals)
+        
+        # Store plugin
+        loaded_plugins[plugin_name] = {
+            'code': plugin_code,
+            'locals': plugin_locals,
+            'triggers': triggers or [],
+            'active': True
+        }
+        
+        # Register triggers
+        if triggers:
+            for trigger in triggers:
+                if trigger not in plugin_triggers:
+                    plugin_triggers[trigger] = []
+                plugin_triggers[trigger].append(plugin_name)
+        
+        print(f"[PLUGINS] Loaded plugin: {plugin_name}")
+        return True, "Plugin loaded successfully"
+        
+    except Exception as e:
+        return False, f"Plugin execution error: {str(e)}"
+
+def execute_plugin_docker(plugin_name, plugin_code, input_data):
+    """Execute plugin in Docker container for maximum security"""
+    if not PLUGIN_SYSTEM_AVAILABLE:
+        return None
+    
+    try:
+        # Create temporary script
+        script_content = f"""
+import json
+import sys
+
+# Plugin code
+{plugin_code}
+
+# Input data
+input_data = {json.dumps(input_data)}
+
+# Execute main function if exists
+if 'main' in locals():
+    result = main(input_data)
+    print(json.dumps(result))
+else:
+    print(json.dumps({{'error': 'No main function found'}}))
+"""
+        
+        # Run in Docker container
+        container = docker_client.containers.run(
+            'python:3.9-alpine',
+            f'python -c "{script_content}"',
+            remove=True,
+            network_mode='none',  # No network access
+            mem_limit='128m',     # Memory limit
+            cpu_period=100000,    # CPU limit
+            cpu_quota=50000,      # 50% CPU
+            timeout=10,           # 10 second timeout
+            capture_output=True,
+            text=True
+        )
+        
+        if container.returncode == 0:
+            return json.loads(container.stdout.strip())
+        else:
+            print(f"[PLUGINS] Docker execution error: {container.stderr}")
+            return {'error': container.stderr}
+            
+    except Exception as e:
+        print(f"[PLUGINS] Docker execution failed: {e}")
+        return {'error': str(e)}
+
+def trigger_plugins(trigger_type, data):
+    """Trigger plugins based on events"""
+    if trigger_type not in plugin_triggers:
+        return []
+    
+    results = []
+    for plugin_name in plugin_triggers[trigger_type]:
+        if plugin_name in loaded_plugins and loaded_plugins[plugin_name]['active']:
+            try:
+                plugin = loaded_plugins[plugin_name]
+                if 'handle_trigger' in plugin['locals']:
+                    result = plugin['locals']['handle_trigger'](trigger_type, data)
+                    results.append({'plugin': plugin_name, 'result': result})
+            except Exception as e:
+                print(f"[PLUGINS] Error in plugin {plugin_name}: {e}")
+    
+    return results
     """Execute AI function calls"""
     try:
         if function_name == "play_music":
@@ -336,8 +482,23 @@ def get_fallback_response(messages):
             return "I understand! I'm TERMAI. Feel free to ask me anything!"
 
 def handle_admin(payload):
-    """Admin command handler"""
+    """Enhanced admin command handler with plugin support"""
     global current_room, conv_history
+    
+    try:
+        # Try to parse as JSON for plugin uploads
+        data = json.loads(payload)
+        if data.get('action') == 'upload_plugin':
+            success, message = load_plugin(
+                data.get('name'),
+                data.get('code'),
+                data.get('triggers', [])
+            )
+            return f"Plugin upload: {message}"
+    except json.JSONDecodeError:
+        # Handle as regular admin command
+        pass
+    
     parts = payload.split()
     if len(parts) < 2:
         return "No command provided"
@@ -348,10 +509,20 @@ def handle_admin(payload):
     
     cmd = parts[1]
     if cmd == "status":
-        return f"Users: {len(active_users)}, Room: {current_room}, History: {len(conv_history)}"
+        plugin_count = len(loaded_plugins)
+        return f"Users: {len(active_users)}, Room: {current_room}, History: {len(conv_history)}, Plugins: {plugin_count}"
     elif cmd == "reset":
         conv_history = []
         return "System reset complete"
+    elif cmd == "plugins":
+        if not loaded_plugins:
+            return "No plugins loaded"
+        plugin_list = []
+        for name, plugin in loaded_plugins.items():
+            status = "ACTIVE" if plugin['active'] else "INACTIVE"
+            triggers = ", ".join(plugin['triggers']) if plugin['triggers'] else "None"
+            plugin_list.append(f"{name} ({status}) - Triggers: {triggers}")
+        return "Loaded plugins:\n" + "\n".join(plugin_list)
     elif cmd.startswith("room") and len(parts) > 2:
         new_room = parts[2]
         if new_room in ROOM_PROMPTS:
@@ -362,6 +533,36 @@ def handle_admin(payload):
         return f"Active users: {list(active_users.keys())}"
     else:
         return f"Unknown command: {cmd}"
+
+def execute_ai_function(function_name, arguments, user_id):
+    """Execute AI function calls with plugin support"""
+    try:
+        if function_name == "play_music":
+            return {
+                "action": "play_music",
+                "url": arguments.get("url"),
+                "title": arguments.get("title")
+            }
+        elif function_name == "open_panel":
+            return {
+                "action": "open_panel",
+                "panel": arguments.get("panel"),
+                "data": arguments.get("data", {})
+            }
+        elif function_name == "remember_user_preference":
+            store_user_memory(user_id, arguments.get("category"), arguments.get("preference"))
+            return {"action": "memory_stored", "message": "Preference saved!"}
+        elif function_name == "load_plugin":
+            success, message = load_plugin(
+                arguments.get("name"),
+                arguments.get("code"),
+                arguments.get("triggers", [])
+            )
+            return {"action": "plugin_loaded", "success": success, "message": message}
+        else:
+            return {"action": "error", "message": f"Unknown function: {function_name}"}
+    except Exception as e:
+        return {"action": "error", "message": f"Function error: {str(e)}"}
 
 def on_disconnect(client, userdata, flags, reason_code, properties=None):
     print(f"[MQTT] Disconnected. Code: {reason_code}. Reconnecting...")
