@@ -259,6 +259,8 @@
     </style>
     <!-- ✅ Official MQTT.js Library (Local Copy - No CDN Dependencies) -->
     <script src="./mqtt.min.js"></script>
+    <!-- 🖥️ MultiuniversOS Platform -->
+    <script src="./multiverse-os.js"></script>
 </head>
 <body class="theme-living">
     
@@ -1032,6 +1034,142 @@
                         input.value = '';
                         return;
                     }
+                } else if (text.startsWith('ls') || text.startsWith('dir')) {
+                    // File system - list files
+                    if (vfs) {
+                        const path = text.replace(/^(ls|dir)\s*/, '') || '/';
+                        vfs.ls(path).then(files => {
+                            addMessage('SYSTEM', files.map(f => `${f.name} (${f.size}B) [${f.type}]`).join('\n') || '(empty)');
+                        });
+                    }
+                    input.value = '';
+                    return;
+                } else if (text.startsWith('cat ')) {
+                    // File system - read file
+                    if (vfs) {
+                        const path = text.replace('cat ', '');
+                        vfs.cat(path).then(content => {
+                            addMessage('SYSTEM', content || '(file not found)');
+                        });
+                    }
+                    input.value = '';
+                    return;
+                } else if (text.startsWith('touch ') || text.startsWith('mkdir ')) {
+                    // File system - create file/dir
+                    if (vfs) {
+                        const match = text.match(/^(touch|mkdir)\s+(.+)$/);
+                        if (match) {
+                            const type = match[1] === 'mkdir' ? 'directory' : 'file';
+                            vfs.touch(match[2], '', type).then(() => {
+                                addMessage('SYSTEM', `✓ Created ${type}: ${match[2]}`);
+                            });
+                        }
+                    }
+                    input.value = '';
+                    return;
+                } else if (text.startsWith('rm ')) {
+                    // File system - delete file
+                    if (vfs) {
+                        const path = text.replace('rm ', '');
+                        vfs.rm(path).then(() => {
+                            addMessage('SYSTEM', `✓ Deleted: ${path}`);
+                        });
+                    }
+                    input.value = '';
+                    return;
+                } else if (text === '/desktop' || text === '/windows') {
+                    // Open virtual desktop manager
+                    if (vdesktop) {
+                        vdesktop.createWindow('Virtual Desktop', '<p>Drag windows around the screen.</p><p>Right-click to close.</p>');
+                        addMessage('SYSTEM', 'Virtual Desktop opened (draggable windows)');
+                    }
+                    input.value = '';
+                    return;
+                } else if (text === '/task' || text === '/tasks') {
+                    // Show task manager
+                    if (sysMonitor) {
+                        const html = sysMonitor.showTaskManager();
+                        vdesktop.createWindow('Task Manager', html);
+                        addMessage('SYSTEM', 'Task Manager opened');
+                    }
+                    input.value = '';
+                    return;
+                } else if (text === '/devtools' || text === '/tools') {
+                    // Show DevTools panel
+                    const html = DevTools.showDevToolsPanel();
+                    vdesktop.createWindow('DevTools Workshop', html);
+                    input.value = '';
+                    return;
+                } else if (text === '/audio' || text === '/voice') {
+                    // Voice/Audio controls
+                    if (audioSystem) {
+                        const msg = audioSystem.toggleMute();
+                        addMessage('SYSTEM', msg);
+                    }
+                    input.value = '';
+                    return;
+                } else if (text.startsWith('/say ')) {
+                    // Text-to-speech
+                    if (audioSystem) {
+                        const msg = text.replace('/say ', '');
+                        audioSystem.speakText(msg, 'en-US');
+                        addMessage('SYSTEM', `Speaking: "${msg}"`);
+                    }
+                    input.value = '';
+                    return;
+                } else if (text === '/listen') {
+                    // Voice input
+                    if (audioSystem) {
+                        audioSystem.startVoiceInput();
+                        addMessage('SYSTEM', '🎤 Listening...');
+                    }
+                    input.value = '';
+                    return;
+                } else if (text === '/shell' || text === '/exec') {
+                    // Remote shell (admin only)
+                    if (remoteShell) {
+                        const html = remoteShell.showShellPanel();
+                        vdesktop.createWindow('Remote Shell', html);
+                    }
+                    input.value = '';
+                    return;
+                } else if (text === '/nearby') {
+                    // Network discovery
+                    if (discovery) {
+                        discovery.startDiscovery();
+                        const html = discovery.showNearbyUsers();
+                        vdesktop.createWindow('Nearby Users', html);
+                    }
+                    input.value = '';
+                    return;
+                } else if (text === '/apps' || text === '/store') {
+                    // App store
+                    if (appStore) {
+                        const html = appStore.showAppStore();
+                        vdesktop.createWindow('App Store', html);
+                    }
+                    input.value = '';
+                    return;
+                } else if (text === '/save') {
+                    // Save session
+                    if (sessionManager) {
+                        sessionManager.saveSnapshot();
+                    }
+                    input.value = '';
+                    return;
+                } else if (text === '/stats') {
+                    showStats();
+                    input.value = '';
+                    return;
+                } else if (text === '/mode god' || text === '/mode battery') {
+                    // Change system mode
+                    if (sysMonitor) {
+                        const mode = text.replace('/mode ', '');
+                        sysMonitor.setMode(mode);
+                        addMessage('SYSTEM', `📊 Mode: ${mode}`);
+                    }
+                    input.value = '';
+                    return;
                 } else if (text === '/help' || text === '/?') {
                     showHelp();
                     input.value = '';
@@ -1248,18 +1386,38 @@
         }
         
         function showHelp() {
-            addMessage('HELP', '📖 Available Commands:');
-            addMessage('HELP', '├─ /stats         Show your level, XP, and achievements');
-            addMessage('HELP', '├─ /avatar        Change your avatar');
-            addMessage('HELP', '├─ /share         Share room with others');
-            addMessage('HELP', '├─ /voice         Enable voice input');
-            addMessage('HELP', '├─ /mute          Disable voice output');
-            addMessage('HELP', '├─ /speak         Enable voice output');
-            addMessage('HELP', '├─ /help or /?    Show this help message');
-            addMessage('HELP', '├─ /room <name>   Switch to another room');
-            addMessage('HELP', '├─ /go <name>     Alias for /room');
-            addMessage('HELP', '└─ Available rooms: living_room, library, studio, workshop, think_tank, lounge');
-            addMessage('HELP', '💡 Tip: Use the room buttons on the right panel to switch rooms quickly!');
+            addMessage('HELP', '📖 MultiuniversOS Commands:');
+            addMessage('HELP', '');
+            addMessage('HELP', '🖥️  FILE SYSTEM:');
+            addMessage('HELP', '├─ ls [path]      List files in directory');
+            addMessage('HELP', '├─ cat <file>     Read file contents');
+            addMessage('HELP', '├─ touch <file>   Create new file');
+            addMessage('HELP', '├─ mkdir <dir>    Create directory');
+            addMessage('HELP', '└─ rm <path>      Delete file/directory');
+            addMessage('HELP', '');
+            addMessage('HELP', '🔧 SYSTEM:');
+            addMessage('HELP', '├─ /desktop       Open virtual desktop');
+            addMessage('HELP', '├─ /task          Show task manager');
+            addMessage('HELP', '├─ /mode god      High performance mode');
+            addMessage('HELP', '├─ /mode battery  Low power mode');
+            addMessage('HELP', '└─ /devtools      Open DevTools workshop');
+            addMessage('HELP', '');
+            addMessage('HELP', '🎤 AUDIO:');
+            addMessage('HELP', '├─ /listen        Start voice input');
+            addMessage('HELP', '├─ /say <text>    Text-to-speech');
+            addMessage('HELP', '├─ /audio         Toggle sound');
+            addMessage('HELP', '└─ /mute / /speak Mute/unmute voice');
+            addMessage('HELP', '');
+            addMessage('HELP', '🌐 NETWORK:');
+            addMessage('HELP', '├─ /nearby        Find nearby users');
+            addMessage('HELP', '├─ /shell         Remote shell (admin)');
+            addMessage('HELP', '└─ /apps          App store/marketplace');
+            addMessage('HELP', '');
+            addMessage('HELP', '💾 SESSION:');
+            addMessage('HELP', '├─ /save          Save session snapshot');
+            addMessage('HELP', '├─ /room <name>   Switch room');
+            addMessage('HELP', '├─ /stats         Show your stats');
+            addMessage('HELP', '└─ /help or /?    Show this message');
         }
         
         function showStats() {

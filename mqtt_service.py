@@ -788,6 +788,57 @@ class CustomHTTPRequestHandler(SimpleHTTPRequestHandler):
             # Serve static files
             super().do_GET()
 
+    def do_POST(self):
+        """Handle POST requests for remote shell and other features"""
+        content_length = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(content_length)
+        
+        try:
+            data = json.loads(body)
+        except:
+            self.send_response(400)
+            self.end_headers()
+            return
+
+        # Remote shell endpoint
+        if self.path == '/exec':
+            token = data.get('token')
+            command = data.get('command')
+            
+            # Verify admin token
+            if token != admin_token:
+                self.send_response(403)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Invalid token'}).encode())
+                return
+
+            # Execute command safely
+            try:
+                import subprocess
+                result = subprocess.run(command, shell=True, capture_output=True, timeout=5)
+                output = result.stdout.decode() + result.stderr.decode()
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'output': output, 'success': True}).encode())
+                print(f"[SHELL] Executed: {command}")
+            except subprocess.TimeoutExpired:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Command timeout'}).encode())
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+
 # ==========================================
 # 6. STARTUP
 # ==========================================
