@@ -760,7 +760,7 @@ class CustomHTTPRequestHandler(SimpleHTTPRequestHandler):
         # EXPLICITLY SERVE INDEX.HTML
         if self.path == '/':
             try:
-                with open("index.html", "rb") as f:
+                with open("public/index.html", "rb") as f:
                     self.send_response(200)
                     self.send_header('Content-type', 'text/html')
                     self.end_headers()
