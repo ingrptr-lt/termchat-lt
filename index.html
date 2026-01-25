@@ -30,12 +30,46 @@
         }
 
         body {
-            background: var(--bg-color);
-            color: var(--term-color);
-            font-family: var(--term-font);
-            height: 100vh;
-            overflow: hidden;
-            position: relative;
+       <body style="margin:0; background:#050505; font-family:sans-serif;">
+
+    <!-- BACKGROUND GRID -->
+    <div style="position:absolute; top:0; left:0; width:100%; height:100%; background-image:radial-gradient(#111 1px, transparent 1px); background-size:30px 30px; opacity:0.2;"></div>
+
+    <!-- MAIN HEADER -->
+    <div style="position:relative; padding:40px; text-align:center;">
+        <h1 style="color:#00ff41; text-transform:uppercase; letter-spacing:5px; margin:0;">Multiverse OS</h1>
+        <p style="color:#666;">TermChat LT // Production // Neural Link Established</p>
+    </div>
+
+    <!-- STATUS PANELS -->
+    <div style="position:relative; display:flex; justify-content:center; gap:20px; padding:20px;">
+        
+        <!-- PANEL 1 -->
+        <div style="background:#0a0a0a; border:1px solid #333; padding:20px; width:200px; border-radius:5px;">
+            <div style="color:#00ff41; font-size:12px;">NETWORK</div>
+            <div style="font-size:24px; font-weight:bold; color:#fff;">ONLINE</div>
+            <div style="font-size:12px; color:#666;">Latency: 24ms</div>
+        </div>
+
+        <!-- PANEL 2 -->
+        <div style="background:#0a0a0a; border:1px solid #333; padding:20px; width:200px; border-radius:5px;">
+            <div style="color:#00ff41; font-size:12px;">AI MODEL</div>
+            <div style="font-size:24px; font-weight:bold; color:#fff;">LLAMA 3.1</div>
+            <div style="font-size:12px; color:#666;">8B Instant</div>
+        </div>
+
+        <!-- PANEL 3 -->
+        <div style="background:#0a0a0a; border:1px solid #333; padding:20px; width:200px; border-radius:5px;">
+            <div style="color:#00ff41; font-size:12px;">SYSTEM</div>
+            <div style="font-size:24px; font-weight:bold; color:#fff;">STABLE</div>
+            <div style="font-size:12px; color:#666;">v1.0.0</div>
+        </div>
+
+    </div>
+
+    <!-- THE TERMINAL WILL LOAD HERE VIA SCRIPT.JS -->
+
+</body>
         }
 
         /* MONITOR BEZEL EFFECT */
