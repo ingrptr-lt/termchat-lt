@@ -757,10 +757,10 @@ def on_message(client, userdata, message, properties=None):
 class CustomHTTPRequestHandler(SimpleHTTPRequestHandler):
     """Custom Handler to Explicitly Serve index.html"""
     def do_GET(self):
-        # EXPLICITLY SERVE INDEX.HTML
+        # EXPLICITLY SERVE INDEX.HTML (now in root directory)
         if self.path == '/':
             try:
-                with open("public/index.html", "rb") as f:
+                with open("index.html", "rb") as f:
                     self.send_response(200)
                     self.send_header('Content-type', 'text/html')
                     self.end_headers()
@@ -770,7 +770,7 @@ class CustomHTTPRequestHandler(SimpleHTTPRequestHandler):
             except FileNotFoundError:
                 self.send_response(404)
                 self.end_headers()
-                self.wfile.write(b"404 Not Found: index.html missing.")
+                self.wfile.write(b"404 Not Found: index.html missing (checked root directory).")
         elif self.path == '/health':
             # Health check endpoint
             self.send_response(200)
