@@ -7,7 +7,7 @@
 
 // --- CONFIGURATION ---
 const GITHUB_TOKEN = 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; 
-const GROQ_API_KEY = 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; 
+const GROQ_API_KEY = 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;
 const REPO_OWNER = "ingrptr-lt";
 const REPO_NAME = "termchat-lt";
 const FILE_PATH = "index.html"; 
