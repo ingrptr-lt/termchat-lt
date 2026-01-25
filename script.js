@@ -1,56 +1,47 @@
 // =========================================================================
-//         MULTIVERSE OS: WORKING AI LINK
+//         MULTIVERSE OS: IMPOSSIBLE TO FAIL VERSION
 // =========================================================================
 
 const GROQ_API_KEY = "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"; 
 
 window.addEventListener('load', () => {
-    alert("MULTIVERSE OS LOADED"); // Just to confirm
+    alert("START");
     
-    // 1. Create Terminal
-    const ui = document.createElement('div');
-    ui.style.cssText = 'position:fixed; bottom:0; left:0; width:100%; height:250px; background:black; border-top:2px solid lime; color:lime; font-family:monospace; z-index:9999; padding:10px;';
-    ui.innerHTML = `SYSTEM ONLINE<br>`;
+    const term = document.createElement('div');
+    term.style.cssText = 'position:fixed; bottom:0; left:0; width:100%; height:300px; background:black; border-top:5px solid lime; color:white; font-family:monospace; padding:20px; font-size:20px;';
     
-    // 2. Create Input
     const input = document.createElement('input');
-    input.style.cssText = 'width:100%; background:black; color:white; border:none; outline:none; margin-top:10px; font-size:20px;';
-    input.placeholder = "Type here...";
+    input.style.cssText = 'width:100%; background:black; color:white; border:none; outline:none; margin-top:20px; font-size:25px;';
     
-    // 3. Listen for Enter
     input.addEventListener('keypress', async (e) => {
         if (e.key === 'Enter') {
-            const msg = e.target.value;
-            ui.innerHTML += `<br>> YOU: ${msg}`;
-            e.target.value = "";
+            const txt = e.target.value;
+            e.target.value = ""; // Clear box immediately
             
-            // 4. Call AI (Safe Mode)
-            ui.innerHTML += `<br>> AI: Thinking...`;
+            term.innerHTML += `> ME: ${txt}<br>`;
             
+            // GET AI ANSWER
             try {
-                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                const req = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: { 
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${GROQ_API_KEY}` 
-                    },
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
                     body: JSON.stringify({
                         model: "llama3-70b-8192",
-                        messages: [{ role: "user", content: msg }]
+                        messages: [{ role: "user", content: txt }]
                     })
                 });
                 
-                const data = await res.json();
-                const reply = data.choices[0].message.content;
+                const json = await req.json();
+                const ans = json.choices[0].message.content;
                 
-                ui.innerHTML += `<br>> AI: ${reply}`;
+                term.innerHTML += `<span style="color:cyan">> AI: ${ans}</span><br><br>`;
                 
             } catch (err) {
-                ui.innerHTML += `<br>> ERROR: ${err.message}`;
+                term.innerHTML += `<span style="color:red">> ERROR: ${err.message}</span><br>`;
             }
         }
     });
 
-    ui.appendChild(input);
-    document.body.appendChild(ui);
+    term.appendChild(input);
+    document.body.appendChild(term);
 });
