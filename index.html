@@ -534,7 +534,9 @@
             const header = document.getElementById('room-header');
             if (header) {
                 const levelTitle = LEVEL_TITLES[userStats.level - 1] || 'Unknown';
-                header.innerHTML = `TERMCHAT LT - ${currentRoom.toUpperCase()} | ${username} (Lvl ${userStats.level} ${levelTitle})<span class="cursor"></span>`;
+                // Format room name with proper spacing
+                const roomName = currentRoom.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                header.innerHTML = `TERMCHAT LT - ${roomName} | ${username} (Lvl ${userStats.level} ${levelTitle})<span class="cursor"></span>`;
             }
         }
         function login() {
@@ -792,8 +794,8 @@
             // ✅ CHECK IF MQTT EXISTS
             if (typeof mqtt === 'undefined') {
                 console.error("[DIAG] ❌ MQTT.js library failed to load!");
-                alert("MQTT library failed to load. The mqtt.min.js file may be missing from server.");
-                addMessage('ERROR', 'MQTT.js library not found. Check server files.');
+                addMessage('ERROR', '❌ MQTT library not loaded. Check server configuration.');
+                addMessage('SYSTEM', 'Application will run in limited mode.');
                 return; // STOP EXECUTION
             }
             try {
@@ -949,19 +951,40 @@
                     }
                 });
                 
+                // Connection error handler with better diagnostics
+                mqttClient.on('error', function(error) {
+                    console.error('MQTT Connection error:', error);
+                    addMessage('ERROR', `❌ Connection failed: ${error.message || 'Broker unavailable'}`);
+                    addMessage('SYSTEM', '💡 Troubleshooting: Check network, try Chrome/Firefox, disable VPN');
+                });
+                
+                // Reconnect handler
+                mqttClient.on('reconnect', function() {
+                    console.log('MQTT: Attempting to reconnect...');
+                    addMessage('SYSTEM', '🔄 Reconnecting to broker...');
+                });
+                
                 console.log('MQTT.js client initialized');
             } catch(e) {
                 console.error('MQTT Setup Error:', e);
-                addMessage('ERROR', 'MQTT Setup Error: ' + e.message);
-                addMessage('SYSTEM', 'This might be a browser compatibility issue. Try Chrome/Firefox.');
+                addMessage('ERROR', '❌ MQTT Setup Error: ' + e.message);
+                addMessage('SYSTEM', 'Please reload the page and try again.');
             }
         }
 
         function sendMessage() {
             const input = document.getElementById('chatInput');
             if (!input) return;
-            const text = input.value.trim();
-            if (text && mqttClient && mqttClient.connected) {
+            let text = input.value.trim();
+            if (!text) return; // Exit if empty
+            
+            // Truncate extremely long messages (max 500 chars)
+            if (text.length > 500) {
+                addMessage('SYSTEM', '⚠️  Message too long (max 500 characters). Truncating...');
+                text = text.substring(0, 500);
+            }
+            
+            if (mqttClient && mqttClient.connected) {
                 // Check for special commands
                 if (text === '/share') {
                     shareRoom();
@@ -1063,8 +1086,13 @@
         }
 
         function addMessage(user, text) {
+            if (!user || !text) return; // Validate inputs
+            
             const terminal = document.getElementById('terminal-body');
-            if (!terminal) return;
+            if (!terminal) {
+                console.warn('Terminal body not found');
+                return;
+            }
             const div = document.createElement('div');
             div.style.marginBottom = '5px';
             
@@ -1377,11 +1405,43 @@
             panel.innerHTML = html;
         }
         
+        function updateRoomButtonStyles() {
+            // Update button styles without full repopulation
+            const buttons = document.querySelectorAll('#multiverse-panel button');
+            const roomMap = {
+                'living_room': '#33ff00',
+                'library': '#ffb000',
+                'studio': '#ff00ff',
+                'workshop': '#00ffff',
+                'think_tank': '#00ff41',
+                'lounge': '#ff3333'
+            };
+            
+            buttons.forEach(btn => {
+                // Check each room to match button
+                for (const [roomId, color] of Object.entries(roomMap)) {
+                    if (btn.getAttribute('onclick').includes(roomId)) {
+                        if (currentRoom === roomId) {
+                            btn.style.background = color;
+                            btn.style.color = '#000';
+                        } else {
+                            btn.style.background = '#0a0a0a';
+                            btn.style.color = color;
+                        }
+                        break;
+                    }
+                }
+            });
+        }
+        
         function switchRoomAndSave(room) {
             switchRoom(room);
             localStorage.setItem('lastRoom', room);
-            populateRoomSelector(); // Update UI to show current room
-            addMessage('SYSTEM', `Switched to: ${room.replace('_', ' ').toUpperCase()}`);
+            // Update button styles instead of full repopulation
+            updateRoomButtonStyles();
+            // Format room name properly
+            const roomName = room.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            addMessage('SYSTEM', `Switched to: ${roomName}`);
         }
         
         function switchRoom(room) {
