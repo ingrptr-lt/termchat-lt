@@ -1,11 +1,11 @@
 // =========================================================================
-//         MULTIVERSE OS: IMPOSSIBLE TO FAIL VERSION
+//         MULTIVERSE OS: DEBUG MODE (LOUD ERRORS)
 // =========================================================================
 
 const GROQ_API_KEY = "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"; 
 
 window.addEventListener('load', () => {
-    alert("START");
+    alert("DEBUG MODE STARTED");
     
     const term = document.createElement('div');
     term.style.cssText = 'position:fixed; bottom:0; left:0; width:100%; height:300px; background:black; border-top:5px solid lime; color:white; font-family:monospace; padding:20px; font-size:20px;';
@@ -16,12 +16,13 @@ window.addEventListener('load', () => {
     input.addEventListener('keypress', async (e) => {
         if (e.key === 'Enter') {
             const txt = e.target.value;
-            e.target.value = ""; // Clear box immediately
+            e.target.value = ""; 
             
             term.innerHTML += `> ME: ${txt}<br>`;
             
-            // GET AI ANSWER
             try {
+                term.innerHTML += `> CONNECTING...<br>`;
+                
                 const req = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
@@ -31,13 +32,22 @@ window.addEventListener('load', () => {
                     })
                 });
                 
+                // CHECK STATUS CODE
+                if (!req.ok) {
+                    throw new Error(`API ERROR: ${req.status}`);
+                }
+                
                 const json = await req.json();
                 const ans = json.choices[0].message.content;
                 
                 term.innerHTML += `<span style="color:cyan">> AI: ${ans}</span><br><br>`;
                 
             } catch (err) {
-                term.innerHTML += `<span style="color:red">> ERROR: ${err.message}</span><br>`;
+                // MAKE THE ERROR HUGE AND RED
+                const errBox = document.createElement('div');
+                errBox.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:red; color:white; padding:20px; z-index:99999; border:5px solid white; font-size:30px;';
+                errBox.innerHTML = `ERROR: ${err.message}`;
+                document.body.appendChild(errBox);
             }
         }
     });
