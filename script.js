@@ -6,7 +6,7 @@
 // =========================================================================
 
 // --- CONFIGURATION ---
-const GITHUB_TOKEN = "ghp_YOUR_GITHUB_PAT_HERE"; 
+const GITHUB_TOKEN = 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; 
 const GROQ_API_KEY = "gsk_YOUR_GROQ_KEY_HERE"; 
 const REPO_OWNER = "ingrptr-lt";
 const REPO_NAME = "termchat-lt";
