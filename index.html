@@ -1,11 +1,10 @@
 <!DOCTYPE html>
-<html lang="lt">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TermOS LT</title>
     
-    <!-- STYLES -->
     <style>
         :root {
             --term-color: #33ff00;
@@ -13,63 +12,65 @@
             --panel-bg: #0a0a0a;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
-        body { background: var(--bg-color); overflow: hidden; color: #fff; }
-        
+        body { background: var(--bg-color); color: #fff; overflow: hidden; }
+
         /* LOGIN */
-        .login-screen {
+        #loginScreen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; justify-content: center; align-items: center; z-index: 1000;
+            display: flex; justify-content: center; align-items: center; z-index: 9999;
+            background: var(--bg-color);
         }
         .login-box {
-            background: rgba(0,0,0,0.8); border: 2px solid var(--term-color); padding: 40px; text-align: center;
+            background: rgba(0,0,0,0.9); border: 2px solid var(--term-color); padding: 40px; text-align: center;
+            box-shadow: 0 0 20px rgba(51,255,0,0.3);
         }
         .login-box input {
             background: #000; color: var(--term-color); border: 1px solid var(--term-color);
             padding: 10px; width: 100%; margin: 10px 0; text-align: center; font-size: 16px;
         }
         .login-box button {
-            background: var(--term-color); color: #000; border: none; padding: 10px 20px; width: 100%; cursor: pointer; font-weight: bold; text-transform: uppercase;
+            background: var(--term-color); color: #000; border: none; padding: 10px 20px; width: 100%; cursor: pointer; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;
         }
 
-        /* MAIN INTERFACE */
+        /* MAIN LAYOUT */
         #main-layout {
-            display: none; /* Hidden initially */
+            display: none; /* Hidden */
             display: grid;
             grid-template-columns: 1fr 300px;
             grid-template-rows: auto 1fr auto;
             height: 100vh;
-            padding: 20px;
-            gap: 10px;
+            padding: 0;
         }
 
         /* HEADER */
         #room-header {
             grid-column: 1 / -1;
             border-bottom: 2px solid var(--term-color);
-            padding: 10px;
+            padding: 15px;
             font-family: 'Courier New', monospace;
-            text-shadow: 0 0 5px var(--term-color);
+            color: var(--term-color);
             font-size: 1.2em;
         }
 
         /* TERMINAL */
         #terminal-body {
             grid-column: 1 / -1;
+            grid-row: 2;
             overflow-y: auto;
-            padding: 10px;
+            padding: 15px;
             font-family: 'Courier New', monospace;
-            font-size: 14px;
-            border: 1px solid #333;
-            background: rgba(0,0,0,0.5);
+            font-size: 15px;
+            background: rgba(0,0,0,0.8);
+            color: #ccc;
         }
 
         /* PANEL */
         #multiverse-panel {
             grid-column: 2;
+            grid-row: 2;
             border-left: 2px solid var(--term-color);
             background: var(--panel-bg);
-            padding: 10px;
-            overflow-y: auto;
+            padding: 15px;
             display: none;
         }
         #multiverse-panel.active { display: block; }
@@ -84,25 +85,34 @@
             align-items: center;
         }
         #chatInput {
-            flex: 1; background: transparent; border: none; color: var(--term-color);
+            flex: 1; background: transparent; border: none; color: #fff;
             font-family: 'Courier New', monospace; font-size: 16px; outline: none;
         }
         #sendButton {
-            background: var(--term-color); color: #000; border: none; padding: 5px 15px; cursor: pointer; margin-left: 10px; font-weight: bold;
+            background: var(--term-color); color: #000; border: none; padding: 8px 15px; cursor: pointer; margin-left: 10px; font-weight: bold;
         }
 
-        /* MOBILE FIX */
+        /* MOBILE */
         @media (max-width: 768px) {
             #main-layout { grid-template-columns: 1fr; display: flex; flex-direction: column; }
-            #multiverse-panel { display: none; }
-            .input-line { position: fixed; bottom: 0; left: 0; width: 100%; z-index: 100; }
+            #multiverse-panel { display: none !important; }
+            .input-line { position: fixed; bottom: 0; left: 0; width: 100%; z-index: 100; padding: 15px; }
+        }
+
+        /* DEBUG INDICATOR */
+        #debug-status {
+            position: fixed; top: 5px; right: 5px; font-size: 10px; color: #555; z-index: 10000;
+            font-family: monospace;
         }
     </style>
 </head>
 <body>
 
-    <!-- LOGIN SCREEN -->
-    <div id="loginScreen" class="login-screen">
+    <!-- DEBUG INDICATOR -->
+    <div id="debug-status">JS LOADING...</div>
+
+    <!-- LOGIN -->
+    <div id="loginScreen">
         <div class="login-box">
             <h2 style="color:var(--term-color);">TERMOS LT</h2>
             <input type="text" id="usernameInput" placeholder="Username" maxlength="20">
@@ -110,34 +120,22 @@
         </div>
     </div>
 
-    <!-- MAIN LAYOUT -->
+    <!-- MAIN -->
     <div id="main-layout">
-        <!-- HEADER -->
         <div id="room-header">TERMCHAT LT - LIVING ROOM</div>
-        
-        <!-- TERMINAL -->
         <div id="terminal-body"></div>
-        
-        <!-- PANEL -->
         <div id="multiverse-panel"></div>
-        
-        <!-- INPUT -->
         <div class="input-line">
             <span style="margin-right: 10px; color: var(--term-color);">&gt;</span>
-            <input id="chatInput" type="text" placeholder="Type message..." autocomplete="off">
+            <input id="chatInput" type="text" placeholder="Type..." autocomplete="off">
             <button id="sendButton">SEND</button>
         </div>
     </div>
 
     <!-- SCRIPTS -->
-    <!-- 1. MQTT Library (CDN) -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-    
-    <!-- 2. Config -->
     <script src="./config.js"></script>
-    
-    <!-- 3. Logic (Cache Buster) -->
-    <script src="./script.js?v=3.0"></script>
+    <script src="./script.js?v=FINAL"></script>
 </body>
 </html>
     
