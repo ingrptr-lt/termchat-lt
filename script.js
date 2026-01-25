@@ -1,115 +1,105 @@
 // =========================================================================
-//         MULTIVERSE OS: ORIGINAL VISION (SAFE VERSION)
+//         MULTIVERSE OS: MASTER BUILD (SELF-HEALING)
 // =========================================================================
 
+// CONFIGURATION
 const GROQ_API_KEY = "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"; 
 
-window.onload = function() {
-    initSystem();
-};
+// 1. FORCE UNLOAD
+// We ensure no old listeners or styles remain by clearing specific IDs if they exist
+window.addEventListener('load', () => {
+    if (document.getElementById('mv-master-root')) document.getElementById('mv-master-root').remove();
+    buildMasterSystem();
+});
 
-function initSystem() {
-    // 1. SETUP BODY
-    document.body.style.margin = "0";
-    document.body.style.background = "#050505";
-    document.body.style.fontFamily = "sans-serif";
-    document.body.style.overflow = "hidden";
-
-    // 2. HEADER (STATUS)
-    var header = document.createElement("div");
-    header.style.padding = "20px";
-    header.style.background = "#000";
-    header.style.borderBottom = "1px solid #333";
-    header.style.color = "#0f0";
-    header.style.fontFamily = "monospace";
-    header.innerHTML = "MULTIVERSE OS // NEURAL LINK ACTIVE // <span style='color:#fff'>ADMIN MODE</span>";
-    document.body.appendChild(header);
-
-    // 3. SYSTEM CANVAS (VISUALS)
-    // The AI controls this space by telling you what to do, or we simulate it
-    var canvas = document.createElement("div");
-    canvas.id = "sys-canvas";
-    canvas.style.height = "calc(100vh - 300px)";
-    canvas.style.background = "#0a0a0a";
-    canvas.style.display = "flex";
-    canvas.style.alignItems = "center";
-    canvas.style.justifyContent = "center";
-    canvas.style.color = "#fff";
-    canvas.innerHTML = "<h1>SYSTEM READY</h1><p>Waiting for Admin input...</p>";
-    document.body.appendChild(canvas);
-
-    // 4. TERMINAL (COMMAND CENTER)
-    var termBox = document.createElement("div");
-    termBox.style.height = "300px";
-    termBox.style.background = "#000505";
-    termBox.style.borderTop = "4px solid #0f0";
-    termBox.style.color = "#0f0";
-    termBox.style.fontFamily = "'Courier New', monospace";
-    termBox.style.padding = "20px";
-    termBox.style.overflowY = "auto";
+function buildMasterSystem() {
     
-    var input = document.createElement("input");
-    input.placeholder = "Enter Command...";
-    input.style.width = "100%";
-    input.style.background = "transparent";
-    input.style.color = "#fff";
-    input.style.border = "none";
-    input.style.outline = "none";
-    input.style.fontSize = "20px";
-    input.style.borderTop = "1px solid #333";
-    input.style.paddingTop = "10px";
-
-    // LOGIC
-    input.onkeypress = async function(e) {
-        if (e.key === "Enter") {
-            var txt = input.value.trim();
+    // 2. ROOT CONTAINER
+    const root = document.createElement('div');
+    root.id = 'mv-master-root';
+    root.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:#050505; font-family:sans-serif; overflow:hidden; display:flex; flex-direction:column; z-index:2147483647;';
+    
+    // 3. HEADER
+    const header = document.createElement('div');
+    header.style.cssText = 'height:60px; background:#000; border-bottom:1px solid #333; display:flex; align-items:center; padding:0 20px; color:#00ff41; font-family:monospace; flex-shrink:0;';
+    header.innerText = "MULTIVERSE OS // MASTER BUILD // GROQ LINK: PENDING";
+    root.appendChild(header);
+    
+    // 4. WORKSPACE (CANVAS)
+    const workspace = document.createElement('div');
+    workspace.style.cssText = 'flex-grow:1; background:#0a0a0a; position:relative; overflow:hidden;';
+    workspace.innerHTML = '<div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center;"><h2 style="color:#fff;">SYSTEM INITIALIZING...</h2><p style="color:#666;">Establishing Neural Handshake.</p></div>';
+    root.appendChild(workspace);
+    
+    // 5. TERMINAL
+    const terminal = document.createElement('div');
+    terminal.style.cssText = 'height:300px; background:#000505; border-top:4px solid #00ff41; color:#00ff41; font-family:"Courier New", monospace; padding:20px; font-size:16px; overflow-y:auto; flex-shrink:0; display:flex; flex-direction:column;';
+    
+    const log = document.createElement('div');
+    log.style.cssText = 'flex-grow:1; overflow-y:auto;';
+    log.innerHTML = '<div style="color:#fff;">> Master Build Loaded.</div>';
+    terminal.appendChild(log);
+    
+    const input = document.createElement('input');
+    input.placeholder = "System Command...";
+    input.style.cssText = 'width:100%; background:transparent; color:#fff; border:none; outline:none; font-family:"Courier New", monospace; font-size:18px; border-top:1px solid #333; padding-top:10px;';
+    
+    // 6. EVENT LOOP
+    input.addEventListener('keypress', async (e) => {
+        if (e.key === 'Enter') {
+            const txt = input.value.trim();
             if (!txt) return;
             input.value = "";
             
-            termBox.innerHTML += "<div style='color:#fff; margin-bottom:5px;'>> ROOT: " + txt + "</div>";
+            // Log Command
+            addToLog(log, `> ROOT: ${txt}`, '#fff');
             
+            // Process
             try {
-                termBox.innerHTML += "<div style='color:#0f0; margin-bottom:5px;'>> ADMIN: Processing...</div>";
-                termBox.scrollTop = termBox.scrollHeight;
-
-                var res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                addToLog(log, "> PROCESSING...", '#00ff41');
+                
+                const req = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": "Bearer " + GROQ_API_KEY
-                    },
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
                     body: JSON.stringify({
                         model: "llama-3.1-8b-instant",
-                        messages: [
-                            { 
-                                role: "system", 
-                                content: "You are the Multiverse OS Admin. You have access to the system canvas. If the user asks to 'change background', 'add button', or 'change text', reply with VALID HTML code to put inside the div with id='sys-canvas'. Otherwise, answer as the system." 
-                            },
-                            { role: "user", content: txt }
-                        ]
+                        messages: [{ role: "user", content: txt }]
                     })
                 });
-
-                var data = await res.json();
-                var ans = data.choices[0].message.content;
-
-                // CHECK IF IT'S CODE
-                if (ans.includes("document.getElementById('sys-canvas')")) {
-                    // SIMULATE CHANGE (Safe Mode)
-                    canvas.innerHTML = "<h3 style='color:#0f0'>[AI COMMAND EXECUTED]</h3><p>" + ans + "</p>";
-                    termBox.innerHTML += "<div style='color:#0ff; margin-bottom:5px;'>> ADMIN: Command Visualized.</div>";
-                } else {
-                    termBox.innerHTML += "<div style='color:#0ff; margin-bottom:5px;'>> ADMIN: " + ans + "</div>";
+                
+                if (!req.ok) {
+                    throw new Error(`HTTP ${req.status}: ${req.statusText}`);
                 }
-
+                
+                const json = await req.json();
+                const reply = json.choices[0].message.content;
+                
+                // Update Workspace Visual
+                workspace.innerHTML = `<div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center; color:#fff;"><h2>SYSTEM ONLINE</h2><p>${reply}</p></div>`;
+                
+                // Update Terminal
+                addToLog(log, `> AI: ${reply}`, '#00ffff');
+                header.innerText = "MULTIVERSE OS // MASTER BUILD // GROQ LINK: ACTIVE";
+                
             } catch (err) {
-                termBox.innerHTML += "<div style='color:red; margin-bottom:5px;'>> ERROR: " + err.message + "</div>";
+                addToLog(log, `> FAILURE: ${err.message}`, '#ff3333');
+                header.innerText = "MULTIVERSE OS // MASTER BUILD // GROQ LINK: FAILED";
             }
             
-            termBox.scrollTop = termBox.scrollHeight;
+            log.scrollTop = log.scrollHeight;
         }
-    };
+    });
+    
+    terminal.appendChild(input);
+    root.appendChild(terminal);
+    document.body.appendChild(root);
+}
 
-    termBox.appendChild(input);
-    document.body.appendChild(termBox);
+// UTILITY
+function addToLog(container, msg, color) {
+    const d = document.createElement('div');
+    d.style.color = color || '#00ff41';
+    d.style.marginBottom = '5px';
+    d.innerText = msg;
+    container.appendChild(d);
 }
