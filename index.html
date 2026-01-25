@@ -2,98 +2,68 @@
 <html lang="lt">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TermOS LT</title>
     
-    <!-- CACHE CONTROL -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    
-    <!-- PWA / THEME -->
-    <meta name="theme-color" content="#33ff00">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="TermOS">
-    
-    <title>TermChat LT</title>
-    
-    <link rel="manifest" href="./manifest.json">
-    <link rel="apple-touch-icon" href="./icon-192.svg">
-    <link rel="icon" href="./favicon.ico" type="image/x-icon">
-
+    <!-- STYLES -->
     <style>
         :root {
             --term-color: #33ff00;
-            --term-font: 'Courier New', 'Monaco', 'Menlo', monospace;
-            --bg-color: #000;
+            --bg-color: #050505;
             --panel-bg: #0a0a0a;
         }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
+        body { background: var(--bg-color); overflow: hidden; color: #fff; }
+        
+        /* LOGIN */
+        .login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .login-box {
+            background: rgba(0,0,0,0.8); border: 2px solid var(--term-color); padding: 40px; text-align: center;
+        }
+        .login-box input {
+            background: #000; color: var(--term-color); border: 1px solid var(--term-color);
+            padding: 10px; width: 100%; margin: 10px 0; text-align: center; font-size: 16px;
+        }
+        .login-box button {
+            background: var(--term-color); color: #000; border: none; padding: 10px 20px; width: 100%; cursor: pointer; font-weight: bold; text-transform: uppercase;
         }
 
-        body {
-            margin: 0;
-            background: #050505;
-            font-family: sans-serif;
-            overflow: hidden; /* Prevents scroll on desktop */
-        }
-
-        /* BACKGROUND GRID */
-        .bg-grid {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: radial-gradient(#111 1px, transparent 1px);
-            background-size: 30px 30px;
-            opacity: 0.2;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        /* MAIN CONTAINER */
+        /* MAIN INTERFACE */
         #main-layout {
-            display: none; /* Hidden until login */
+            display: none; /* Hidden initially */
+            display: grid;
             grid-template-columns: 1fr 300px;
             grid-template-rows: auto 1fr auto;
             height: 100vh;
-            padding: 25px;
-            gap: 2px;
-            z-index: 1;
+            padding: 20px;
+            gap: 10px;
         }
 
         /* HEADER */
         #room-header {
+            grid-column: 1 / -1;
             border-bottom: 2px solid var(--term-color);
             padding: 10px;
-            white-space: pre;
-            font-size: 0.8em;
+            font-family: 'Courier New', monospace;
             text-shadow: 0 0 5px var(--term-color);
-            font-family: var(--term-font);
+            font-size: 1.2em;
+        }
+
+        /* TERMINAL */
+        #terminal-body {
+            grid-column: 1 / -1;
+            overflow-y: auto;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border: 1px solid #333;
             background: rgba(0,0,0,0.5);
         }
 
-        /* TERMINAL BODY */
-        #terminal-body {
-            grid-column: 1;
-            overflow-y: auto;
-            padding: 10px;
-            font-size: 14px;
-            line-height: 1.4;
-            border: 1px solid var(--term-color);
-            background: rgba(0,0,0,0.8);
-            font-family: var(--term-font);
-            scrollbar-width: thin;
-            scrollbar-color: var(--term-color) #000;
-        }
-
-        /* SIDE PANEL (MULTIVERSE) */
+        /* PANEL */
         #multiverse-panel {
             grid-column: 2;
             border-left: 2px solid var(--term-color);
@@ -102,10 +72,9 @@
             overflow-y: auto;
             display: none;
         }
-
         #multiverse-panel.active { display: block; }
 
-        /* INPUT AREA */
+        /* INPUT */
         .input-line {
             grid-column: 1 / -1;
             display: flex;
@@ -114,190 +83,61 @@
             background: rgba(0,0,0,0.9);
             align-items: center;
         }
-
         #chatInput {
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: var(--term-color);
-            font-family: var(--term-font);
-            font-size: 16px;
-            outline: none;
-            padding: 5px;
-            -webkit-appearance: none;
+            flex: 1; background: transparent; border: none; color: var(--term-color);
+            font-family: 'Courier New', monospace; font-size: 16px; outline: none;
+        }
+        #sendButton {
+            background: var(--term-color); color: #000; border: none; padding: 5px 15px; cursor: pointer; margin-left: 10px; font-weight: bold;
         }
 
-        /* THEMES */
-        .theme-living { --term-color: #33ff00; }
-        .theme-library { --term-color: #ffb000; }
-        .theme-studio { --term-color: #ff00ff; }
-        .theme-workshop { --term-color: #00ffff; }
-        .theme-think { --term-color: #00ff41; }
-        .theme-lounge { --term-color: #ff3333; }
-
-        /* LOGIN SCREEN */
-        .login-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: var(--bg-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 999;
-        }
-
-        .login-box {
-            border: 2px solid var(--term-color);
-            padding: 40px;
-            background: rgba(0,20,0,0.9);
-            text-align: center;
-            box-shadow: 0 0 20px rgba(51, 255, 0, 0.2);
-        }
-
-        .login-box input {
-            background: var(--bg-color);
-            border: 1px solid var(--term-color);
-            color: var(--term-color);
-            width: 100%;
-            padding: 10px;
-            margin: 20px 0;
-            font-family: var(--term-font);
-            font-size: 16px;
-            text-align: center;
-        }
-
-        .login-box button {
-            background: var(--term-color);
-            color: var(--bg-color);
-            width: 100%;
-            padding: 10px;
-            border: none;
-            cursor: pointer;
-            font-family: var(--term-font);
-            font-size: 16px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        /* RESPONSIVE MOBILE FIXES */
+        /* MOBILE FIX */
         @media (max-width: 768px) {
-            #main-layout {
-                display: grid; /* Override */
-                grid-template-columns: 1fr;
-                grid-template-rows: 1fr auto;
-                padding: 15px 5px;
-                height: 100vh;
-                height: 100dvh;
-            }
-            
-            #multiverse-panel {
-                display: none !important; /* Force hide side panel on mobile */
-            }
-
-            .input-line {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                background: rgba(0,0,0,0.95);
-                backdrop-filter: blur(10px);
-                z-index: 100;
-                padding: 15px;
-            }
-
-            #terminal-body {
-                padding-bottom: 80px; /* Space for fixed input */
-                height: calc(100vh - 140px);
-            }
-        }
-
-        /* VOICE INDICATOR */
-        .voice-indicator {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 255, 0, 0.2);
-            border: 1px solid var(--term-color);
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 12px;
-            font-family: var(--term-font);
-            z-index: 500;
-            display: none;
-        }
-        
-        .voice-indicator.active {
-            display: block;
-            animation: pulse 1s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
-        }
-
-        /* BEZEL EFFECT (Optional - Disabled by default, add class 'bezel' to body to enable) */
-        body.bezel::before {
-            content: '';
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            border: 20px solid #222;
-            border-radius: 15px;
-            box-shadow: inset 0 0 50px rgba(0,0,0,0.8), 0 0 20px rgba(51,255,0,0.1);
-            pointer-events: none;
-            z-index: 1000;
+            #main-layout { grid-template-columns: 1fr; display: flex; flex-direction: column; }
+            #multiverse-panel { display: none; }
+            .input-line { position: fixed; bottom: 0; left: 0; width: 100%; z-index: 100; }
         }
     </style>
-    
-    <!-- DEPENDENCIES -->
-    <!-- 1. MQTT Library -->
-    <script src="./mqtt.min.js"></script>
-    
-    <!-- 2. Configuration -->
-    <script src="./config.js"></script>
-    
-    <!-- 3. Main Logic -->
-    <script src="./script.js"></script>
 </head>
-<body class="theme-living">
-    
-    <!-- 1. BACKGROUND GRID -->
-    <div class="bg-grid"></div>
+<body>
 
-    <!-- 2. VOICE INDICATOR -->
-    <div id="voice-indicator" class="voice-indicator">🔊 Speaking...</div>
-
-    <!-- 3. LOGIN SCREEN -->
+    <!-- LOGIN SCREEN -->
     <div id="loginScreen" class="login-screen">
         <div class="login-box">
-            <h2 style="color:var(--term-color); margin-bottom:20px;">TERMOS LT</h2>
-            <input type="text" id="usernameInput" placeholder="Username" maxlength="20" autocomplete="off">
+            <h2 style="color:var(--term-color);">TERMOS LT</h2>
+            <input type="text" id="usernameInput" placeholder="Username" maxlength="20">
             <button onclick="login()">ENTER</button>
         </div>
     </div>
 
-    <!-- 4. MAIN INTERFACE -->
+    <!-- MAIN LAYOUT -->
     <div id="main-layout">
         <!-- HEADER -->
-        <div id="room-header">TERMCHAT LT - LIVING ROOM<span class="cursor"></span></div>
+        <div id="room-header">TERMCHAT LT - LIVING ROOM</div>
         
-        <!-- CHAT AREA -->
+        <!-- TERMINAL -->
         <div id="terminal-body"></div>
         
-        <!-- SIDE PANEL (MULTIVERSE TOOLS) -->
-        <div id="multiverse-panel" class="side-panel"></div>
+        <!-- PANEL -->
+        <div id="multiverse-panel"></div>
         
-        <!-- INPUT LINE -->
+        <!-- INPUT -->
         <div class="input-line">
-            <span style="margin-right: 10px; font-family: var(--term-font); color: var(--term-color);">&gt;</span>
+            <span style="margin-right: 10px; color: var(--term-color);">&gt;</span>
             <input id="chatInput" type="text" placeholder="Type message..." autocomplete="off">
-            <button id="sendButton" style="margin-left: 10px; background: var(--term-color); color: #000; border: none; padding: 5px 10px; cursor: pointer; font-family: var(--term-font);">Send</button>
+            <button id="sendButton">SEND</button>
         </div>
     </div>
 
+    <!-- SCRIPTS -->
+    <!-- 1. MQTT Library (CDN) -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    
+    <!-- 2. Config -->
+    <script src="./config.js"></script>
+    
+    <!-- 3. Logic (Cache Buster) -->
+    <script src="./script.js?v=3.0"></script>
 </body>
 </html>
     
