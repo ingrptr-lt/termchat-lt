@@ -1,0 +1,122 @@
+╔════════════════════════════════════════════════════════════════╗
+║         RENDER DEPLOYMENT - COPY & PASTE GUIDE                ║
+╚════════════════════════════════════════════════════════════════╝
+
+YOUR REPO: ingrptr-lt/termchat-lt
+
+STEP-BY-STEP:
+
+1. SIGN UP FOR RENDER (if needed)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Go to: https://render.com
+   Click: "Sign up with GitHub"
+   Authorize Render
+   ✅ Done!
+
+2. CREATE WEB SERVICE
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Dashboard: https://dashboard.render.com
+   Click: "+ New"
+   Select: "Web Service"
+   Select: "Build and deploy from Git"
+   Click: "Connect repository"
+   Search: termchat-lt
+   Select: ingrptr-lt/termchat-lt
+   Click: "Connect"
+   ✅ Connected!
+
+3. FILL IN SETTINGS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Name:              termchat-lt
+   Environment:       Python 3
+   Region:            USA (Oregon) [or closest]
+   Branch:            main
+   Root Directory:    (leave empty)
+
+4. BUILD & START COMMANDS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Build Command: pip install -r requirements.txt
+   Start Command: python mqtt_service.py
+
+5. ADVANCED (optional)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Click: "Advanced"
+   Auto-deploy: ON ✅
+   (Keep other defaults)
+
+6. CREATE SERVICE
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Click blue button: "Create Web Service"
+   
+   ⏳ WAIT 3-5 MINUTES ⏳
+   
+   You'll see logs scrolling...
+   Look for:
+   ✓ Build successful
+   ✓ Deploying...
+   ✓ Deploy successful
+
+7. GET YOUR URL
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   At the top of page, you'll see:
+   https://termchat-lt.onrender.com
+   
+   (It might be different if name taken)
+
+8. VERIFY IT WORKS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Open: https://termchat-lt.onrender.com
+   Press: F12 (DevTools)
+   Go to: Console tab
+   
+   You should see:
+   ✓ [DIAG] Window.mqtt = LOADED
+   ✓ [DIAG] Connecting to MQTT broker...
+   ✓ ✅ Connected to TermOS LT Multiverse!
+   
+   ✅ YOU'RE LIVE!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TROUBLESHOOTING:
+
+If page doesn't load:
+  1. Check Render Dashboard → Logs
+  2. Look for error messages
+  3. Common: requirements.txt, mqtt_service.py issues
+
+If MQTT won't connect:
+  1. F12 → Console tab
+  2. Look for errors
+  3. Check if mqtt.min.js is loading (Network tab)
+
+If stuck:
+  1. Refresh page (Ctrl+F5)
+  2. Check Render logs
+  3. Try restarting service (in dashboard)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+AUTO-DEPLOY ON GITHUB PUSH:
+
+Now whenever you do:
+  git push origin main
+
+Render will:
+  1. Detect the push
+  2. Auto-build
+  3. Auto-deploy (1-2 min)
+  4. App updates live
+
+No manual steps needed!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+USEFUL LINKS:
+
+Render Dashboard:  https://dashboard.render.com
+Your App URL:      https://termchat-lt.onrender.com
+GitHub Repo:       https://github.com/ingrptr-lt/termchat-lt
+
+✅ Everything is ready!
+🚀 Go deploy!
