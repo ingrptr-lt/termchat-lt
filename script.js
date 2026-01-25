@@ -3,8 +3,8 @@
 // =========================================================================
 
 // --- CONFIGURATION ---
-const GITHUB_TOKEN = "ghp_YOUR_GITHUB_PAT_HERE"; 
-const GROQ_API_KEY = "gsk_YOUR_GROQ_KEY_HERE"; 
+const GITHUB_TOKEN = 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 
+const GROQ_API_KEY = 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
 const REPO_OWNER = "ingrptr-lt";
 const REPO_NAME = "termchat-lt";
 const FILE_PATH = "index.html"; 
