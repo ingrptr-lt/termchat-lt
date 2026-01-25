@@ -1,137 +1,176 @@
 // =========================================================================
-//         MULTIVERSE OS: SMART PARSER (FINDS TOKENS IN TEXT)
+//         MULTIVERSE OS: MASTER SCRIPT (FULL STACK)
 // =========================================================================
 
+// 1. IMPORTS CONFIG
+// Note: GITHUB_TOKEN is loaded from config.js
+
 const GROQ_API_KEY = "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"; 
-// We don't need the variable here anymore, we look for it dynamically.
 const REPO_OWNER = "ingrptr-lt";
 
+// 2. GLOBAL STATE
+let username = '';
+let mqttClient = null;
+let currentRoom = 'living_room';
+let currentState = "chat"; // chat, app, game, video, admin
+let userStats = {
+    level: 1,
+    xp: 0,
+    avatar: 'default'
+};
+
+const AVATARS = {
+    'default': '\n  o_o\n  /|\\\n  / \\\\n',
+    'hacker': '\n ♔♔♔\n  o_o\n  /|\\\n  / \\\\n',
+    'wizard': '\n   /\\\\\\\\\n  /  \\\\\\\\\\n  \\\\\\\\\__/\n  o_o\n  /|\\\n',
+    'ninja': '\n   ◢◤\n  o_o\n  /|\\\n  / \\\\\\\\n'
+};
+
+const LEVEL_TITLES = ['Newbie', 'Apprentice', 'Coder', 'Hacker', 'Architect', 'Wizard', 'Master', 'Guru', 'Legend'];
+
+// 3. SYSTEM INITIALIZATION
 window.addEventListener('load', () => {
-    if (document.getElementById('mv-parse-root')) document.getElementById('mv-parse-root').remove();
-    buildParseSystem();
+    // Check URL for room sharing
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('room')) {
+        currentRoom = urlParams.get('room');
+    }
+
+    // Setup Login
+    const userInput = document.getElementById('usernameInput');
+    if(userInput) {
+        userInput.focus();
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') login();
+        });
+    }
 });
 
-function buildParseSystem() {
+// 4. LOGIN LOGIC
+function login() {
+    const input = document.getElementById('usernameInput');
+    if (input.value.length < 3) {
+        alert("Username must be at least 3 characters");
+        return;
+    }
+    username = input.value;
     
-    const root = document.createElement('div');
-    root.id = 'mv-parse-root';
-    root.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:#050505; font-family:sans-serif; overflow:hidden; display:flex; flex-direction:column; z-index:2147483647;';
+    // UI Switch
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('main-layout').style.display = 'grid';
     
-    const header = document.createElement('div');
-    header.style.cssText = 'height:60px; background:#000; border-bottom:1px solid #333; display:flex; align-items:center; padding:0 20px; color:#00ff41; font-family:monospace;';
-    header.innerText = "MULTIVERSE OS // SMART PARSER // PATTERN MATCHING";
-    root.appendChild(header);
+    // Start Systems
+    loadUserStats();
+    connectMQTT();
+    populateRoomSelector();
     
-    const workspace = document.createElement('div');
-    workspace.id = 'ai-zone';
-    workspace.style.cssText = 'flex-grow:1; background:#0a0a0a; position:relative; overflow:hidden; padding:20px; display:flex; flex-direction:column; align-items:center; justify-content:center;';
-    workspace.innerHTML = '<h1 style="color:#fff;">SYSTEM ONLINE</h1><p style="color:#666;">Type: "Red", "Button", or "Create repo named Test"</p>';
-    root.appendChild(workspace);
+    // Set default room
+    switchRoom(currentRoom);
+}
+
+// 5. MQTT CONNECTION
+function connectMQTT() {
+    if (typeof mqtt === 'undefined') {
+        addMessage('SYSTEM', 'Error: MQTT library not loaded.');
+        return;
+    }
+
+    const clientId = "termos-" + Math.random().toString(16).substring(2, 10);
     
-    const terminal = document.createElement('div');
-    terminal.style.cssText = 'height:300px; background:#000505; border-top:4px solid #00ff41; color:#00ff41; font-family:"Courier New", monospace; padding:20px; font-size:16px; overflow-y:auto; flex-shrink:0; display:flex; flex-direction:column;';
-    
-    const log = document.createElement('div');
-    log.style.cssText = 'flex-grow:1; overflow-y:auto;';
-    log.innerHTML = '<div style="color:#fff;">> Parser Online.</div>';
-    terminal.appendChild(log);
-    
-    const input = document.createElement('input');
-    input.placeholder = "Command...";
-    input.style.cssText = 'width:100%; background:transparent; color:#fff; border:none; outline:none; font-family:"Courier New", monospace; font-size:18px; border-top:1px solid #333; padding-top:10px;';
-    
-    // 5. SMART LOGIC
-    input.addEventListener('keypress', async (e) => {
-        if (e.key === 'Enter') {
-            const txt = input.value.trim();
-            if (!txt) return;
-            input.value = "";
+    mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+        clientId: clientId,
+        keepalive: 60,
+        clean: true
+    });
+
+    mqttClient.on('connect', () => {
+        addMessage('SYSTEM', 'Connected to Multiverse MQTT Broker.');
+        
+        // Subscribe to channels
+        mqttClient.subscribe('termchat/messages');
+        mqttClient.subscribe('termchat/input');
+        
+        // Announce join
+        const msg = {
+            user: 'SYSTEM',
+            text: `${username} joined ${currentRoom}`,
+            room: currentRoom,
+            timestamp: new Date().toISOString()
+        };
+        mqttClient.publish('termchat/messages', JSON.stringify(msg));
+    });
+
+    mqttClient.on('message', (topic, message) => {
+        try {
+            const data = JSON.parse(message.toString());
             
-            addToLog(log, `> USER: ${txt}`, '#fff');
-            
-            try {
-                const prompt = `
-                You are a System Controller.
-                User Request: "${txt}"
-                
-                Tasks:
-                1. Change background colors (Red, Blue, Green).
-                2. Add UI elements (Button, Text).
-                3. Create GitHub Repos. 
-                
-                IMPORTANT: If creating a repo, respond with "GITHUB_TOKEN_IS [your_token_here]".
-                Otherwise, just describe the action normally.
-                `;
-                
-                const req = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
-                    body: JSON.stringify({
-                        model: "llama-3.1-8b-instant",
-                        messages: [{ role: "user", content: prompt }]
-                    })
-                });
-                
-                const json = await req.json();
-                const reply = json.choices[0].message.content;
-                
-                addToLog(log, `> AI REPLY: ${reply}`, '#00ffff');
-                
-                // --- PATTERN MATCHER ---
-                const replyLower = reply.toLowerCase();
-                
-                // 1. VISUALS
-                if (replyLower.includes("red")) document.getElementById('ai-zone').style.background = "red";
-                if (replyLower.includes("blue")) document.getElementById('ai-zone').style.background = "blue";
-                if (replyLower.includes("green")) document.getElementById('ai-zone').style.background = "green";
-                if (replyLower.includes("button")) {
-                    const b = document.createElement('button'); b.innerText="AI BTN"; b.style.cssText="padding:10px; margin:5px;";
-                    document.getElementById('ai-zone').appendChild(b);
+            // Handle different message types
+            if (data.type === 'creation') {
+                // Open App or Game Panel
+                if (data.creation && data.creation.type === 'app') switchMode('app', data.creation);
+                if (data.creation && data.creation.type === 'game') switchMode('game', data.creation);
+            } else {
+                // Regular Chat
+                if (data.user && data.text) {
+                    // Display Avatar
+                    const avatar = AVATARS['default']; // Default avatar
+                    addMessage(data.user, data.text, avatar);
                 }
-                if (replyLower.includes("text")) {
-                    const t = document.createElement('h2'); t.innerText="Hello"; t.style.color="white";
-                    document.getElementById('ai-zone').appendChild(t);
-                }
-                
-                // 2. GITHUB TOKEN EXTRACTION
-                // We look for the pattern "GITHUB_TOKEN_IS ..."
-                const tokenMatch = reply.match(/GITHUB_TOKEN_IS\s+([a-zA-Z0-9_]+)/);
-                if (tokenMatch) {
-                    const token = tokenMatch[1];
-                    addToLog(log, `> TOKEN FOUND: ${token}`, '#ffff00');
-                    addToLog(log, `> UPDATING SCRIPT...`, '#00ff00');
-                    
-                    // UPDATE THE SCRIPT IN REAL-TIME
-                    const currentScript = document.querySelector('script[src="script.js"]') || document.currentScript;
-                    const newScriptContent = currentScript.textContent.replace(/const GITHUB_TOKEN = "[^"]*";/, `const GITHUB_TOKEN = "${token}";`);
-                    
-                    // We use a dirty eval here to update the memory variable for this session
-                    // Note: It doesn't save to GitHub, but it works for now.
-                    try {
-                        eval(newScriptContent); 
-                        addToLog(log, `> TOKEN UPDATED IN MEMORY.`, '#00ffff');
-                    } catch(e) {
-                        addToLog(log, `> UPDATE FAILED: ${e.message}`, 'red');
-                    }
-                }
-                
-            } catch (err) {
-                addToLog(log, `> ERROR: ${err.message}`, '#ff3333');
             }
-            
-            log.scrollTop = log.scrollHeight;
+        } catch (e) {
+            // Fallback for plain text
+            addMessage('MQTT', message.toString());
         }
     });
     
-    terminal.appendChild(input);
-    root.appendChild(terminal);
-    document.body.appendChild(root);
+    mqttClient.on('error', (err) => {
+        console.error("MQTT Error:", err);
+        addMessage('ERROR', 'Connection error: ' + err.message);
+    });
 }
 
-function addToLog(container, msg, color) {
-    const d = document.createElement('div');
-    d.style.color = color || '#00ff41';
-    d.style.marginBottom = '5px';
-    d.innerText = msg;
-    container.appendChild(d);
+// 6. MESSAGE HANDLING
+function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    // Check for local commands
+    if (handleCommand(text)) return;
+
+    // Publish to MQTT
+    const msg = {
+        user: username,
+        text: text,
+        room: currentRoom,
+        timestamp: new Date().toISOString()
+    };
+
+    if (mqttClient && mqttClient.connected) {
+        mqttClient.publish('termchat/messages', JSON.stringify(msg));
+        mqttClient.publish('termchat/input', JSON.stringify(msg));
+        addMessage(username, text, AVATARS['default']); // Show locally immediately
+        addXP(1, 'Sending message');
+    } else {
+        addMessage('ERROR', 'Not connected to broker.');
+    }
+    
+    input.value = '';
 }
+
+// 7. COMMAND PROCESSOR (AI & SYSTEM)
+function handleCommand(text) {
+    const lower = text.toLowerCase();
+
+    if (lower === '/clear') {
+        document.getElementById('terminal-body').innerHTML = '';
+        return true;
+    }
+    
+    if (lower === '/stats') {
+        showStats();
+        return true;
+    }
+    
+    if (lower === '/avatar') {
+        const avatar = AVATARS['h
