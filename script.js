@@ -1,5 +1,5 @@
 // =========================================================================
-//         MULTIVERSE OS: OFFICIAL STABLE MODEL
+//         MULTIVERSE OS: BASE MODEL TEST
 // =========================================================================
 
 const GROQ_API_KEY = "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"; 
@@ -17,8 +17,8 @@ window.addEventListener('load', () => {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
                 body: JSON.stringify({
-                    // USING THE STABLE MODEL
-                    model: "llama3-8b-8192",
+                    // USING THE SHORT MODEL NAME
+                    model: "llama3-8b",
                     messages: [{ role: "user", content: "Say hello" }]
                 })
             });
