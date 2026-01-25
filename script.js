@@ -1,83 +1,55 @@
-// =========================================================================
-//         MULTIVERSE OS: FINGERPRINT TEST (v9.0)
-// =========================================================================
+// BULLETPROOF SCRIPT
+const GROQ_API_KEY = "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";
 
-const GROQ_API_KEY = "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"; 
-
-window.addEventListener('load', () => {
-    buildSystem();
-});
-
-function buildSystem() {
-    
-    // 1. STYLES
+window.onload = function() {
     document.body.style.margin = "0";
     document.body.style.background = "#050505";
-    document.body.style.fontFamily = "sans-serif";
-    document.body.style.overflow = "hidden";
-
-    // 2. LAYOUT
-    const container = document.createElement('div');
-    container.style.cssText = 'display:flex; flex-direction:column; height:100vh;';
     
-    // HEADER (CHANGED TEXT TO TEST CACHE)
-    const header = document.createElement('div');
-    header.style.cssText = 'height:60px; background:#000; border-bottom:1px solid #333; display:flex; align-items:center; padding:0 20px; color:#00ff41; font-family:monospace; font-size:20px;';
-    header.innerText = "NEW CODE LOADED v9.0"; // <--- LOOK FOR THIS TEXT
+    var header = document.createElement("div");
+    header.style.padding = "20px";
+    header.style.background = "#000";
+    header.style.color = "#0f0";
+    header.innerText = "MULTIVERSE OS - V10";
     
-    // CANVAS
-    const canvas = document.createElement('div');
-    canvas.style.cssText = 'flex-grow:1; background:#0a0a0a; display:flex; align-items:center; justify-content:center; color:#fff;';
-    canvas.innerHTML = '<h1>SYSTEM READY</h1>';
+    var output = document.createElement("div");
+    output.id = "out";
+    output.style.padding = "20px";
+    output.style.color = "white";
     
-    // TERMINAL
-    const term = document.createElement('div');
-    term.style.cssText = 'height:250px; background:#000505; border-top:4px solid #00ff41; color:#00ff41; font-family:"Courier New", monospace; padding:20px; font-size:16px; overflow-y:auto;';
+    var input = document.createElement("input");
+    input.placeholder = "Type here";
+    input.style.width = "100%";
+    input.style.background = "transparent";
+    input.style.color = "white";
+    input.style.borderTop = "1px solid #333";
+    input.style.fontSize = "20px";
     
-    // INPUT
-    const inp = document.createElement('input');
-    inp.placeholder = "Command...";
-    inp.style.cssText = 'width:100%; background:transparent; color:#fff; border:none; outline:none; font-family:"Courier New", monospace; font-size:18px; border-top:1px solid #333; padding-top:10px;';
-    
-    inp.addEventListener('keypress', async (e) => {
-        if (e.key === 'Enter') {
-            const txt = inp.value.trim();
-            if (!txt) return;
-            inp.value = "";
+    input.onkeypress = async function(e) {
+        if (e.key === "Enter") {
+            var txt = input.value;
+            input.value = "";
+            output.innerHTML += "YOU: " + txt + "<br>";
             
-            term.innerHTML += `<div style="color:#fff; margin-bottom:5px;">> YOU: ${txt}</div>`;
+            var res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + GROQ_API_KEY
+                },
+                body: JSON.stringify({
+                    model: "llama-3.1-8b-instant",
+                    messages: [{ role: "user", content: txt }]
+                })
+            });
             
-            try {
-                const req = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
-                    body: JSON.stringify({
-                        model: "llama-3.1-8b-instant",
-                        messages: [
-                            { role: "system", content: "You are a helpful assistant." },
-                            { role: "user", content: txt }
-                        ]
-                    })
-                });
-                
-                const json = await req.json();
-                const ans = json.choices[0].message.content;
-                
-                term.innerHTML += `<div style="color:#00ffff; margin-bottom:5px;">> AI: ${ans}</div>`;
-                
-            } catch (err) {
-                term.innerHTML += `<div style="color:#ff3333; margin-bottom:5px;">> ERROR: ${err.message}</div>`;
-            }
+            var data = await res.json();
+            var ans = data.choices[0].message.content;
             
-            term.scrollTop = term.scrollHeight;
+            output.innerHTML += "AI: " + ans + "<br>";
         }
-    });
+    };
     
-    term.appendChild(inp);
-    
-    // ASSEMBLE
-    container.appendChild(header);
-    container.appendChild(canvas);
-    container.appendChild(term);
-    document.body.appendChild(container);
-}
+    document.body.appendChild(header);
+    document.body.appendChild(output);
+    document.body.appendChild(input);
+};
