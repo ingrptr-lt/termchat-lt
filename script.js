@@ -1,5 +1,5 @@
 // =========================================================================
-//         MULTIVERSE OS: FIXED DATA READER
+//         MULTIVERSE OS: OFFICIAL STABLE MODEL
 // =========================================================================
 
 const GROQ_API_KEY = "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"; 
@@ -17,24 +17,20 @@ window.addEventListener('load', () => {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
                 body: JSON.stringify({
-                    model: "llama3-70b-8192",
+                    // USING THE STABLE MODEL
+                    model: "llama3-8b-8192",
                     messages: [{ role: "user", content: "Say hello" }]
                 })
             });
             
             const json = await req.json();
             
-            // --- THE FIX ---
-            // Check if 'choices' exists before trying to read it
-            let reply = "No choices found.";
+            let reply = "Error";
             if (json.choices && json.choices[0]) {
                 reply = json.choices[0].message.content;
             } else if (json.error) {
-                reply = "API ERROR: " + json.error.message;
-            } else {
-                reply = "Unknown Response: " + JSON.stringify(json);
+                reply = "API Error: " + json.error.message;
             }
-            // -----------------
             
             alert("AI SAYS: " + reply);
             
