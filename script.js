@@ -1,5 +1,5 @@
 // =========================================================================
-//         MULTIVERSE OS: SAFE ADMIN (NO CRASHES)
+//         MULTIVERSE OS: FINGERPRINT TEST (v9.0)
 // =========================================================================
 
 const GROQ_API_KEY = "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"; 
@@ -20,18 +20,17 @@ function buildSystem() {
     const container = document.createElement('div');
     container.style.cssText = 'display:flex; flex-direction:column; height:100vh;';
     
-    // HEADER
+    // HEADER (CHANGED TEXT TO TEST CACHE)
     const header = document.createElement('div');
-    header.style.cssText = 'height:60px; background:#000; border-bottom:1px solid #333; display:flex; align-items:center; padding:0 20px; color:#00ff41; font-family:monospace;';
-    header.innerText = "MULTIVERSE OS // SAFE MODE";
+    header.style.cssText = 'height:60px; background:#000; border-bottom:1px solid #333; display:flex; align-items:center; padding:0 20px; color:#00ff41; font-family:monospace; font-size:20px;';
+    header.innerText = "NEW CODE LOADED v9.0"; // <--- LOOK FOR THIS TEXT
     
-    // CANVAS (Center)
+    // CANVAS
     const canvas = document.createElement('div');
-    canvas.id = 'mv-canvas';
     canvas.style.cssText = 'flex-grow:1; background:#0a0a0a; display:flex; align-items:center; justify-content:center; color:#fff;';
-    canvas.innerHTML = '<h1>SYSTEM READY</h1><p>Type commands below.</p>';
+    canvas.innerHTML = '<h1>SYSTEM READY</h1>';
     
-    // TERMINAL (Bottom)
+    // TERMINAL
     const term = document.createElement('div');
     term.style.cssText = 'height:250px; background:#000505; border-top:4px solid #00ff41; color:#00ff41; font-family:"Courier New", monospace; padding:20px; font-size:16px; overflow-y:auto;';
     
@@ -46,19 +45,16 @@ function buildSystem() {
             if (!txt) return;
             inp.value = "";
             
-            // USER MSG
             term.innerHTML += `<div style="color:#fff; margin-bottom:5px;">> YOU: ${txt}</div>`;
             
             try {
-                term.innerHTML += `<div style="color:#00ff41; margin-bottom:5px;">> AI: Thinking...</div>`;
-                
                 const req = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
                     body: JSON.stringify({
                         model: "llama-3.1-8b-instant",
                         messages: [
-                            { role: "system", content: "You are a helpful Multiverse OS Administrator. Keep answers short and professional." },
+                            { role: "system", content: "You are a helpful assistant." },
                             { role: "user", content: txt }
                         ]
                     })
@@ -67,7 +63,6 @@ function buildSystem() {
                 const json = await req.json();
                 const ans = json.choices[0].message.content;
                 
-                // AI RESPONSE
                 term.innerHTML += `<div style="color:#00ffff; margin-bottom:5px;">> AI: ${ans}</div>`;
                 
             } catch (err) {
