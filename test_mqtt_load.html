@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test MQTT Loading</title>
+    <!-- Primary CDN -->
+    <script src="https://unpkg.com/mqtt@5.5.3/dist/mqtt.min.js"></script>
+</head>
+<body>
+    <h1>MQTT Library Loading Test</h1>
+    <p id="status">Testing...</p>
+    
+    <script>
+        // Check after a short delay to ensure libraries are loaded
+        setTimeout(function() {
+            const status = document.getElementById('status');
+            
+            if (typeof mqtt !== 'undefined') {
+                status.innerHTML = '✅ SUCCESS: MQTT library loaded! Version: ' + (mqtt.version || 'Unknown');
+                status.style.color = 'green';
+                console.log('✅ MQTT loaded');
+                console.log('mqtt object:', mqtt);
+            } else {
+                status.innerHTML = '❌ FAILED: MQTT library not loaded';
+                status.style.color = 'red';
+                console.error('❌ MQTT not loaded');
+                console.log('Available globals:', Object.keys(window).filter(k => k.length < 10).join(', '));
+            }
+        }, 2000);
+    </script>
+</body>
+</html>
