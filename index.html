@@ -548,6 +548,17 @@
                 // Load message history first
                 loadMessageHistory();
                 
+                // Initialize room selector UI
+                populateRoomSelector();
+                
+                // Load last room from localStorage
+                const savedRoom = localStorage.getItem('lastRoom');
+                if (savedRoom) {
+                    switchRoom(savedRoom);
+                } else {
+                    switchRoom('living_room');
+                }
+                
                 connectMQTT();
                 document.getElementById('chatInput').focus();
                 
@@ -973,6 +984,35 @@
                     addMessage('SYSTEM', 'Voice synthesis enabled');
                     input.value = '';
                     return;
+                } else if (text.startsWith('/room ') || text.startsWith('/go ')) {
+                    // Room switching commands: /room library, /go studio, etc.
+                    const roomName = text.replace('/room ', '').replace('/go ', '').toLowerCase();
+                    const roomMap = {
+                        'living': 'living_room',
+                        'library': 'library',
+                        'studio': 'studio',
+                        'workshop': 'workshop',
+                        'think': 'think_tank',
+                        'tank': 'think_tank',
+                        'lounge': 'lounge'
+                    };
+                    
+                    const targetRoom = roomMap[roomName] || roomName.replace(' ', '_');
+                    const validRooms = ['living_room', 'library', 'studio', 'workshop', 'think_tank', 'lounge'];
+                    
+                    if (validRooms.includes(targetRoom)) {
+                        switchRoomAndSave(targetRoom);
+                        input.value = '';
+                        return;
+                    } else {
+                        addMessage('ERROR', `Unknown room: ${roomName}. Available: ${validRooms.join(', ')}`);
+                        input.value = '';
+                        return;
+                    }
+                } else if (text === '/help' || text === '/?') {
+                    showHelp();
+                    input.value = '';
+                    return;
                 } else if (text === '/voice') {
                     startVoiceInput();
                     input.value = '';
@@ -1179,6 +1219,21 @@
             }
         }
         
+        function showHelp() {
+            addMessage('HELP', '📖 Available Commands:');
+            addMessage('HELP', '├─ /stats         Show your level, XP, and achievements');
+            addMessage('HELP', '├─ /avatar        Change your avatar');
+            addMessage('HELP', '├─ /share         Share room with others');
+            addMessage('HELP', '├─ /voice         Enable voice input');
+            addMessage('HELP', '├─ /mute          Disable voice output');
+            addMessage('HELP', '├─ /speak         Enable voice output');
+            addMessage('HELP', '├─ /help or /?    Show this help message');
+            addMessage('HELP', '├─ /room <name>   Switch to another room');
+            addMessage('HELP', '├─ /go <name>     Alias for /room');
+            addMessage('HELP', '└─ Available rooms: living_room, library, studio, workshop, think_tank, lounge');
+            addMessage('HELP', '💡 Tip: Use the room buttons on the right panel to switch rooms quickly!');
+        }
+        
         function showStats() {
             const levelTitle = LEVEL_TITLES[userStats.level - 1] || 'Unknown';
             const nextLevelXP = LEVEL_THRESHOLDS[userStats.level] || 'MAX';
@@ -1278,6 +1333,57 @@
                 console.log('ICE candidate received:', data);
             }
         }
+        
+        // --- ROOM SELECTOR UI ---
+        function populateRoomSelector() {
+            const panel = document.getElementById('multiverse-panel');
+            if (!panel) return;
+            
+            const rooms = [
+                { id: 'living_room', name: '🏠 Living Room', color: '#33ff00' },
+                { id: 'library', name: '📚 Library', color: '#ffb000' },
+                { id: 'studio', name: '🎨 Studio', color: '#ff00ff' },
+                { id: 'workshop', name: '🔧 Workshop', color: '#00ffff' },
+                { id: 'think_tank', name: '💭 Think Tank', color: '#00ff41' },
+                { id: 'lounge', name: '🎭 Lounge', color: '#ff3333' }
+            ];
+            
+            let html = '<div style="padding: 10px; border-bottom: 1px solid #33ff00; margin-bottom: 10px;"><strong>🌍 ROOMS</strong></div>';
+            
+            rooms.forEach(room => {
+                html += `<button 
+                    onclick="switchRoomAndSave('${room.id}')" 
+                    style="
+                        display: block;
+                        width: 100%;
+                        padding: 8px;
+                        margin: 5px 0;
+                        background: ${currentRoom === room.id ? room.color : '#0a0a0a'};
+                        color: ${currentRoom === room.id ? '#000' : room.color};
+                        border: 2px solid ${room.color};
+                        cursor: pointer;
+                        font-family: var(--term-font);
+                        font-size: 12px;
+                        font-weight: bold;
+                        transition: all 0.3s;
+                    "
+                    onmouseover="this.style.opacity='0.8'"
+                    onmouseout="this.style.opacity='1'"
+                >
+                    ${room.name}
+                </button>`;
+            });
+            
+            panel.innerHTML = html;
+        }
+        
+        function switchRoomAndSave(room) {
+            switchRoom(room);
+            localStorage.setItem('lastRoom', room);
+            populateRoomSelector(); // Update UI to show current room
+            addMessage('SYSTEM', `Switched to: ${room.replace('_', ' ').toUpperCase()}`);
+        }
+        
         function switchRoom(room) {
             currentRoom = room;
             const themes = {
