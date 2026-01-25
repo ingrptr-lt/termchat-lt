@@ -1,16 +1,14 @@
 // =========================================================================
-//         MANUAL BUTTON TEST
+//         MULTIVERSE OS: FIXED DATA READER
 // =========================================================================
 
 const GROQ_API_KEY = "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"; 
 
 window.addEventListener('load', () => {
-    // 1. CREATE A BIG BUTTON
     const btn = document.createElement('button');
     btn.innerText = "CLICK TO CALL AI";
     btn.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); font-size:30px; padding:20px; z-index:99999;';
     
-    // 2. CLICK ACTION
     btn.onclick = async () => {
         btn.innerText = "CALLING...";
         
@@ -25,9 +23,20 @@ window.addEventListener('load', () => {
             });
             
             const json = await req.json();
-            const ans = json.choices[0].message.content;
             
-            alert("AI SAYS: " + ans);
+            // --- THE FIX ---
+            // Check if 'choices' exists before trying to read it
+            let reply = "No choices found.";
+            if (json.choices && json.choices[0]) {
+                reply = json.choices[0].message.content;
+            } else if (json.error) {
+                reply = "API ERROR: " + json.error.message;
+            } else {
+                reply = "Unknown Response: " + JSON.stringify(json);
+            }
+            // -----------------
+            
+            alert("AI SAYS: " + reply);
             
         } catch (err) {
             alert("FAILED: " + err.message);
