@@ -235,14 +235,15 @@ async function talkToClone(prompt) {
                 "Authorization": `Bearer ${GROQ_API_KEY}` 
             },
             body: JSON.stringify({
-                model: "llama-3.1-8b-instant",
-                temperature: 0, // FIX 1: Zero randomness (Strictest mode)
-                max_tokens: 60, // FIX 2: Force very short answer
-                stop: ["\n", "User:", "System:"], // FIX 3: Force stop immediately
+                // SOLUTION 1: Use the "Big Brain" model
+                model: "llama-3.3-70b-versatile", 
+                temperature: 0.1,
+                max_tokens: 50,
                 messages: [
                     { 
+                        // SOLUTION 2: Kill the Persona completely. Be boring and accurate.
                         role: "system", 
-                        content: "You are TERMAI, a Cyberpunk AI. Answer the user's question directly in ONE sentence. Do not repeat yourself." 
+                        content: "You are a helpful AI assistant. Answer the user's question directly and concisely. Do not use a persona. Do not say 'I am' or 'My name is'. Do not introduce yourself. Just answer the question." 
                     }, 
                     { role: "user", content: prompt }
                 ]
@@ -254,8 +255,11 @@ async function talkToClone(prompt) {
         }
 
         const json = await req.json();
-        const reply = json.choices[0].message.content;
+        let reply = json.choices[0].message.content;
         
+        // SOLUTION 3: Clean up the answer
+        reply = reply.trim();
+
         addAIMessage(reply, false);
         
     } catch (err) {
