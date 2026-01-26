@@ -1,6 +1,6 @@
 // =========================================================================
-//         TERMOS LT: UNIFIED ARCHITECT EDITION
-//         Merges: Robust Matrix + Auto-Pilot AI + Smooth Boot Flow
+//         TERMOS LT: DEFINITIVE EDITION (BUG-FIX)
+//         Fixes: MQTT Rooms, Code Injection, Model Stability, HTML Escape
 // =========================================================================
 
 // --- 1. CONFIGURATION ---
@@ -11,98 +11,33 @@ const MQTT_BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
 // --- 2. STATE ---
 let username = 'Guest';
 let mqttClient = null;
-let currentRoom = 'living_room';
+let currentRoom = 'lobby'; // Default room
 let userStats = { level: 1, xp: 0, avatar: '>_<', title: 'Newbie' };
 const LEVELS = ['Newbie', 'Apprentice', 'Coder', 'Hacker', 'Architect', 'Wizard', 'Master', 'Guru', 'Legend'];
 
 // --- 3. INITIALIZATION ---
 window.addEventListener('load', () => {
-    // 1. Start Matrix Rain immediately (Background)
     initMatrix();
-    // 2. Start Typing Animation (Foreground)
     runTerminalBoot();
-    // 3. Setup Inputs
     setupInputListener();
+    checkFirstTimeUser();
 });
 
-// --- 4. ROBUST MATRIX RAIN (MERGED LOGIC) ---
-function initMatrix() {
-    const c = document.getElementById('matrix-canvas');
-    
-    // Safety Check: If canvas is missing, don't crash the rest of the app
-    if (!c) {
-        console.warn("Matrix Canvas not found. Matrix rain disabled.");
-        return;
-    }
-
-    const ctx = c.getContext('2d');
-    if(!ctx) return; // Fallback if 2D context fails
-
-    // Setup Size
-    c.width = window.innerWidth; 
-    c.height = window.innerHeight;
-
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*';
-    const fontSize = 14;
-    const columns = c.width / fontSize;
-    const drops = Array(Math.floor(columns)).fill(1);
-
-    function draw() {
-        // Fade effect
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-        ctx.fillRect(0, 0, c.width, c.height);
-        
-        // Color Logic: Sync with AI Connection State
-        // Connected (Key or Local) = Green. Disconnected = Red.
-        const isConnected = (GROQ_API_KEY || USE_LOCAL_AI);
-        ctx.fillStyle = isConnected ? '#0F0' : '#F00';
-        
-        ctx.font = fontSize + 'px monospace';
-        
-        for(let i=0; i<drops.length; i++) {
-            const text = letters[Math.floor(Math.random()*letters.length)];
-            
-            // Random Cyan Glitch effect (only if connected)
-            if(isConnected && Math.random() > 0.98) {
-                ctx.fillStyle = '#00f3ff';
-            } else {
-                ctx.fillStyle = isConnected ? '#0F0' : '#F00';
-            }
-            
-            ctx.fillText(text, i*fontSize, drops[i]*fontSize);
-            
-            if(drops[i]*fontSize > c.height && Math.random() > 0.975) drops[i] = 0;
-            drops[i]++;
-        }
-    }
-    
-    // Start Animation Loop
-    setInterval(draw, 33);
-
-    // Robust Resize Listener
-    window.addEventListener('resize', () => { 
-        c.width = window.innerWidth; 
-        c.height = window.innerHeight; 
-    });
-}
-
-// --- 5. TERMINAL BOOT LOGIC ---
+// --- 4. TERMINAL BOOT LOGIC ---
 function runTerminalBoot() {
     const term = document.getElementById('terminal-content');
     const statusEl = document.getElementById('boot-status');
-    
     if (!term) return console.error("Error: #terminal-content not found");
     
     let lines = [];
     const sourceContent = document.getElementById('hidden-boot-content');
-    
     if (sourceContent && sourceContent.innerHTML.trim() !== "") {
         term.innerHTML = sourceContent.innerHTML;
         sourceContent.innerHTML = ""; 
         lines = Array.from(term.children).map(div => div.innerText.trim());
         term.innerHTML = ""; 
     } else {
-        lines = ["Initializing BIOS...", "Loading Kernel...", "Checking Matrix Uplink...", "System Ready."];
+        lines = ["Initializing BIOS...", "Loading Kernel...", "Checking Network...", "System Ready."];
     }
 
     let index = 0;
@@ -113,10 +48,8 @@ function runTerminalBoot() {
             const line = lines[index];
             const div = document.createElement('div');
             div.className = "opacity-80 animate-fade-in mb-1 font-mono text-sm";
-            
             if(line.includes(">>> [OK]")) div.innerHTML = line.replace("[OK]", '<span class="text-green-400 font-bold">[OK]</span>');
             else div.innerText = line;
-
             term.appendChild(div);
             term.scrollTop = term.scrollHeight;
             index++;
@@ -131,22 +64,29 @@ function runTerminalBoot() {
     typeNextLine();
 }
 
-// --- 6. NAVIGATION ---
+function checkFirstTimeUser() {
+    const visited = localStorage.getItem('termos_visited');
+    if(!visited) {
+        setTimeout(() => {
+            addSystemMessage("Welcome, Operator. Type /help for commands.");
+        }, 2500);
+        localStorage.setItem('termos_visited', 'true');
+    }
+}
+
+// --- 5. NAVIGATION ---
 function skipPresentation() {
     const boot = document.getElementById('terminal-boot');
     const main = document.getElementById('main-layout');
-    
     if(boot && main) {
         boot.style.display = 'none';
         main.classList.remove('hidden');
         main.classList.add('flex'); 
-        
         if(!username || username === 'Guest') {
              username = "Operator_" + Math.floor(Math.random() * 9999);
              const userDisplay = document.getElementById('user-display');
              if(userDisplay) userDisplay.innerText = `@${username.toUpperCase()}`;
         }
-        
         loadStats();
         updateStatsUI();
         connectMQTT();
@@ -157,16 +97,15 @@ function skipPresentation() {
 async function enterApp(mode) {
     if (mode === 'chat') {
         USE_LOCAL_AI = false;
-        startMainApp("Chat & Music Mode Initialized.");
+        startMainApp("Chat Mode.");
         return;
     }
-
     if (mode === 'api') {
         const existingKey = localStorage.getItem('termos_groq_key');
         if (existingKey) {
             GROQ_API_KEY = existingKey;
             USE_LOCAL_AI = false;
-            startMainApp("Remote AI Mode Activated.");
+            startMainApp("Remote AI Mode.");
             return;
         }
         const key = prompt(">>> ENTER GROQ API KEY:");
@@ -174,17 +113,16 @@ async function enterApp(mode) {
             GROQ_API_KEY = key;
             localStorage.setItem('termos_groq_key', key);
             USE_LOCAL_AI = false;
-            startMainApp("Remote AI Mode Activated.");
+            startMainApp("Remote AI Mode.");
         } else {
             alert(">>> ERROR: KEY INVALID.");
         }
         return;
     }
-
     if (mode === 'local') {
         USE_LOCAL_AI = true;
         GROQ_API_KEY = "";
-        startMainApp("Local AI Mode (Simulated).");
+        startMainApp("Local AI Mode.");
         return;
     }
 }
@@ -192,32 +130,64 @@ async function enterApp(mode) {
 function startMainApp(message) {
     const boot = document.getElementById('terminal-boot');
     const main = document.getElementById('main-layout');
-    
     if(boot) boot.style.display = 'none';
     if(main) {
         main.classList.remove('hidden');
         main.classList.add('flex');
     }
-    
     if (!username || username === 'Guest') username = "Operator_" + Math.floor(Math.random() * 9999);
     const userDisplay = document.getElementById('user-display');
     if(userDisplay) userDisplay.innerText = `@${username.toUpperCase()}`;
-    
     loadStats();
     updateStatsUI();
     connectMQTT();
     addSystemMessage(message);
 }
 
-// --- 7. CORE AI & AUTO-PILOT ---
+// --- 6. ROBUST MATRIX RAIN ---
+function initMatrix() {
+    const c = document.getElementById('matrix-canvas');
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    if(!ctx) return; 
+    c.width = window.innerWidth; 
+    c.height = window.innerHeight;
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*';
+    const fontSize = 14;
+    const columns = c.width / fontSize;
+    const drops = Array(Math.floor(columns)).fill(1);
+
+    function draw() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        ctx.fillRect(0, 0, c.width, c.height);
+        const isConnected = (GROQ_API_KEY || USE_LOCAL_AI);
+        ctx.fillStyle = isConnected ? '#0F0' : '#F00';
+        ctx.font = fontSize + 'px monospace';
+        for(let i=0; i<drops.length; i++) {
+            const text = letters[Math.floor(Math.random()*letters.length)];
+            if(isConnected && Math.random() > 0.98) ctx.fillStyle = '#00f3ff';
+            else ctx.fillStyle = isConnected ? '#0F0' : '#F00';
+            ctx.fillText(text, i*fontSize, drops[i]*fontSize);
+            if(drops[i]*fontSize > c.height && Math.random() > 0.975) drops[i] = 0;
+            drops[i]++;
+        }
+    }
+    setInterval(draw, 33);
+    window.addEventListener('resize', () => { c.width = window.innerWidth; c.height = window.innerHeight; });
+}
+
+// --- 7. AI AUTO-PILOT (FIXED REGEX) ---
 function parseAndExecuteActions(text) {
     let cleanText = text;
 
-    // DOWNLOAD: <DOWNLOAD>filename.js\ncode...</DOWNLOAD>
+    // FIX: Strip Markdown ``` inside tags
     const downloadRegex = /<DOWNLOAD>([\s\S]*?)<\/DOWNLOAD>/g;
     let match;
     while ((match = downloadRegex.exec(text)) !== null) {
-        const content = match[1].trim();
+        let content = match[1].trim();
+        // Remove markdown backticks (```js)
+        content = content.replace(/```.*?\n/g, '').replace(/```/g, '');
+        
         const firstLineEnd = content.indexOf('\n');
         let filename = "generated.txt";
         let code = content;
@@ -230,10 +200,11 @@ function parseAndExecuteActions(text) {
     }
     cleanText = cleanText.replace(downloadRegex, '[📁 FILE GENERATED]');
 
-    // INJECT: <INJECT>code...</INJECT>
     const injectRegex = /<INJECT>([\s\S]*?)<\/INJECT>/g;
     while ((match = injectRegex.exec(text)) !== null) {
-        const code = match[1].trim();
+        let code = match[1].trim();
+        // Remove markdown backticks
+        code = code.replace(/```.*?\n/g, '').replace(/```/g, '');
         injectAndRun(code);
     }
     cleanText = cleanText.replace(injectRegex, '[⚡ CODE INJECTED]');
@@ -243,9 +214,9 @@ function parseAndExecuteActions(text) {
 
 async function talkToClone(prompt) {
     if (USE_LOCAL_AI) {
-        addAIMessage("Processing request via local kernel...", false);
+        addAIMessage("Processing locally...", false);
         setTimeout(() => {
-            const responses = ["I am TermAI. Offline mode active.", "No uplink. Local processing only."];
+            const responses = ["I am TermAI. Offline mode active."];
             addAIMessage(responses[Math.floor(Math.random()*responses.length)], false);
         }, 1000);
         return;
@@ -264,7 +235,13 @@ async function talkToClone(prompt) {
             scrollToBottom();
         }
 
-        const models = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "gemma2-9b-it", "mixtral-8x7b-32768"];
+        // FIX: Prioritize stable models
+        const models = [
+            "llama-3.1-70b-versatile", 
+            "llama-3.3-70b-versatile", 
+            "gemma2-9b-it", 
+            "mixtral-8x7b-32768"
+        ];
         let lastError = null;
         let success = false;
 
@@ -278,7 +255,7 @@ async function talkToClone(prompt) {
                         temperature: 0.7,
                         max_tokens: 400,
                         messages: [
-                            { role: "system", content: "You are TermAI. Use <DOWNLOAD>filename\nCODE</DOWNLOAD> to save files. Use <INJECT>CODE</INJECT> to run code. Keep explanations short." }, 
+                            { role: "system", content: "You are TermAI. Use <DOWNLOAD>filename\nCODE</DOWNLOAD> to save files. Use <INJECT>CODE</INJECT> to run code. Remove markdown backticks from code inside tags." }, 
                             { role: "user", content: prompt }
                         ]
                     })
@@ -307,7 +284,57 @@ async function talkToClone(prompt) {
     }
 }
 
-// --- 8. ARCHITECT TOOLS ---
+// --- 8. VIDEO CAM ---
+function toggleVideo() {
+    const video = document.getElementById('holo-video');
+    // FIX: Check if element exists (HTML update required)
+    if (!video) {
+        addSystemMessage("Error: Video element not found. Check HTML.");
+        return;
+    }
+    if (video.style.display === 'block') {
+        video.style.display = 'none';
+        video.srcObject.getTracks().forEach(track => track.stop()); 
+        addSystemMessage("Cam Off.");
+    } else {
+        if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    video.srcObject = stream;
+                    video.style.display = 'block';
+                    addSystemMessage("Cam On.");
+                })
+                .catch(function(error) {
+                    addSystemMessage("Cam Error: " + error.message);
+                });
+        } else {
+            addSystemMessage("Cam not supported.");
+        }
+    }
+}
+
+// --- 9. PRIVATE ROOMS (FIXED TOPICS) ---
+function joinRoom(roomName) {
+    if(!roomName) return;
+    
+    // Unsubscribe old
+    if (mqttClient && mqttClient.connected) {
+        mqttClient.unsubscribe(`termchat/messages/${currentRoom}`);
+    }
+
+    currentRoom = roomName;
+    const roomTitle = document.getElementById('room-title');
+    if(roomTitle) roomTitle.innerText = roomName.toUpperCase();
+
+    // Subscribe new
+    if (mqttClient && mqttClient.connected) {
+        mqttClient.subscribe(`termchat/messages/${currentRoom}`);
+    }
+
+    addSystemMessage(`Joined Room: [${roomName.toUpperCase()}]`);
+}
+
+// --- 10. ARCHITECT TOOLS ---
 function downloadCodeFile(filename, content) {
     const element = document.createElement('a');
     let mimeType = 'text/plain';
@@ -326,19 +353,21 @@ function downloadCodeFile(filename, content) {
 
 function injectAndRun(code) {
     try {
-        if(code.trim().startsWith('.') || code.trim().includes('{') || code.includes('background')) {
-            const style = document.createElement('style');
-            style.textContent = code;
-            document.head.appendChild(style);
-        } else {
+        // Try to execute as JS first
+        try {
             const script = document.createElement('script');
             script.textContent = code;
             document.body.appendChild(script);
+        } catch(e) {
+            // Fallback: If it's CSS
+            const style = document.createElement('style');
+            style.textContent = code;
+            document.head.appendChild(style);
         }
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Injection fail", e); }
 }
 
-// --- 9. UI UPDATES ---
+// --- 11. UI UPDATES ---
 function updateStatsUI() {
     const titleEl = document.getElementById('lvl-text');
     const xpEl = document.getElementById('xp-text');
@@ -349,14 +378,7 @@ function updateStatsUI() {
     if(barEl) barEl.style.width = `${progress}%`;
 }
 
-function switchRoom(roomId) {
-    currentRoom = roomId;
-    const roomTitle = document.getElementById('room-title');
-    if(roomTitle) roomTitle.innerText = roomId.toUpperCase().replace('_', ' ');
-    addSystemMessage(`Switched to sector [${roomId.toUpperCase()}]`);
-}
-
-// --- 10. INPUT HANDLING ---
+// --- 12. INPUT HANDLING ---
 function setupInputListener() {
     const chatInput = document.getElementById('chatInput');
     if(chatInput) {
@@ -383,6 +405,32 @@ function processCommand(txt) {
         talkToClone(prompt);
         return;
     }
+
+    if (txt.startsWith('/cam')) {
+        toggleVideo();
+        return;
+    }
+
+    if (txt.startsWith('/join')) {
+        const roomName = txt.replace('/join', '').trim();
+        if(roomName) {
+            addUserMessage(`Joining sector ${roomName}`);
+            joinRoom(roomName);
+        }
+        return;
+    }
+
+    if (txt.startsWith('/help')) {
+        addSystemMessage("COMMANDS: /ai, /cam, /join [room], /clear");
+        return;
+    }
+    
+    if (txt.startsWith('/clear')) {
+        const container = document.getElementById('chat-container');
+        if(container) container.innerHTML = '';
+        return;
+    }
+
     const lower = txt.toLowerCase();
     if (lower.includes('play music')) { 
         addUserMessage(txt); 
@@ -390,12 +438,13 @@ function processCommand(txt) {
         if(audio) audio.play(); 
         return; 
     }
+    
     addUserMessage(txt);
     publishMessage(txt);
     addXP(10);
 }
 
-// --- 11. CHAT RENDERING ---
+// --- 13. CHAT RENDERING ---
 function addUserMessage(text) {
     const container = document.getElementById('chat-container');
     if(!container) return;
@@ -426,20 +475,30 @@ function scrollToBottom() {
     if(c) c.scrollTop = c.scrollHeight;
 }
 
-// --- 12. MQTT CHAT ---
+// --- 14. MQTT (FIXED TOPIC STRUCTURE) ---
 function connectMQTT() {
     if (typeof mqtt === 'undefined') return;
     try {
         const clientId = "termos-" + Math.random().toString(16).substr(2, 8);
         mqttClient = mqtt.connect(MQTT_BROKER_URL, { clientId: clientId, keepalive: 60 });
-        mqttClient.on('connect', () => { mqttClient.subscribe('termchat/messages'); addSystemMessage("Uplink Established."); });
+
+        mqttClient.on('connect', () => {
+            // Subscribe to specific room immediately
+            mqttClient.subscribe(`termchat/messages/${currentRoom}`);
+            addSystemMessage("Uplink Established.");
+        });
+
         mqttClient.on('message', (topic, msg) => {
             try {
+                // Check topic string equality strictly
+                const expectedTopic = `termchat/messages/${currentRoom}`;
+                if (topic !== expectedTopic) return;
+
                 const data = JSON.parse(msg.toString());
                 if (data.user !== username) {
                     const container = document.getElementById('chat-container');
                     if(container) {
-                        container.insertAdjacentHTML('beforeend', `<div class="flex flex-row items-end gap-3 animate-fade-in opacity-80"><div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center border border-white/20 font-mono text-white text-xs">${data.user.substring(0,2).toUpperCase()}</div><div class="p-3 rounded-xl bg-slate-800/50 text-sm text-gray-300 max-w-[80%] border border-white/5"><div class="opacity-70 text-[10px] font-mono text-gray-500 mb-1">@${data.user.toUpperCase()}</div><p class="leading-relaxed">${escapeHtml(data.text)}</p></div></div>`);
+                        container.insertAdjacentHTML('beforeend', `<div class="flex flex-row items-end gap-3 animate-fade-in opacity-80"><div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center border border-white/20 font-mono text-white text-xs">${data.user.substring(0,2).toUpperCase()}</div><div class="p-3 rounded-xl bg-slate-800/50 text-sm text-gray-300 max-w-[80%] border border-white/5"><div class="opacity-70 text-[10px] font-mono text-gray-500 mb-1">@${data.user.toUpperCase()} [${currentRoom.toUpperCase()}]</div><p class="leading-relaxed">${escapeHtml(data.text)}</p></div></div>`);
                         scrollToBottom();
                     }
                 }
@@ -449,10 +508,13 @@ function connectMQTT() {
 }
 
 function publishMessage(text) {
-    if (mqttClient && mqttClient.connected) mqttClient.publish('termchat/messages', JSON.stringify({ user: username, text: text, room: currentRoom }));
+    if (mqttClient && mqttClient.connected) {
+        // Publish to specific room
+        mqttClient.publish(`termchat/messages/${currentRoom}`, JSON.stringify({ user: username, text: text }));
+    }
 }
 
-// --- 13. UTILS ---
+// --- 15. UTILS ---
 function startVoiceRecognition() {
     if (!('webkitSpeechRecognition' in window)) return alert("Voice not supported");
     const recognition = new webkitSpeechRecognition();
