@@ -219,6 +219,12 @@ function scrollToBottom() {
 
 // --- 7. AI & NETWORKING ---
 async function talkToClone(prompt) {
+    // Check Key
+    if (!GROQ_API_KEY) {
+        addAIMessage("❌ CONFIG ERROR: API Key missing. Please Log out and enter a key.", true);
+        return;
+    }
+
     try {
         addAIMessage("Processing...", false);
         
@@ -230,16 +236,22 @@ async function talkToClone(prompt) {
             },
             body: JSON.stringify({
                 model: "llama-3.1-8b-instant",
-                temperature: 0.3, // SANE AI: Low temp = Less random/nonsense
-                max_tokens: 200,
+                temperature: 0, // FIX 1: Zero randomness (Strictest mode)
+                max_tokens: 60, // FIX 2: Force very short answer
+                stop: ["\n", "User:", "System:"], // FIX 3: Force stop immediately
                 messages: [
-                    { role: "system", content: "You are a helpful AI assistant. Answer briefly and accurately." }, // SANE PROMPT
+                    { 
+                        role: "system", 
+                        content: "You are TERMAI, a Cyberpunk AI. Answer the user's question directly in ONE sentence. Do not repeat yourself." 
+                    }, 
                     { role: "user", content: prompt }
                 ]
             })
         });
 
-        if (!req.ok) throw new Error(`API Error: ${req.status}`);
+        if (!req.ok) {
+            throw new Error(`API Error: ${req.status}`);
+        }
 
         const json = await req.json();
         const reply = json.choices[0].message.content;
@@ -251,50 +263,6 @@ async function talkToClone(prompt) {
         addAIMessage(`❌ CONNECTION FAILED: ${err.message}`, true);
     }
 }
-
-function connectMQTT() {
-    if (typeof mqtt === 'undefined') {
-        console.warn("MQTT Library not loaded");
-        return;
-    }
-    const clientId = "termos-" + Math.random().toString(16).substr(2, 8);
-    mqttClient = mqtt.connect(MQTT_BROKER_URL, { clientId: clientId, keepalive: 60 });
-
-    mqttClient.on('connect', () => {
-        mqttClient.subscribe('termchat/messages');
-    });
-
-    mqttClient.on('message', (topic, msg) => {
-        try {
-            const data = JSON.parse(msg.toString());
-            if (data.user !== username) addRemoteMessage(data.user, data.text);
-        } catch (e) {}
-    });
-}
-
-function publishMessage(text) {
-    if (mqttClient && mqttClient.connected) {
-        mqttClient.publish('termchat/messages', JSON.stringify({ user: username, text: text, room: currentRoom }));
-    }
-}
-
-function addRemoteMessage(user, text) {
-    const container = document.getElementById('chat-container');
-    const html = `
-        <div class="flex flex-row items-end gap-3 animate-fade-in opacity-80">
-            <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center border border-white/20 font-mono text-white text-xs">${user.substring(0,2).toUpperCase()}</div>
-            <div class="p-4 rounded-xl bg-slate-800/50 text-sm text-gray-300 max-w-[80%] border border-white/5">
-                <div class="flex items-center gap-2 mb-1 opacity-70 text-xs font-mono text-gray-400">
-                    <span>@${user.toUpperCase()}</span>
-                </div>
-                <p class="leading-relaxed">${escapeHtml(text)}</p>
-            </div>
-        </div>
-    `;
-    container.insertAdjacentHTML('beforeend', html);
-    scrollToBottom();
-}
-
 // --- 8. UTILITIES ---
 function startVoiceRecognition() {
     if (!('webkitSpeechRecognition' in window)) return alert("Voice module not supported by browser");
