@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TermOS LT | Multiverse OS</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     
     <style>
@@ -16,104 +14,53 @@
             --glass-bg: rgba(0, 10, 0, 0.75);
             --glass-border: rgba(0, 255, 65, 0.3);
         }
-
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: 'Inter', sans-serif;
-            background-color: #000;
-            color: white;
-        }
-
-        /* --- MATRIX BACKGROUND --- */
-        #matrix-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 0;
-            width: 100vw;
-            height: 100vh;
-        }
-
-        /* --- CRT SCANLINES --- */
-        .scanlines {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 2px, 3px 100%;
-            z-index: 50;
-            pointer-events: none;
-            opacity: 0.6;
-        }
-
-        /* --- GLASS PANELS --- */
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
-        }
-
-        /* --- INPUTS --- */
-        .glass-input {
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(0, 255, 65, 0.3);
-            color: var(--neon-green);
-            font-family: 'Share Tech Mono', monospace;
-            transition: all 0.3s ease;
-        }
-        .glass-input:focus {
-            outline: none;
-            border-color: var(--neon-cyan);
-            box-shadow: 0 0 20px rgba(0, 243, 255, 0.2);
-        }
-
-        /* --- TYPOGRAPHY --- */
+        body { margin: 0; overflow: hidden; font-family: 'Inter', sans-serif; background-color: #000; color: white; }
+        #matrix-canvas { position: fixed; top: 0; left: 0; z-index: 0; width: 100vw; height: 100vh; }
+        .scanlines { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 2px, 3px 100%; z-index: 50; pointer-events: none; opacity: 0.6; }
+        .glass-panel { background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8); }
+        .glass-input { background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(0, 255, 65, 0.3); color: var(--neon-green); font-family: 'Share Tech Mono', monospace; }
+        .glass-input:focus { outline: none; border-color: var(--neon-cyan); box-shadow: 0 0 20px rgba(0, 243, 255, 0.2); }
         .retro-text { font-family: 'Share Tech Mono', monospace; letter-spacing: 2px; }
         .glow-text { text-shadow: 0 0 10px var(--neon-green); }
-
-        /* --- MESSAGES --- */
         .msg-user { background: rgba(0, 255, 65, 0.1); border-left: 3px solid var(--neon-green); }
         .msg-system { background: rgba(0, 243, 255, 0.1); border-left: 3px solid var(--neon-cyan); }
-        
-        /* Animations */
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
     </style>
 </head>
 <body>
-
-    <!-- 1. MATRIX BACKGROUND -->
     <canvas id="matrix-canvas"></canvas>
     <div class="scanlines"></div>
 
-    <!-- 2. LOGIN SCREEN (FIXED WITH API KEY INPUT) -->
+    <!-- 2. LOGIN SCREEN -->
     <div id="loginScreen" class="relative z-50 flex items-center justify-center w-screen h-screen bg-black/80 backdrop-blur-sm">
         <div class="glass-panel p-10 rounded-2xl w-full max-w-md text-center border-green-500/50 animate-fade-in">
             <h1 class="text-4xl font-bold mb-2 text-white glow-text tracking-tighter">TERMOS<span class="text-green-500">LT</span></h1>
             <p class="text-green-400/70 retro-text mb-6 text-sm">MULTIVERSE OS v2.0</p>
             
-            <div class="space-y-3">
-                <!-- USERNAME -->
-                <input type="text" id="usernameInput" class="w-full p-3 rounded-lg glass-input text-center text-lg placeholder-green-800" placeholder="ENTER CODENAME" autocomplete="off">
+            <div class="space-y-4">
+                <input type="text" id="usernameInput" class="w-full p-4 rounded-lg glass-input text-center text-lg placeholder-green-800" placeholder="ENTER CODENAME" autocomplete="off">
                 
-                <!-- NEW: API KEY INPUT -->
-                <input type="password" id="apiKeyInput" class="w-full p-3 rounded-lg glass-input text-center text-base placeholder-green-900" placeholder="OPTIONAL: ENTER GROQ API KEY" autocomplete="off">
+                <!-- KEY INPUT (Shows if no key stored) -->
+                <div id="apiKeyContainer" class="space-y-2">
+                    <input type="password" id="apiKeyInput" class="w-full p-3 rounded-lg glass-input text-center text-base placeholder-green-900" placeholder="ENTER GROQ KEY (1ST TIME ONLY)" autocomplete="off">
+                    <p class="text-[10px] text-gray-500">Stored locally. Input disappears after entry.</p>
+                </div>
+
+                <!-- CHANGE KEY BUTTON (Shows if key IS stored) -->
+                <div id="changeKeyContainer" class="hidden space-y-2">
+                    <p class="text-xs text-green-400">AI Key detected on device.</p>
+                    <button onclick="toggleKeyInput()" class="text-xs text-red-400 hover:text-red-300 underline">Change Key</button>
+                </div>
                 
                 <button onclick="login()" class="w-full bg-green-600 hover:bg-green-500 text-black font-bold py-3 rounded-lg shadow-[0_0_20px_rgba(0,255,65,0.3)] transition-all retro-text text-lg hover:scale-[1.02]">
                     INITIALIZE
                 </button>
-                
-                <p class="text-xs text-gray-500 mt-2">API Key is saved locally on your device.</p>
             </div>
         </div>
     </div>
 
-    <!-- 3. MAIN APP LAYOUT (Initially Hidden) -->
+    <!-- 3. MAIN APP LAYOUT -->
     <div id="main-layout" class="hidden relative z-10 h-screen w-screen flex flex-col md:flex-row overflow-hidden p-2 md:p-4 gap-4">
         
         <!-- SIDEBAR -->
@@ -125,7 +72,6 @@
                     <p id="user-display" class="text-[10px] text-green-400 retro-text opacity-70">GUEST</p>
                 </div>
             </div>
-
             <div class="flex-1 overflow-y-auto p-4 space-y-2">
                 <p class="text-xs text-gray-500 retro-text mb-2 pl-2">:: SECTORS ::</p>
                 <button onclick="switchRoom('living_room')" class="w-full text-left p-3 rounded-xl bg-green-500/10 border border-green-500/30 hover:bg-green-500/20 transition-all text-sm">
@@ -138,7 +84,6 @@
                     <span class="text-gray-500 font-mono">03.</span> Library
                 </button>
             </div>
-
             <div class="p-4 border-t border-green-500/20 bg-black/20">
                 <div class="flex justify-between items-center mb-1">
                     <span id="lvl-text" class="text-xs text-green-400 retro-text">LVL. 1 NEWBIE</span>
@@ -156,11 +101,7 @@
                 <h2 id="room-title" class="text-lg font-semibold tracking-wide text-white text-cyan-400">LIVING_ROOM</h2>
                 <button onclick="location.reload()" class="text-xs text-red-500 hover:text-red-400 border border-red-900 px-2 py-1 rounded">LOGOUT</button>
             </header>
-
-            <div id="chat-container" class="flex-1 overflow-y-auto p-6 space-y-6">
-                <!-- Messages injected here -->
-            </div>
-
+            <div id="chat-container" class="flex-1 overflow-y-auto p-6 space-y-6"></div>
             <footer class="p-4 border-t border-white/10 bg-black/30 backdrop-blur-xl">
                 <div class="flex items-center gap-4 max-w-4xl mx-auto">
                     <button onclick="startVoiceRecognition()" class="text-green-500 hover:text-white transition-colors" title="Voice Command">
@@ -175,15 +116,24 @@
         </main>
     </div>
 
-    <!-- HIDDEN AUDIO PLAYER -->
     <audio id="bg-music" loop>
         <source src="https://cdn.pixabay.com/audio/2022/03/24/audio_019c669832.mp3" type="audio/mp3">
     </audio>
 
-    <!-- MQTT LIBRARY -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-    
-    <!-- MAIN LOGIC -->
     <script src="script.js"></script>
+
+    <!-- QUICK TOGGLE SCRIPT (Prevents flicker) -->
+    <script>
+        const hasKey = localStorage.getItem('termos_groq_key');
+        if(hasKey) {
+            document.getElementById('apiKeyContainer').classList.add('hidden');
+            document.getElementById('changeKeyContainer').classList.remove('hidden');
+        }
+        function toggleKeyInput() {
+            document.getElementById('apiKeyContainer').classList.remove('hidden');
+            document.getElementById('apiKeyInput').focus();
+        }
+    </script>
 </body>
 </html>
