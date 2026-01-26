@@ -1,76 +1,53 @@
 // =========================================================================
 //         TERMOS LT: MASTERPIECE EDITION (FINAL)
-//         Core: Matrix Rain, AI (Groq), Virtual Desktop, LAN Scan, Auto-Pilot
-//         Fix: Graceful handling of missing elements & Safe Initialization
+//         Core: Robust Boot, Auto-Pilot AI, God Mode Features
+//         Logic: If HTML matches Script -> Works. If not -> Silent Fail.
 // =========================================================================
 
 // --- 1. CONFIGURATION ---
 let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || ""; 
 let USE_LOCAL_AI = false;
 const MQTT_BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
-let adminMode = false; 
-const LEVELS = ['Newbie', 'Apprentice', 'Coder', 'Hacker', 'Architect', 'Wizard', 'Master', 'Guru', 'Legend', 'GOD MODE'];
 
 // --- 2. STATE ---
 let username = 'Anon_' + Math.floor(Math.random() * 1000);
 let mqttClient = null;
 let currentRoom = 'lobby';
 let userStats = { level: 1, xp: 0, avatar: '>_<', title: 'Newbie' };
+const LEVELS = ['Newbie', 'Apprentice', 'Coder', 'Hacker', 'Architect', 'Wizard', 'Master', 'Guru', 'Legend', 'GOD MODE'];
 
 // --- 3. INITIALIZATION ---
 window.addEventListener('load', () => {
     console.log(">> SYSTEM INITIALIZING MASTERPIECE OS...");
     
-    // 1. START MATRIX RAIN (Safe Init)
-    try {
-        initMatrix();
-    } catch (e) {
-        console.error("Matrix Init Failed:", e);
-        // FALLBACK: If canvas fails, set dark background
-        document.body.style.background = "#000";
-    }
+    // 1. START VISUALS (Matrix Rain)
+    try { initMatrix(); } catch (e) { console.error("Matrix Init Failed:", e); }
 
-    // 2. FORCE TERMINAL START (With Safety Timeout)
-    // We wait 10 seconds to ensure the boot logic runs.
-    setTimeout(() => {
-        const term = document.getElementById('terminal-content');
-        const boot = document.getElementById('terminal-boot');
-        const main = document.getElementById('main-layout');
-        
-        // SAFETY: Check if elements exist. If not, skip boot sequence.
-        if (term && boot && main) {
-            try {
-                runTerminalBoot();
-            } catch (e) {
-                console.error("Boot Sequence Failed:", e);
-                // If terminal logic fails, force start app
-                forceBootMainApp();
-            }
-        } else {
-            console.error("!!! CRITICAL: BOOT ELEMENTS MISSING !!!");
-            // FORCE START APP IF BOOT ELEMENTS ARE MISSING
-            forceBootMainApp();
-        }
-    }, 500); // Short delay for stability
+    // 2. START BOOT SEQUENCE (With Safety Timeout)
+    try {
+        runTerminalBoot();
+    } catch (e) {
+        console.error("Boot Sequence Failed:", e);
+        // Force Start App if Boot fails
+        setTimeout(forceBootMainApp, 1000);
+    }
 });
 
 // --- 4. ROBUST MATRIX RAIN ---
 function initMatrix() {
     const c = document.getElementById('matrix-canvas');
-    if (!c) {
-        console.warn("Matrix Canvas not found. Matrix rain disabled.");
-        return;
-    }
+    if (!c) return; // Fail silently if canvas missing
     
     const ctx = c.getContext('2d');
     if(!ctx) return; 
 
+    // Setup Resize
     function resize() {
         c.width = window.innerWidth; 
         c.height = window.innerHeight;
     }
     window.addEventListener('resize', resize);
-    resize(); // Initial call
+    resize();
 
     const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*';
     const fontSize = 14;
@@ -80,13 +57,19 @@ function initMatrix() {
     function drawMatrixRain() {
         if(!c || !ctx) return;
 
+        // Fade effect
         ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
         ctx.fillRect(0, 0, c.width, c.height);
         
+        // Color Logic: Admin (Red) vs Connected (Green/Cyan)
         let color = '#0F0';
-        if (adminMode) color = '#ff0000';
-        else if (!GROQ_API_KEY) color = '#F00';
-        else color = '#0F0';
+        if (adminMode) {
+            color = '#ff0000'; // Admin Red
+        } else if (!GROQ_API_KEY) {
+            color = '#F00'; // Disconnected Red
+        } else {
+            color = '#0F0'; // Connected Green
+        }
 
         ctx.fillStyle = color;
         ctx.font = fontSize + 'px monospace';
@@ -94,6 +77,7 @@ function initMatrix() {
         for(let i=0; i<drops.length; i++) {
             const text = letters[Math.floor(Math.random()*letters.length)];
             
+            // Random cyan glitch if connected
             if (!adminMode && (GROQ_API_KEY) && Math.random() > 0.98) {
                 ctx.fillStyle = '#00f3ff';
             } else {
@@ -106,7 +90,7 @@ function initMatrix() {
         }
     }
     
-    matrixInterval = setInterval(drawMatrixRain, 33); 
+    setInterval(drawMatrixRain, 33); 
 }
 
 // --- 5. TERMINAL BOOT LOGIC ---
@@ -114,8 +98,11 @@ function runTerminalBoot() {
     const term = document.getElementById('terminal-content');
     const statusEl = document.getElementById('boot-status');
     
+    // SAFETY: Check if elements exist
     if (!term || !statusEl) {
-        throw new Error("Terminal DOM elements not found.");
+        // If terminal elements are missing, we cannot type. But we shouldn't crash.
+        console.error("Critical: Terminal DOM elements not found.");
+        return;
     }
 
     let lines = [];
@@ -131,19 +118,19 @@ function runTerminalBoot() {
             "Loading Kernel Modules...",
             "Checking Neural Net...",
             ">>> [1] Multiverse Chat (MQTT)",
-            ">>> [2] Gamification System",
-            ">>> [3] Music Engine",
+            ">>> [2] Gamification System (XP/Leveling)",
+            ">>> [3] Music Engine (Ogg/MP3)",
             ">>> [4] AI Assistant (NEURAL)",
             "",
             ">>> SELECT MODE:",
-            ">>> Type '1' for Chat/Music Only",
+            ">>> Type '1' for Chat/Music Only (FAST)",
             ">>> Type '2' for AI Mode (Groq API Key)",
-            ">>> Type '3' for Local AI Mode (WebGPU)",
+            ">>> Type '3' for Local AI Mode (WebGPU - No Key Needed)",
             "",
             ">>> ADMIN COMMANDS (Requires Root Access):",
-            ">>>   /ai enable root   -> Activate Admin Mode",
-            ">>>   /ai desktop       -> Open Virtual Desktop",
-            ">>>   /ai lan scan      -> Scan Network",
+            ">>>   /ai enable root   -> Activate System Architect Mode",
+            ">>>   /ai desktop       -> Open Virtual Desktop Interface",
+            ">>>   /ai lan scan      -> Scan Local Network",
             ">>>   /ai files        -> Open File Manager",
             "",
             "Type '1', '2', or '3' to initialize..."
@@ -198,7 +185,7 @@ function forceBootMainApp() {
     const userDisplay = document.getElementById('user-display');
     if(userDisplay) userDisplay.innerText = `@${username.toUpperCase()}`;
     
-    // Init Systems (Safe checks inside)
+    // Init Systems
     loadStats();
     updateStatsUI();
     connectMQTT();
@@ -206,6 +193,15 @@ function forceBootMainApp() {
 }
 
 async function enterApp(mode) {
+    // ADMIN MODE TOGGLE
+    if (mode === 'admin') {
+        adminMode = !adminMode;
+        initMatrix(); // Restart Matrix for color change
+        addSystemMessage(adminMode ? "ADMIN MODE: ON (Matrix Red)" : "ADMIN MODE: OFF");
+        return;
+    }
+
+    // MAP INPUTS
     if (mode === 'chat') {
         USE_LOCAL_AI = false;
         startMainApp("Chat & Music Mode Initialized.");
@@ -220,7 +216,6 @@ async function enterApp(mode) {
             startMainApp("Remote AI Mode Activated.");
             return;
         }
-
         const key = prompt(">>> ENTER GROQ API KEY:");
         if (key && key.length > 10) {
             GROQ_API_KEY = key;
@@ -244,6 +239,7 @@ async function enterApp(mode) {
 function startMainApp(message) {
     const boot = document.getElementById('terminal-boot');
     const main = document.getElementById('main-layout');
+    
     if(boot) boot.style.display = 'none';
     if(main) {
         main.classList.remove('hidden');
@@ -260,7 +256,7 @@ function startMainApp(message) {
     addSystemMessage(message);
 }
 
-// --- 7. AI LOGIC ---
+// --- 7. AI LOGIC (AUTO-PILOT) ---
 async function talkToClone(prompt) {
     // ADMIN MODE CHECK
     if (adminMode) {
@@ -268,6 +264,12 @@ async function talkToClone(prompt) {
         setTimeout(() => {
             addAIMessage("[SYSTEM ARCHITECT]: Command processed.", false);
         }, 1000);
+        return;
+    }
+
+    // HANDS OFF CHECK
+    if (handsOff) {
+        addAIMessage("❌ ERROR: AI Hands are disengaged. Permission denied.", true);
         return;
     }
 
@@ -289,7 +291,7 @@ async function talkToClone(prompt) {
     }
 
     try {
-        addAIMessage("Connecting...", false);
+        addAIMessage("...", false);
         
         const models = ["llama-3.1-70b-versatile", "llama-3.3-70b-versatile", "gemma2-9b-it", "mixtral-8x7b-32768"];
         let lastError = null;
@@ -414,6 +416,36 @@ function simulateLanScan() {
     }, 1000);
 }
 
+// FILE MANAGER
+function renderFileManager() {
+    const term = document.getElementById('terminal-content');
+    if(!term) return;
+    
+    const files = [
+        { name: "root_system.ko", size: "1024KB", type: "System" },
+        { name: "user_data.json", size: "15KB", type: "Data" },
+        { name: "app_logs.txt", size: "50MB", type: "Log" },
+        { name: "secret_keys.pem", size: "2KB", type: "Secure" }
+    ];
+
+    let html = `<div class="text-green-500 font-bold mb-2">📁 FILE MANAGER</div><div class="text-xs text-gray-500 border-b border-green-900/20 pb-2">ROOT@ARCHITECT: /home</div>`;
+    
+    files.forEach(f => {
+        html += `
+            <div class="flex items-center justify-between border border-green-800/20 p-2 hover:bg-green-900/10 cursor-pointer mb-1">
+                <div class="flex items-center gap-2">
+                    <div class="text-xl font-mono text-cyan-300">[${f.type}]</div>
+                    <div class="text-xs text-gray-400">${f.size}</div>
+                </div>
+                <div class="text-gray-300 font-mono">${f.name}</div>
+            </div>
+        `;
+    });
+    
+    term.innerHTML = "";
+    term.insertAdjacentHTML('beforeend', html);
+}
+
 // --- 9. UI UPDATES ---
 function updateStatsUI() {
     const titleEl = document.getElementById('lvl-text');
@@ -449,7 +481,16 @@ function addUserMessage(text) {
     if(!container) return;
     const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     
-    const html = `<div class="flex flex-row-reverse items-end gap-3 animate-fade-in-up"><div class="w-8 h-8 rounded-full bg-gradient-to-tr from-green-400 to-emerald-600 flex items-center justify-center border border-white/20 font-mono text-black text-xs font-bold">ME</div><div class="p-4 rounded-l-xl rounded-br-xl text-sm text-green-100 shadow-[0_4px_20px_rgba(0,0,0,0.3)] max-w-[80%] bg-gray-900/50 border border-green-900/30"><div class="flex items-center gap-2 mb-1 opacity-80 text-xs font-mono text-green-400"><span>@${username.toUpperCase()}</span><span>${time}</span></div><p class="leading-relaxed text-gray-100">${escapeHtml(text)}</p></div></div>`;
+    const html = `<div class="flex flex-row-reverse items-end gap-3 animate-fade-in-up">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-green-400 to-emerald-600 flex items-center justify-center border border-white/20 font-mono text-black text-xs font-bold">ME</div>
+                <div class="p-4 rounded-l-xl rounded-br-xl text-sm text-green-100 shadow-[0_4px_20px_rgba(0,0,0,0.3)] max-w-[80%] bg-gray-900/50 border border-green-900/30">
+                    <div class="flex items-center gap-2 mb-1 opacity-80 text-xs font-mono text-green-400">
+                        <span>@${username.toUpperCase()}</span>
+                        <span>${time}</span>
+                    </div>
+                    <p class="leading-relaxed text-gray-100">${escapeHtml(text)}</p>
+                </div>
+            </div>`;
     container.insertAdjacentHTML('beforeend', html);
     scrollToBottom();
 }
@@ -457,10 +498,17 @@ function addUserMessage(text) {
 function addAIMessage(text, isAction) {
     const container = document.getElementById('chat-container');
     if(!container) return;
-    
     const cssClass = isAction ? 'border border-cyan-500/50 shadow-[0_0_15px_rgba(0,243,255,0.2)]' : 'border border-white/10 bg-black/60';
     
-    const html = `<div class="flex flex-row items-start gap-3 animate-fade-in-up"><div class="w-8 h-8 rounded-full bg-black border border-cyan-500 flex items-center justify-center text-cyan-400 font-mono text-[8px] font-bold">AI</div><div class="flex-1"><div class="px-2 py-1 text-[10px] text-cyan-600 font-mono">TERM_AI_SYSTEM</div><div class="p-4 rounded-r-xl rounded-bl-xl ${cssClass} text-sm text-gray-200 backdrop-blur-sm border-t-0"><p class="leading-relaxed">${escapeHtml(text)}</p></div></div>`;
+    const html = `<div class="flex flex-row items-start gap-3 animate-fade-in-up">
+                <div class="w-8 h-8 rounded-full bg-black border border-cyan-500 flex items-center justify-center text-cyan-400 font-mono text-[8px] font-bold">AI</div>
+                <div class="flex-1">
+                    <div class="px-2 py-1 text-[10px] text-cyan-600 font-mono">TERM_AI_SYSTEM</div>
+                    <div class="p-4 rounded-r-xl rounded-bl-xl ${cssClass} text-sm text-gray-200 backdrop-blur-sm border-t-0">
+                        <p class="leading-relaxed">${escapeHtml(text)}</p>
+                    </div>
+                </div>
+            </div>`;
     container.insertAdjacentHTML('beforeend', html);
     scrollToBottom();
 }
@@ -489,7 +537,6 @@ function connectMQTT() {
 
     mqttClient.on('connect', () => {
         mqttClient.subscribe(`termchat/messages/${currentRoom}`);
-        console.log("MQTT Connected");
         addSystemMessage("Uplink Established.");
     });
 
@@ -502,7 +549,13 @@ function connectMQTT() {
             if (data.user !== username) {
                 const container = document.getElementById('chat-container');
                 if(container) {
-                    container.insertAdjacentHTML('beforeend', `<div class="flex flex-row items-end gap-3 animate-fade-in-up opacity-80"><div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center border border-white/20 font-mono text-white text-xs">${data.user.substring(0,2).toUpperCase()}</div><div class="p-3 rounded-xl bg-slate-800/50 text-sm text-gray-300 max-w-[80%] border border-white/5"><div class="opacity-70 text-[10px] font-mono text-gray-500 mb-1">@${data.user.toUpperCase()}</div><p class="leading-relaxed">${escapeHtml(data.text)}</p></div></div>`);
+                    container.insertAdjacentHTML('beforeend', `<div class="flex flex-row items-end gap-3 animate-fade-in-up opacity-80">
+                        <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center border border-white/20 font-mono text-white text-xs">${data.user.substring(0,2).toUpperCase()}</div>
+                        <div class="p-3 rounded-xl bg-slate-800/50 text-sm text-gray-300 max-w-[80%] border border-white/5">
+                            <div class="opacity-70 text-[10px] font-mono text-gray-500 mb-1">@${data.user.toUpperCase()}</div>
+                            <p class="leading-relaxed">${escapeHtml(data.text)}</p>
+                        </div>
+                    </div>`);
                     scrollToBottom();
                 }
             }
@@ -516,109 +569,7 @@ function publishMessage(text) {
     }
 }
 
-// --- 12. INPUT & COMMANDS ---
-function setupInputListener() {
-    const chatInput = document.getElementById('chatInput');
-    if(chatInput) {
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleSend();
-        });
-    }
-}
-
-function handleSend() {
-    const chatInput = document.getElementById('chatInput');
-    if(!chatInput) return;
-    const txt = chatInput.value.trim();
-    if(!txt) return;
-    chatInput.value = '';
-    processCommand(txt);
-}
-
-function processCommand(txt) {
-    // ADMIN COMMANDS
-    if (txt === '/ai enable root') {
-        enterApp('admin');
-        return;
-    }
-
-    // GOD MODE COMMANDS
-    if (txt.startsWith('/ai')) {
-        const prompt = txt.replace('/ai', '').trim();
-        if(!prompt) return;
-        
-        // Check for specific sub-commands
-        if (prompt === 'desktop') {
-            renderVirtualDesktop();
-            return;
-        }
-        if (prompt === 'lan scan') {
-            simulateLanScan();
-            return;
-        }
-        if (prompt === 'files') {
-            renderFileManager();
-            return;
-        }
-        
-        addUserMessage(prompt);
-        talkToClone(prompt);
-        return;
-    }
-
-    // USER COMMANDS
-    if (txt.startsWith('/join')) {
-        const room = txt.replace('/join', '').trim();
-        if(room) switchRoom(room);
-        return;
-    }
-
-    if (txt.startsWith('/help')) {
-        addSystemMessage("CMD: /ai [desktop|lan scan|files], /join [room], /clear");
-        return;
-    }
-    
-    if (txt.startsWith('/clear')) {
-        const container = document.getElementById('chat-container');
-        if(container) container.innerHTML = '';
-        return;
-    }
-
-    // STANDARD CHAT
-    addUserMessage(txt);
-    publishMessage(txt);
-    addXP(10);
-}
-
-// --- 13. UTILS ---
-function downloadCodeFile(filename, content) {
-    const element = document.createElement('a');
-    let mimeType = 'text/plain';
-    if(filename.endsWith('.js')) mimeType = 'text/javascript';
-    if(filename.endsWith('.html')) mimeType = 'text/html';
-    
-    element.setAttribute('href', `data:${mimeType};charset=utf-8,` + encodeURIComponent(content));
-    element.setAttribute('download', filename);
-    element.style.display = 'none';
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-    
-    addSystemMessage(`File saved: ${filename}`);
-}
-
-function injectAndRun(code) {
-    try {
-        const script = document.createElement('script');
-        script.textContent = code;
-        document.body.appendChild(script);
-    } catch(e) {
-        const style = document.createElement('style');
-        style.textContent = code;
-        document.head.appendChild(style);
-    }
-}
-
+// --- 12. UTILS ---
 function switchRoom(roomName) {
     if(!roomName) return;
     
