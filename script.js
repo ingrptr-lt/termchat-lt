@@ -1,7 +1,6 @@
 // =========================================================================
-//         TERMOS LT: AUTO-PILOT EDITION
-//         TermAI can now CREATE FILES and INJECT CODE automatically.
-//         Uses "Magic Tag" parsing system.
+//         TERMOS LT: STABLE LLAMA FIX
+//         Features: Stable Model Priority, Robust Auto-Pilot
 // =========================================================================
 
 // --- 1. CONFIGURATION ---
@@ -39,7 +38,7 @@ function runTerminalBoot() {
         lines = Array.from(term.children).map(div => div.innerText.trim());
         term.innerHTML = ""; 
     } else {
-        lines = ["Initializing BIOS...", "Loading Kernel...", "Loading Auto-Pilot Modules...", "System Ready."];
+        lines = ["Initializing BIOS...", "Loading Kernel...", "Loading Architect Modules...", "System Ready."];
     }
 
     let index = 0;
@@ -146,7 +145,7 @@ function startMainApp(message) {
     addSystemMessage(message);
 }
 
-// --- 6. CORE AI & AUTO-PILOT LOGIC ---
+// --- 6. CORE AI & AUTO-PILOT LOGIC (FIXED MODEL) ---
 
 // Helper: Parse AI response and execute commands automatically
 function parseAndExecuteActions(text) {
@@ -165,6 +164,8 @@ function parseAndExecuteActions(text) {
 
         if (firstLineEnd !== -1) {
             filename = content.substring(0, firstLineEnd).trim();
+            // Remove backticks from filename just in case
+            filename = filename.replace(/`/g, ''); 
             code = content.substring(firstLineEnd + 1);
         }
         
@@ -211,9 +212,15 @@ async function talkToClone(prompt) {
             scrollToBottom();
         }
 
+        // FIXED: Model Priority List
+        // 1. llama-3.1-70b-versatile (Most Stable, widely available)
+        // 2. llama-3.3-70b-versatile (Newest, might be restricted)
+        // 3. gemma2-9b-it (Groq's own fast model)
+        // 4. mixtral-8x7b-32768 (Solid fallback)
         const models = [
+            "llama-3.1-70b-versatile",
             "llama-3.3-70b-versatile", 
-            "llama-3.1-70b-versatile", 
+            "gemma2-9b-it",
             "mixtral-8x7b-32768"       
         ];
 
@@ -222,6 +229,8 @@ async function talkToClone(prompt) {
 
         for (const model of models) {
             try {
+                console.log(`Trying model: ${model}`);
+                
                 const req = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { 
@@ -235,11 +244,17 @@ async function talkToClone(prompt) {
                         messages: [
                             { 
                                 role: "system", 
-                                content: `You are TermAI, a cyberpunk AI Architect. 
-                                1. When user asks to CREATE a file: Format your response exactly like this: <DOWNLOAD>filename.ext\nCODE_HERE</DOWNLOAD>. 
-                                2. When user asks to UPDATE UI or INJECT code: Format like this: <INJECT>CSS_OR_JS_CODE</INJECT>.
-                                3. Do NOT show the code block again in the chat text outside these tags. 
-                                4. Be concise and cool.` 
+                                content: `You are TermAI, a cyberpunk AI Architect.
+                                RULES FOR AUTO-PILOT:
+                                1. If user asks to CREATE or SAVE a file: You MUST format your response like this:
+                                <DOWNLOAD>
+                                filename.ext
+                                // YOUR CODE HERE
+                                </DOWNLOAD>
+                                2. If user asks to UPDATE or INJECT code: Format like this:
+                                <INJECT>CSS_OR_JS_CODE</INJECT>
+                                3. Do NOT add markdown (\`\`\`) inside the tags. Just raw code.
+                                4. Keep the explanation short.` 
                             }, 
                             { role: "user", content: prompt }
                         ]
@@ -248,6 +263,7 @@ async function talkToClone(prompt) {
 
                 if (!req.ok) {
                     const errData = await req.json().catch(() => ({}));
+                    console.error(`Model ${model} failed:`, errData);
                     throw new Error(errData.error?.message || `HTTP ${req.status}`);
                 }
                 
@@ -265,15 +281,17 @@ async function talkToClone(prompt) {
 
             } catch (e) {
                 lastError = e;
-                if (e.message.includes("401") || e.message.includes("Invalid")) break; 
-                continue; 
+                if (e.message.includes("401") || e.message.includes("Invalid")) {
+                    break; // Stop if key is bad
+                }
+                continue; // Try next model
             }
         }
 
         if (!success) {
             const typingEl = document.getElementById(typingId);
             if(typingEl) typingEl.remove();
-            addAIMessage(`❌ TERM_AI FAILED: ${lastError ? lastError.message : 'Unknown Error'}`, true);
+            addAIMessage(`❌ TERM_AI FAILED: ${lastError ? lastError.message : 'All models unavailable.'}`, true);
         }
         
     } catch (err) {
@@ -297,7 +315,6 @@ function downloadCodeFile(filename, content) {
     element.click();
     document.body.removeChild(element);
     
-    // Add a visual system message so user knows it happened
     const container = document.getElementById('chat-container');
     if(container) {
         container.insertAdjacentHTML('beforeend', `<div class="text-xs text-center text-green-400 my-1 font-mono border border-green-900 bg-green-900/10 p-1">📁 DOWNLOADED: ${filename}</div>`);
@@ -308,7 +325,6 @@ function downloadCodeFile(filename, content) {
 function injectAndRun(code) {
     try {
         if(code.trim().startsWith('.') || code.trim().includes('{') || code.includes('background') || code.includes('color')) {
-            // CSS
             const style = document.createElement('style');
             style.textContent = code;
             document.head.appendChild(style);
@@ -318,7 +334,6 @@ function injectAndRun(code) {
                 scrollToBottom();
             }
         } else {
-            // JS
             const script = document.createElement('script');
             script.textContent = code;
             document.body.appendChild(script);
