@@ -1,5 +1,6 @@
 // =========================================================================
-//         TERMOS LT: LOGIC CORE
+//         TERMOS LT: FULL LOGIC CORE (UPDATED)
+//         Fixes: New Model ID, TERM AI branding, Error Handling
 // =========================================================================
 
 // --- 1. CONFIGURATION ---
@@ -31,7 +32,6 @@ function runTerminalBoot() {
     let lines = [];
     const sourceContent = document.getElementById('hidden-boot-content');
     
-    // Load lines from hidden HTML or use fallback
     if (sourceContent && sourceContent.innerHTML.trim() !== "") {
         term.innerHTML = sourceContent.innerHTML;
         sourceContent.innerHTML = ""; 
@@ -50,7 +50,6 @@ function runTerminalBoot() {
             const div = document.createElement('div');
             div.className = "opacity-80 animate-fade-in mb-1 font-mono text-sm";
             
-            // Simple color coding
             if(line.includes(">>> [OK]")) div.innerHTML = line.replace("[OK]", '<span class="text-green-400 font-bold">[OK]</span>');
             else if(line.includes(">>> [1]")) div.innerHTML = line.replace("[1]", '<span class="text-blue-400">[1]</span>');
             else div.innerText = line;
@@ -147,47 +146,71 @@ function startMainApp(message) {
     addSystemMessage(message);
 }
 
-// --- 6. AI LOGIC ---
+// --- 6. AI LOGIC (UPDATED: New Model & TERM AI) ---
 async function talkToClone(prompt) {
+    // 1. LOCAL MODE
     if (USE_LOCAL_AI) {
-        const responses = ["Local hardware active.", "Offline mode enabled.", "Processing on device."];
-        addAIMessage("Processing locally...", false);
-        setTimeout(() => addAIMessage(responses[Math.floor(Math.random()*responses.length)], false), 800);
+        addAIMessage("Processing request via local kernel...", false);
+        setTimeout(() => {
+            const responses = [
+                "I am TermAI. Operating in offline mode. How can I assist?",
+                "Local neural cluster active. No external uplink required.",
+                "System resources available. I am listening.",
+                "Processing on device. TermAI ready.",
+                "Data encrypted locally. I am TermAI."
+            ];
+            addAIMessage(responses[Math.floor(Math.random()*responses.length)], false);
+        }, 1000);
         return;
     }
 
+    // 2. REMOTE MODE (GROQ)
     if (!GROQ_API_KEY) {
-        addAIMessage("❌ CONFIG ERROR: API Key missing. Select Mode 2.", true);
+        addAIMessage("❌ ERROR: API Key missing. TermAI Remote Module disabled.", true);
         return;
     }
 
     try {
-        addAIMessage("Connecting to Neural Net...", false);
-        
+        // Show thinking indicator
+        const typingId = "typing-" + Date.now();
+        const container = document.getElementById('chat-container');
+        if(container) {
+            container.insertAdjacentHTML('beforeend', `<div id="${typingId}" class="text-xs text-cyan-600 ml-11 mb-2 animate-pulse font-mono">TermAI is thinking...</div>`);
+            scrollToBottom();
+        }
+
         const req = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
+            headers: { 
+                "Content-Type": "application/json", 
+                "Authorization": `Bearer ${GROQ_API_KEY}` 
+            },
             body: JSON.stringify({
-                model: "llama3-70b-8192", 
+                // FIX: Updated Model ID
+                model: "llama-3.1-70b-versatile", 
                 temperature: 0.7,
-                max_tokens: 100,
+                max_tokens: 150,
                 messages: [
-                    { role: "system", content: "You are a cyberpunk AI. Answer briefly." }, 
+                    { role: "system", content: "You are TermAI, a helpful cyberpunk AI assistant. You are cool, concise, and tech-savvy." }, 
                     { role: "user", content: prompt }
                 ]
             })
         });
 
+        // Remove typing indicator
+        const typingEl = document.getElementById(typingId);
+        if(typingEl) typingEl.remove();
+
         if (!req.ok) {
             const errData = await req.json().catch(() => ({}));
-            throw new Error(errData.error?.message || `Status ${req.status}`);
+            throw new Error(errData.error?.message || `HTTP ${req.status}`);
         }
         
         const json = await req.json();
         addAIMessage(json.choices[0].message.content, false);
         
     } catch (err) {
-        addAIMessage(`❌ ERROR: ${err.message}`, true);
+        addAIMessage(`❌ TERM_AI CONNECTION FAILED: ${err.message}`, true);
     }
 }
 
@@ -231,6 +254,7 @@ function handleSend() {
 }
 
 function processCommand(txt) {
+    // AI Commands
     if (txt.startsWith('/ai')) {
         const prompt = txt.replace('/ai', '').trim();
         if(!prompt) return;
@@ -238,27 +262,31 @@ function processCommand(txt) {
         talkToClone(prompt);
         return;
     }
-    
-    const audio = document.getElementById('bg-music'); // Note: audio tag not in HTML by default, can be added
+
     const lower = txt.toLowerCase();
     
+    // System Commands
+    if (lower.includes('who are you')) { 
+        addUserMessage(txt);
+        addAIMessage("I am TermAI, your local system intelligence.", false); 
+        return; 
+    }
+
+    const audio = document.getElementById('bg-music');
     if (lower.includes('play music')) { 
         addUserMessage(txt); 
-        addAIMessage("🎵 Playing...", true); 
+        addAIMessage("🎵 Audio Sequence Initiated.", true); 
+        if(audio) audio.play().catch(e=>{});
         return; 
     }
     if (lower.includes('stop music')) { 
         addUserMessage(txt); 
-        addAIMessage("⏹ Stopped.", true); 
-        return; 
-    }
-    if (lower.includes('open panel')) { 
-        addUserMessage(txt); 
-        addAIMessage("Accessing Workshop...", true); 
-        setTimeout(()=>switchRoom('workshop'), 1000); 
+        addAIMessage("⏹ Audio Sequence Halted.", true); 
+        if(audio) audio.pause(); 
         return; 
     }
     
+    // Standard Chat / MQTT
     addUserMessage(txt);
     publishMessage(txt);
     addXP(10);
@@ -277,8 +305,26 @@ function addUserMessage(text) {
 function addAIMessage(text, isAction) {
     const container = document.getElementById('chat-container');
     if(!container) return;
-    const cssClass = isAction ? 'border border-cyan-500/50 shadow-[0_0_15px_rgba(0,243,255,0.2)]' : 'border border-white/10';
-    const html = `<div class="flex flex-row items-start gap-3 animate-fade-in"><div class="w-8 h-8 rounded-full bg-black border border-cyan-500 flex items-center justify-center text-cyan-400 font-mono text-[10px]">AI</div><div class="flex-1"><div class="p-4 rounded-r-xl rounded-bl-xl bg-black/40 ${cssClass} text-sm text-gray-200 backdrop-blur-sm"><p class="leading-relaxed">${text}</p></div></div></div>`;
+    
+    // FIX: TERM AI Specific Styling
+    const cssClass = isAction 
+        ? 'border border-cyan-500/50 shadow-[0_0_15px_rgba(0,243,255,0.2)]' 
+        : 'border border-white/10 bg-black/60';
+
+    const html = `
+    <div class="flex flex-row items-start gap-3 animate-fade-in">
+        <!-- TERM AI AVATAR -->
+        <div class="w-8 h-8 rounded-full bg-black border border-cyan-500 flex items-center justify-center text-cyan-400 font-mono text-[8px] font-bold shadow-[0_0_10px_rgba(0,255,255,0.3)]">
+            TERM
+        </div>
+        <div class="flex-1">
+            <div class="px-2 py-1 text-[10px] text-cyan-600 font-mono tracking-widest">TERM_AI_SYSTEM</div>
+            <div class="p-4 rounded-r-xl rounded-bl-xl ${cssClass} text-sm text-gray-200 backdrop-blur-sm border-t-0">
+                <p class="leading-relaxed font-sans">${text}</p>
+            </div>
+        </div>
+    </div>`;
+    
     container.insertAdjacentHTML('beforeend', html);
     scrollToBottom();
 }
