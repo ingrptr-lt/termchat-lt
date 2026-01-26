@@ -1,10 +1,11 @@
 // =========================================================================
-//         TERMOS LT: HYBRID EDITION (MUSIC + MUSIC + MATRIX)
+//         TERMOS LT: HYBRID EDITION (PROFESSIONAL BUILD)
+//         Features: Matrix UI, API Key Storage (Local), Music, MQTT, AI
 // =========================================================================
 
 // --- 1. CONFIGURATION ---
-// PASTE YOUR REAL KEY HERE IF YOU WANT AI TO WORK ON YOUR PC
-const GROQ_API_KEY = "YOUR_GROQ_API_KEY_HERE"; 
+// Reads key from browser LocalStorage. Safe for GitHub.
+const GROQ_API_KEY = localStorage.getItem('termos_groq_key') || ""; 
 const MQTT_BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
 
 // --- 2. STATE ---
@@ -15,29 +16,51 @@ let userStats = { level: 1, xp: 0, avatar: '>_<', title: 'Newbie' };
 
 const LEVELS = ['Newbie', 'Apprentice', 'Coder', 'Hacker', 'Architect', 'Wizard', 'Master', 'Guru', 'Legend'];
 
-// --- 3. LOGIN & INITIALIZATION ---
+// --- 3. INITIALIZATION ---
 window.addEventListener('load', () => {
     initMatrix();
     
     const userInput = document.getElementById('usernameInput');
+    const keyInput = document.getElementById('apiKeyInput');
+    
     if(userInput) {
         userInput.focus();
         userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') login();
         });
     }
+
+    // Restore previously saved API Key to the input box
+    if(keyInput) {
+        keyInput.value = GROQ_API_KEY;
+    }
 });
 
 function login() {
     const input = document.getElementById('usernameInput');
-    const name = input.value.trim();
+    const keyInput = document.getElementById('apiKeyInput');
     
+    if (!input || !keyInput) return alert("System Error: Login UI missing.");
+
+    const name = input.value.trim();
+    const key = keyInput.value.trim();
+    
+    // Validate Username
     if (name.length < 2) {
         input.style.borderColor = 'red';
         input.classList.add('animate-pulse');
         return;
     }
 
+    // Handle API Key Storage
+    if (key && key.length > 10) {
+        localStorage.setItem('termos_groq_key', key);
+        // RELOAD PAGE TO APPLY KEY TO SYSTEM CONFIG
+        location.reload(); 
+        return;
+    }
+
+    // Proceed to App
     username = name;
     document.getElementById('loginScreen').style.display = 'none';
     const main = document.getElementById('main-layout');
@@ -48,7 +71,12 @@ function login() {
     loadStats();
     updateStatsUI();
     connectMQTT();
-    addSystemMessage(`Identity verified. Welcome, Operator ${username}.`);
+
+    if (GROQ_API_KEY) {
+        addSystemMessage(`Identity verified. AI Module ONLINE.`);
+    } else {
+        addSystemMessage(`Identity verified. AI Module OFFLINE (No Key provided).`);
+    }
 }
 
 // --- 4. UI CONTROLLER ---
@@ -95,11 +123,12 @@ function processCommand(txt) {
         return;
     }
 
-    // --- MUSIC LOGIC ---
+    // --- AGENTIC COMMANDS ---
     const audio = document.getElementById('bg-music');
     const lower = txt.toLowerCase();
 
-    if (lower.includes('play music') || lower.includes('play jazz') || lower.includes('music')) {
+    // Play Music
+    if (lower.includes('play music') || lower.includes('play jazz') || lower === 'music') {
         addUserMessage(txt);
         if (audio) {
             if (audio.paused) {
@@ -111,12 +140,11 @@ function processCommand(txt) {
             } else {
                 addAIMessage("🎵 Music is already active.", true);
             }
-        } else {
-            addAIMessage("❌ Audio module not found in system.", true);
         }
         return;
     }
 
+    // Stop Music
     if (lower.includes('stop music')) {
         addUserMessage(txt);
         if (audio) {
@@ -126,7 +154,7 @@ function processCommand(txt) {
         return;
     }
 
-    // OPEN PANEL (Old Logic)
+    // Open Workshop Panel
     if (lower.includes('open panel')) {
         addUserMessage(txt);
         addAIMessage("Accessing Workshop Panel... 🛠️", true);
@@ -200,9 +228,9 @@ function scrollToBottom() {
 
 // --- 7. AI & NETWORKING ---
 async function talkToClone(prompt) {
-    // Check if key is real
-    if (!GROQ_API_KEY || GROQ_API_KEY.includes("YOUR_GROQ_API_KEY")) {
-        addAIMessage("❌ CONFIG ERROR: API Key missing. Please edit script.js line 7.", true);
+    // Validate Key
+    if (!GROQ_API_KEY) {
+        addAIMessage("❌ CONFIG ERROR: API Key missing. Please Log out and enter a key.", true);
         return;
     }
 
