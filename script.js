@@ -1,11 +1,9 @@
 // =========================================================================
-//         TERMOS LT: HYBRID EDITION (PROFESSIONAL BUILD)
-//         Features: Matrix UI, API Key Storage (Local), Music, MQTT, AI
+//         TERMOS LT: HYBRID EDITION (SMART MODAL)
 // =========================================================================
 
 // --- 1. CONFIGURATION ---
-// Reads key from browser LocalStorage. Safe for GitHub.
-const GROQ_API_KEY = localStorage.getItem('termos_groq_key') || ""; 
+let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || ""; 
 const MQTT_BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
 
 // --- 2. STATE ---
@@ -13,54 +11,32 @@ let username = 'Guest';
 let mqttClient = null;
 let currentRoom = 'living_room';
 let userStats = { level: 1, xp: 0, avatar: '>_<', title: 'Newbie' };
-
 const LEVELS = ['Newbie', 'Apprentice', 'Coder', 'Hacker', 'Architect', 'Wizard', 'Master', 'Guru', 'Legend'];
 
 // --- 3. INITIALIZATION ---
 window.addEventListener('load', () => {
     initMatrix();
+    updateAIStatus(); // Update button color on load
     
     const userInput = document.getElementById('usernameInput');
-    const keyInput = document.getElementById('apiKeyInput');
-    
     if(userInput) {
         userInput.focus();
         userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') login();
         });
     }
-
-    // Restore previously saved API Key to the input box
-    if(keyInput) {
-        keyInput.value = GROQ_API_KEY;
-    }
 });
 
 function login() {
     const input = document.getElementById('usernameInput');
-    const keyInput = document.getElementById('apiKeyInput');
-    
-    if (!input || !keyInput) return alert("System Error: Login UI missing.");
-
     const name = input.value.trim();
-    const key = keyInput.value.trim();
     
-    // Validate Username
     if (name.length < 2) {
         input.style.borderColor = 'red';
         input.classList.add('animate-pulse');
         return;
     }
 
-    // Handle API Key Storage
-    if (key && key.length > 10) {
-        localStorage.setItem('termos_groq_key', key);
-        // RELOAD PAGE TO APPLY KEY TO SYSTEM CONFIG
-        location.reload(); 
-        return;
-    }
-
-    // Proceed to App
     username = name;
     document.getElementById('loginScreen').style.display = 'none';
     const main = document.getElementById('main-layout');
@@ -71,15 +47,66 @@ function login() {
     loadStats();
     updateStatsUI();
     connectMQTT();
-
-    if (GROQ_API_KEY) {
-        addSystemMessage(`Identity verified. AI Module ONLINE.`);
+    
+    // Check Theme Color based on AI Status
+    if(!GROQ_API_KEY) {
+        addSystemMessage(`AI Module is OFFLINE. Click button in Sidebar to activate.`);
     } else {
-        addSystemMessage(`Identity verified. AI Module OFFLINE (No Key provided).`);
+        addSystemMessage(`Identity verified. AI Module ONLINE.`);
+        updateTheme('green'); // Switch to Green Theme if AI is active
     }
 }
 
-// --- 4. UI CONTROLLER ---
+// --- 4. MODAL LOGIC ---
+function openKeyModal() {
+    document.getElementById('keyModal').classList.remove('hidden');
+    document.getElementById('modalKeyInput').value = GROQ_API_KEY; // Show current key if exists
+}
+
+function closeKeyModal() {
+    document.getElementById('keyModal').classList.add('hidden');
+}
+
+function saveApiKey() {
+    const input = document.getElementById('modalKeyInput');
+    const key = input.value.trim();
+    
+    if (key.length > 10) {
+        GROQ_API_KEY = key;
+        localStorage.setItem('termos_groq_key', key);
+        closeKeyModal();
+        updateAIStatus();
+        addSystemMessage("Neural Link Established. AI Module ONLINE.");
+        updateTheme('green');
+    } else {
+        alert("Invalid Key Format");
+    }
+}
+
+function updateAIStatus() {
+    const statusText = document.getElementById('ai-status-text');
+    if(GROQ_API_KEY) {
+        statusText.innerText = "AI: ONLINE";
+        statusText.classList.replace('text-red-400', 'text-green-400');
+    } else {
+        statusText.innerText = "AI: OFFLINE";
+    }
+}
+
+function updateTheme(color) {
+    // Simple toggle between Red (Offline) and Green (Online) modes
+    // This is visual feedback for the user
+    if(color === 'green') {
+        document.documentElement.style.setProperty('--neon-green', '#00ff41');
+        document.documentElement.style.setProperty('--neon-cyan', '#00f3ff');
+    } else {
+        // Keep Red/Grey for offline
+        document.documentElement.style.setProperty('--neon-green', '#ef4444'); 
+        document.documentElement.style.setProperty('--neon-cyan', '#7f1d1d'); 
+    }
+}
+
+// --- 5. UI CONTROLLER ---
 function updateStatsUI() {
     const titleEl = document.getElementById('lvl-text');
     const xpEl = document.getElementById('xp-text');
@@ -98,7 +125,7 @@ function switchRoom(roomId) {
     addSystemMessage(`Switched to sector [${roomId.toUpperCase()}]`);
 }
 
-// --- 5. INPUT HANDLING ---
+// --- 6. INPUT HANDLING ---
 const chatInput = document.getElementById('chatInput');
 if(chatInput) {
     chatInput.addEventListener('keypress', (e) => {
@@ -119,42 +146,34 @@ function processCommand(txt) {
         const prompt = txt.replace('/ai', '').trim();
         if(!prompt) return;
         addUserMessage(prompt);
+        
+        // SMART CHECK: If no key, open modal NOW
+        if(!GROQ_API_KEY) {
+            addAIMessage("Neural Link Disconnected. Establishing connection...", true);
+            setTimeout(() => openKeyModal(), 1000);
+            return;
+        }
+        
         talkToClone(prompt);
         return;
     }
 
-    // --- AGENTIC COMMANDS ---
+    // AGENTIC COMMANDS
     const audio = document.getElementById('bg-music');
     const lower = txt.toLowerCase();
 
-    // Play Music
-    if (lower.includes('play music') || lower.includes('play jazz') || lower === 'music') {
+    if (lower.includes('play music')) {
         addUserMessage(txt);
-        if (audio) {
-            if (audio.paused) {
-                audio.play().then(() => {
-                    addAIMessage("🎵 Audio stream initialized. Enjoy the vibes.", true);
-                }).catch(e => {
-                    addAIMessage("⚠️ Playback blocked by browser. Please click the page once.", true);
-                });
-            } else {
-                addAIMessage("🎵 Music is already active.", true);
-            }
+        if (audio && audio.paused) {
+            audio.play().then(() => addAIMessage("🎵 Audio stream initialized.", true));
         }
         return;
     }
-
-    // Stop Music
     if (lower.includes('stop music')) {
         addUserMessage(txt);
-        if (audio) {
-            audio.pause();
-            addAIMessage("⏹ Audio stream terminated.", true);
-        }
+        if (audio) audio.pause();
         return;
     }
-
-    // Open Workshop Panel
     if (lower.includes('open panel')) {
         addUserMessage(txt);
         addAIMessage("Accessing Workshop Panel... 🛠️", true);
@@ -168,14 +187,14 @@ function processCommand(txt) {
     addXP(10);
 }
 
-// --- 6. RENDERING MESSAGES ---
+// --- 7. RENDERING MESSAGES ---
 function addUserMessage(text) {
     const container = document.getElementById('chat-container');
     const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     
     const html = `
         <div class="flex flex-row-reverse items-end gap-3 animate-fade-in">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-green-400 to-emerald-600 flex items-center justify-center border border-white/20 font-mono text-black text-xs font-bold">ME</div>
+            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-red-400 to-orange-600 flex items-center justify-center border border-white/20 font-mono text-black text-xs font-bold">ME</div>
             <div class="msg-user p-4 rounded-l-xl rounded-br-xl text-sm text-green-100 shadow-[0_4px_20px_rgba(0,0,0,0.3)] max-w-[80%]">
                 <div class="flex items-center gap-2 mb-1 opacity-80 text-xs font-mono text-green-400">
                     <span>@${username.toUpperCase()}</span>
@@ -226,17 +245,10 @@ function scrollToBottom() {
     if(c) c.scrollTop = c.scrollHeight;
 }
 
-// --- 7. AI & NETWORKING ---
+// --- 8. AI & NETWORKING ---
 async function talkToClone(prompt) {
-    // Validate Key
-    if (!GROQ_API_KEY) {
-        addAIMessage("❌ CONFIG ERROR: API Key missing. Please Log out and enter a key.", true);
-        return;
-    }
-
     try {
         addAIMessage("Processing...", false);
-        
         const req = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: { 
@@ -251,16 +263,10 @@ async function talkToClone(prompt) {
                 ]
             })
         });
-
-        if (!req.ok) {
-            throw new Error(`API Error: ${req.status}`);
-        }
-
+        if (!req.ok) throw new Error(`API Error: ${req.status}`);
         const json = await req.json();
         const reply = json.choices[0].message.content;
-        
         addAIMessage(reply, false);
-        
     } catch (err) {
         console.error(err);
         addAIMessage(`❌ CONNECTION FAILED: ${err.message}`, true);
@@ -268,17 +274,10 @@ async function talkToClone(prompt) {
 }
 
 function connectMQTT() {
-    if (typeof mqtt === 'undefined') {
-        console.warn("MQTT Library not loaded");
-        return;
-    }
+    if (typeof mqtt === 'undefined') return;
     const clientId = "termos-" + Math.random().toString(16).substr(2, 8);
     mqttClient = mqtt.connect(MQTT_BROKER_URL, { clientId: clientId, keepalive: 60 });
-
-    mqttClient.on('connect', () => {
-        mqttClient.subscribe('termchat/messages');
-    });
-
+    mqttClient.on('connect', () => mqttClient.subscribe('termchat/messages'));
     mqttClient.on('message', (topic, msg) => {
         try {
             const data = JSON.parse(msg.toString());
@@ -310,7 +309,7 @@ function addRemoteMessage(user, text) {
     scrollToBottom();
 }
 
-// --- 8. UTILITIES ---
+// --- 9. UTILITIES ---
 function startVoiceRecognition() {
     if (!('webkitSpeechRecognition' in window)) return alert("Voice module not supported by browser");
     const recognition = new webkitSpeechRecognition();
@@ -341,7 +340,7 @@ function escapeHtml(text) {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// --- 9. MATRIX ANIMATION ---
+// --- 10. MATRIX ANIMATION ---
 function initMatrix() {
     const c = document.getElementById('matrix-canvas');
     if(!c) return;
@@ -358,13 +357,14 @@ function initMatrix() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
         ctx.fillRect(0, 0, c.width, c.height);
         
-        ctx.fillStyle = '#0F0'; 
+        ctx.fillStyle = '#F00'; // RED MATRIX by default
         ctx.font = fontSize + 'px monospace';
         
         for(let i=0; i<drops.length; i++) {
             const text = letters[Math.floor(Math.random()*letters.length)];
-            if(Math.random() > 0.98) ctx.fillStyle = '#00f3ff';
-            else ctx.fillStyle = '#0F0';
+            if(GROQ_API_KEY && Math.random() > 0.95) ctx.fillStyle = '#0F0'; // TURN GREEN IF KEY EXISTS
+            else if (!GROQ_API_KEY) ctx.fillStyle = '#F00';
+            else ctx.fillStyle = '#F00';
 
             ctx.fillText(text, i*fontSize, drops[i]*fontSize);
 
