@@ -1,6 +1,7 @@
 // =========================================================================
-//         TERMOS LT: FULL LOGIC CORE (UPDATED)
-//         Fixes: New Model ID, TERM AI branding, Error Handling
+//         TERMOS LT: AUTO-PILOT EDITION
+//         TermAI can now CREATE FILES and INJECT CODE automatically.
+//         Uses "Magic Tag" parsing system.
 // =========================================================================
 
 // --- 1. CONFIGURATION ---
@@ -38,7 +39,7 @@ function runTerminalBoot() {
         lines = Array.from(term.children).map(div => div.innerText.trim());
         term.innerHTML = ""; 
     } else {
-        lines = ["Initializing BIOS...", "Loading Kernel...", "System Ready."];
+        lines = ["Initializing BIOS...", "Loading Kernel...", "Loading Auto-Pilot Modules...", "System Ready."];
     }
 
     let index = 0;
@@ -51,7 +52,6 @@ function runTerminalBoot() {
             div.className = "opacity-80 animate-fade-in mb-1 font-mono text-sm";
             
             if(line.includes(">>> [OK]")) div.innerHTML = line.replace("[OK]", '<span class="text-green-400 font-bold">[OK]</span>');
-            else if(line.includes(">>> [1]")) div.innerHTML = line.replace("[1]", '<span class="text-blue-400">[1]</span>');
             else div.innerText = line;
 
             term.appendChild(div);
@@ -146,32 +146,64 @@ function startMainApp(message) {
     addSystemMessage(message);
 }
 
-// --- 6. AI LOGIC (UPDATED: New Model & TERM AI) ---
+// --- 6. CORE AI & AUTO-PILOT LOGIC ---
+
+// Helper: Parse AI response and execute commands automatically
+function parseAndExecuteActions(text) {
+    let cleanText = text;
+
+    // 1. CHECK FOR DOWNLOAD TAGS: <DOWNLOAD>filename.js\ncode...</DOWNLOAD>
+    const downloadRegex = /<DOWNLOAD>([\s\S]*?)<\/DOWNLOAD>/g;
+    let match;
+    while ((match = downloadRegex.exec(text)) !== null) {
+        const content = match[1].trim();
+        
+        // Split first line (filename) and rest (code)
+        const firstLineEnd = content.indexOf('\n');
+        let filename = "generated.txt";
+        let code = content;
+
+        if (firstLineEnd !== -1) {
+            filename = content.substring(0, firstLineEnd).trim();
+            code = content.substring(firstLineEnd + 1);
+        }
+        
+        downloadCodeFile(filename, code);
+    }
+    // Remove the raw code block from chat display to keep it clean
+    cleanText = cleanText.replace(downloadRegex, '[📁 FILE GENERATED]');
+
+    // 2. CHECK FOR INJECT TAGS: <INJECT>code...</INJECT>
+    const injectRegex = /<INJECT>([\s\S]*?)<\/INJECT>/g;
+    while ((match = injectRegex.exec(text)) !== null) {
+        const code = match[1].trim();
+        injectAndRun(code);
+    }
+    cleanText = cleanText.replace(injectRegex, '[⚡ CODE INJECTED]');
+
+    return cleanText;
+}
+
 async function talkToClone(prompt) {
-    // 1. LOCAL MODE
     if (USE_LOCAL_AI) {
         addAIMessage("Processing request via local kernel...", false);
         setTimeout(() => {
             const responses = [
-                "I am TermAI. Operating in offline mode. How can I assist?",
+                "I am TermAI. Operating in offline mode. I cannot generate files offline.",
                 "Local neural cluster active. No external uplink required.",
-                "System resources available. I am listening.",
-                "Processing on device. TermAI ready.",
-                "Data encrypted locally. I am TermAI."
+                "Please use Remote Mode to use Architect Tools."
             ];
             addAIMessage(responses[Math.floor(Math.random()*responses.length)], false);
         }, 1000);
         return;
     }
 
-    // 2. REMOTE MODE (GROQ)
     if (!GROQ_API_KEY) {
         addAIMessage("❌ ERROR: API Key missing. TermAI Remote Module disabled.", true);
         return;
     }
 
     try {
-        // Show thinking indicator
         const typingId = "typing-" + Date.now();
         const container = document.getElementById('chat-container');
         if(container) {
@@ -179,42 +211,129 @@ async function talkToClone(prompt) {
             scrollToBottom();
         }
 
-        const req = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: { 
-                "Content-Type": "application/json", 
-                "Authorization": `Bearer ${GROQ_API_KEY}` 
-            },
-            body: JSON.stringify({
-                // FIX: Updated Model ID
-                model: "llama-3.1-70b-versatile", 
-                temperature: 0.7,
-                max_tokens: 150,
-                messages: [
-                    { role: "system", content: "You are TermAI, a helpful cyberpunk AI assistant. You are cool, concise, and tech-savvy." }, 
-                    { role: "user", content: prompt }
-                ]
-            })
-        });
+        const models = [
+            "llama-3.3-70b-versatile", 
+            "llama-3.1-70b-versatile", 
+            "mixtral-8x7b-32768"       
+        ];
 
-        // Remove typing indicator
-        const typingEl = document.getElementById(typingId);
-        if(typingEl) typingEl.remove();
+        let lastError = null;
+        let success = false;
 
-        if (!req.ok) {
-            const errData = await req.json().catch(() => ({}));
-            throw new Error(errData.error?.message || `HTTP ${req.status}`);
+        for (const model of models) {
+            try {
+                const req = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json", 
+                        "Authorization": `Bearer ${GROQ_API_KEY}` 
+                    },
+                    body: JSON.stringify({
+                        model: model, 
+                        temperature: 0.7,
+                        max_tokens: 400,
+                        messages: [
+                            { 
+                                role: "system", 
+                                content: `You are TermAI, a cyberpunk AI Architect. 
+                                1. When user asks to CREATE a file: Format your response exactly like this: <DOWNLOAD>filename.ext\nCODE_HERE</DOWNLOAD>. 
+                                2. When user asks to UPDATE UI or INJECT code: Format like this: <INJECT>CSS_OR_JS_CODE</INJECT>.
+                                3. Do NOT show the code block again in the chat text outside these tags. 
+                                4. Be concise and cool.` 
+                            }, 
+                            { role: "user", content: prompt }
+                        ]
+                    })
+                });
+
+                if (!req.ok) {
+                    const errData = await req.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || `HTTP ${req.status}`);
+                }
+                
+                const json = await req.json();
+                
+                const typingEl = document.getElementById(typingId);
+                if(typingEl) typingEl.remove();
+
+                // EXECUTE THE AUTO-PILOT LOGIC
+                const processedResponse = parseAndExecuteActions(json.choices[0].message.content);
+                
+                addAIMessage(processedResponse, false);
+                success = true;
+                break; 
+
+            } catch (e) {
+                lastError = e;
+                if (e.message.includes("401") || e.message.includes("Invalid")) break; 
+                continue; 
+            }
+        }
+
+        if (!success) {
+            const typingEl = document.getElementById(typingId);
+            if(typingEl) typingEl.remove();
+            addAIMessage(`❌ TERM_AI FAILED: ${lastError ? lastError.message : 'Unknown Error'}`, true);
         }
         
-        const json = await req.json();
-        addAIMessage(json.choices[0].message.content, false);
-        
     } catch (err) {
-        addAIMessage(`❌ TERM_AI CONNECTION FAILED: ${err.message}`, true);
+        addAIMessage(`❌ SYSTEM CRITICAL: ${err.message}`, true);
     }
 }
 
-// --- 7. UI UPDATES ---
+// --- 7. ARCHITECT TOOLS ---
+
+function downloadCodeFile(filename, content) {
+    const element = document.createElement('a');
+    let mimeType = 'text/plain';
+    if(filename.endsWith('.js')) mimeType = 'text/javascript';
+    if(filename.endsWith('.html')) mimeType = 'text/html';
+    if(filename.endsWith('.css')) mimeType = 'text/css';
+
+    element.setAttribute('href', `data:${mimeType};charset=utf-8,` + encodeURIComponent(content));
+    element.setAttribute('download', filename);
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    
+    // Add a visual system message so user knows it happened
+    const container = document.getElementById('chat-container');
+    if(container) {
+        container.insertAdjacentHTML('beforeend', `<div class="text-xs text-center text-green-400 my-1 font-mono border border-green-900 bg-green-900/10 p-1">📁 DOWNLOADED: ${filename}</div>`);
+        scrollToBottom();
+    }
+}
+
+function injectAndRun(code) {
+    try {
+        if(code.trim().startsWith('.') || code.trim().includes('{') || code.includes('background') || code.includes('color')) {
+            // CSS
+            const style = document.createElement('style');
+            style.textContent = code;
+            document.head.appendChild(style);
+            const container = document.getElementById('chat-container');
+            if(container) {
+                container.insertAdjacentHTML('beforeend', `<div class="text-xs text-center text-purple-400 my-1 font-mono border border-purple-900 bg-purple-900/10 p-1">⚡ CSS INJECTED</div>`);
+                scrollToBottom();
+            }
+        } else {
+            // JS
+            const script = document.createElement('script');
+            script.textContent = code;
+            document.body.appendChild(script);
+            const container = document.getElementById('chat-container');
+            if(container) {
+                container.insertAdjacentHTML('beforeend', `<div class="text-xs text-center text-yellow-400 my-1 font-mono border border-yellow-900 bg-yellow-900/10 p-1">⚡ JS EXECUTED</div>`);
+                scrollToBottom();
+            }
+        }
+    } catch (e) {
+        addSystemMessage(`Injection Error: ${e.message}`);
+    }
+}
+
+// --- 8. UI UPDATES ---
 function updateStatsUI() {
     const titleEl = document.getElementById('lvl-text');
     const xpEl = document.getElementById('xp-text');
@@ -234,7 +353,7 @@ function switchRoom(roomId) {
     addSystemMessage(`Switched to sector [${roomId.toUpperCase()}]`);
 }
 
-// --- 8. INPUT HANDLING ---
+// --- 9. INPUT HANDLING ---
 function setupInputListener() {
     const chatInput = document.getElementById('chatInput');
     if(chatInput) {
@@ -254,7 +373,6 @@ function handleSend() {
 }
 
 function processCommand(txt) {
-    // AI Commands
     if (txt.startsWith('/ai')) {
         const prompt = txt.replace('/ai', '').trim();
         if(!prompt) return;
@@ -265,7 +383,6 @@ function processCommand(txt) {
 
     const lower = txt.toLowerCase();
     
-    // System Commands
     if (lower.includes('who are you')) { 
         addUserMessage(txt);
         addAIMessage("I am TermAI, your local system intelligence.", false); 
@@ -286,13 +403,12 @@ function processCommand(txt) {
         return; 
     }
     
-    // Standard Chat / MQTT
     addUserMessage(txt);
     publishMessage(txt);
     addXP(10);
 }
 
-// --- 9. CHAT RENDERING ---
+// --- 10. CHAT RENDERING ---
 function addUserMessage(text) {
     const container = document.getElementById('chat-container');
     if(!container) return;
@@ -306,21 +422,17 @@ function addAIMessage(text, isAction) {
     const container = document.getElementById('chat-container');
     if(!container) return;
     
-    // FIX: TERM AI Specific Styling
     const cssClass = isAction 
         ? 'border border-cyan-500/50 shadow-[0_0_15px_rgba(0,243,255,0.2)]' 
         : 'border border-white/10 bg-black/60';
 
     const html = `
     <div class="flex flex-row items-start gap-3 animate-fade-in">
-        <!-- TERM AI AVATAR -->
-        <div class="w-8 h-8 rounded-full bg-black border border-cyan-500 flex items-center justify-center text-cyan-400 font-mono text-[8px] font-bold shadow-[0_0_10px_rgba(0,255,255,0.3)]">
-            TERM
-        </div>
+        <div class="w-8 h-8 rounded-full bg-black border border-cyan-500 flex items-center justify-center text-cyan-400 font-mono text-[8px] font-bold shadow-[0_0_10px_rgba(0,255,255,0.3)]">TERM</div>
         <div class="flex-1">
             <div class="px-2 py-1 text-[10px] text-cyan-600 font-mono tracking-widest">TERM_AI_SYSTEM</div>
             <div class="p-4 rounded-r-xl rounded-bl-xl ${cssClass} text-sm text-gray-200 backdrop-blur-sm border-t-0">
-                <p class="leading-relaxed font-sans">${text}</p>
+                <p class="leading-relaxed font-sans whitespace-pre-wrap">${escapeHtml(text)}</p>
             </div>
         </div>
     </div>`;
@@ -342,7 +454,7 @@ function scrollToBottom() {
     if(c) c.scrollTop = c.scrollHeight;
 }
 
-// --- 10. MQTT CHAT ---
+// --- 11. MQTT CHAT ---
 function connectMQTT() {
     if (typeof mqtt === 'undefined') {
         console.warn("MQTT Library missing.");
@@ -378,7 +490,7 @@ function publishMessage(text) {
     }
 }
 
-// --- 11. UTILS ---
+// --- 12. UTILS ---
 function startVoiceRecognition() {
     if (!('webkitSpeechRecognition' in window)) return alert("Voice module not supported");
     const recognition = new webkitSpeechRecognition();
