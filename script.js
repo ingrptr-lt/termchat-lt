@@ -1,9 +1,10 @@
 // =========================================================================
-//         TERMOS LT: HYBRID EDITION (MATRIX + GLASS)
+//         TERMOS LT: HYBRID EDITION (MUSIC + MUSIC + MATRIX)
 // =========================================================================
 
 // --- 1. CONFIGURATION ---
-const GROQ_API_KEY = "gsk_YOUR_GROQ_API_KEY_HERE"; 
+// PASTE YOUR REAL KEY HERE IF YOU WANT AI TO WORK ON YOUR PC
+const GROQ_API_KEY = "YOUR_GROQ_API_KEY_HERE"; 
 const MQTT_BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
 
 // --- 2. STATE ---
@@ -16,10 +17,8 @@ const LEVELS = ['Newbie', 'Apprentice', 'Coder', 'Hacker', 'Architect', 'Wizard'
 
 // --- 3. LOGIN & INITIALIZATION ---
 window.addEventListener('load', () => {
-    // Check for Matrix rain canvas
     initMatrix();
     
-    // Auto-focus input
     const userInput = document.getElementById('usernameInput');
     if(userInput) {
         userInput.focus();
@@ -40,21 +39,16 @@ function login() {
     }
 
     username = name;
-
-    // 1. Transition UI
     document.getElementById('loginScreen').style.display = 'none';
     const main = document.getElementById('main-layout');
     main.classList.remove('hidden');
-    main.classList.add('flex'); // Add flex back for layout
+    main.classList.add('flex');
     
-    // 2. Update User Info
     document.getElementById('user-display').innerText = `@${username.toUpperCase()}`;
     loadStats();
     updateStatsUI();
-
-    // 3. Start Systems
     connectMQTT();
-    addSystemMessage(`Welcome back, Operator ${username}. System Online.`);
+    addSystemMessage(`Identity verified. Welcome, Operator ${username}.`);
 }
 
 // --- 4. UI CONTROLLER ---
@@ -66,7 +60,6 @@ function updateStatsUI() {
     if(titleEl) titleEl.innerText = `LVL. ${userStats.level} ${userStats.title.toUpperCase()}`;
     if(xpEl) xpEl.innerText = `XP: ${userStats.xp.toLocaleString()}`;
     
-    // Calculate width (Level up every 1000xp)
     const progress = (userStats.xp % 1000) / 10; 
     if(barEl) barEl.style.width = `${progress}%`;
 }
@@ -102,13 +95,38 @@ function processCommand(txt) {
         return;
     }
 
-    // AGENTIC ACTIONS
+    // --- MUSIC LOGIC ---
+    const audio = document.getElementById('bg-music');
     const lower = txt.toLowerCase();
-    if (lower.includes('play music')) {
+
+    if (lower.includes('play music') || lower.includes('play jazz') || lower.includes('music')) {
         addUserMessage(txt);
-        addAIMessage("Playing Jazz stream... 🎵", true);
+        if (audio) {
+            if (audio.paused) {
+                audio.play().then(() => {
+                    addAIMessage("🎵 Audio stream initialized. Enjoy the vibes.", true);
+                }).catch(e => {
+                    addAIMessage("⚠️ Playback blocked by browser. Please click the page once.", true);
+                });
+            } else {
+                addAIMessage("🎵 Music is already active.", true);
+            }
+        } else {
+            addAIMessage("❌ Audio module not found in system.", true);
+        }
         return;
     }
+
+    if (lower.includes('stop music')) {
+        addUserMessage(txt);
+        if (audio) {
+            audio.pause();
+            addAIMessage("⏹ Audio stream terminated.", true);
+        }
+        return;
+    }
+
+    // OPEN PANEL (Old Logic)
     if (lower.includes('open panel')) {
         addUserMessage(txt);
         addAIMessage("Accessing Workshop Panel... 🛠️", true);
@@ -122,7 +140,7 @@ function processCommand(txt) {
     addXP(10);
 }
 
-// --- 6. RENDERING ---
+// --- 6. RENDERING MESSAGES ---
 function addUserMessage(text) {
     const container = document.getElementById('chat-container');
     const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -180,37 +198,64 @@ function scrollToBottom() {
     if(c) c.scrollTop = c.scrollHeight;
 }
 
-// --- 7. AI & MQTT ---
+// --- 7. AI & NETWORKING ---
 async function talkToClone(prompt) {
+    // Check if key is real
+    if (!GROQ_API_KEY || GROQ_API_KEY.includes("YOUR_GROQ_API_KEY")) {
+        addAIMessage("❌ CONFIG ERROR: API Key missing. Please edit script.js line 7.", true);
+        return;
+    }
+
     try {
-        addAIMessage('Processing...', false);
+        addAIMessage("Processing...", false);
+        
         const req = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
+            headers: { 
+                "Content-Type": "application/json", 
+                "Authorization": `Bearer ${GROQ_API_KEY}` 
+            },
             body: JSON.stringify({
                 model: "llama-3.1-8b-instant",
-                messages: [{role: "system", content: "You are a helpful Cyberpunk AI."}, {role: "user", content: prompt}]
+                messages: [
+                    { role: "system", content: "You are TERMAI, a helpful Cyberpunk AI operating in the Multiverse. Keep answers short, punchy, and tech-savvy." }, 
+                    { role: "user", content: prompt }
+                ]
             })
         });
+
+        if (!req.ok) {
+            throw new Error(`API Error: ${req.status}`);
+        }
+
         const json = await req.json();
-        addAIMessage(json.choices[0].message.content, false);
+        const reply = json.choices[0].message.content;
+        
+        addAIMessage(reply, false);
+        
     } catch (err) {
-        addAIMessage("AI Connection Failed", true);
+        console.error(err);
+        addAIMessage(`❌ CONNECTION FAILED: ${err.message}`, true);
     }
 }
 
 function connectMQTT() {
-    if (typeof mqtt === 'undefined') return;
+    if (typeof mqtt === 'undefined') {
+        console.warn("MQTT Library not loaded");
+        return;
+    }
     const clientId = "termos-" + Math.random().toString(16).substr(2, 8);
-    mqttClient = mqtt.connect(MQTT_BROKER_URL, { clientId: clientId });
+    mqttClient = mqtt.connect(MQTT_BROKER_URL, { clientId: clientId, keepalive: 60 });
 
     mqttClient.on('connect', () => {
         mqttClient.subscribe('termchat/messages');
     });
 
     mqttClient.on('message', (topic, msg) => {
-        const data = JSON.parse(msg.toString());
-        if (data.user !== username) addRemoteMessage(data.user, data.text);
+        try {
+            const data = JSON.parse(msg.toString());
+            if (data.user !== username) addRemoteMessage(data.user, data.text);
+        } catch (e) {}
     });
 }
 
@@ -237,10 +282,14 @@ function addRemoteMessage(user, text) {
     scrollToBottom();
 }
 
+// --- 8. UTILITIES ---
 function startVoiceRecognition() {
-    if (!('webkitSpeechRecognition' in window)) return alert("Voice not supported");
+    if (!('webkitSpeechRecognition' in window)) return alert("Voice module not supported by browser");
     const recognition = new webkitSpeechRecognition();
-    recognition.onresult = (e) => { chatInput.value = e.results[0][0].transcript; };
+    recognition.onresult = (e) => { 
+        chatInput.value = e.results[0][0].transcript; 
+        addSystemMessage("Voice input received.");
+    };
     recognition.start();
 }
 
@@ -264,28 +313,40 @@ function escapeHtml(text) {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// --- 8. MATRIX ANIMATION ---
+// --- 9. MATRIX ANIMATION ---
 function initMatrix() {
     const c = document.getElementById('matrix-canvas');
     if(!c) return;
     const ctx = c.getContext('2d');
-    c.width = window.innerWidth; c.height = window.innerHeight;
-    const letters = 'ABCDEF0123456789';
-    const fontSize = 14, columns = c.width / fontSize;
+    c.width = window.innerWidth; 
+    c.height = window.innerHeight;
+    
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*';
+    const fontSize = 14;
+    const columns = c.width / fontSize;
     const drops = Array(Math.floor(columns)).fill(1);
 
     function draw() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
         ctx.fillRect(0, 0, c.width, c.height);
-        ctx.fillStyle = '#0F0';
+        
+        ctx.fillStyle = '#0F0'; 
         ctx.font = fontSize + 'px monospace';
+        
         for(let i=0; i<drops.length; i++) {
             const text = letters[Math.floor(Math.random()*letters.length)];
+            if(Math.random() > 0.98) ctx.fillStyle = '#00f3ff';
+            else ctx.fillStyle = '#0F0';
+
             ctx.fillText(text, i*fontSize, drops[i]*fontSize);
+
             if(drops[i]*fontSize > c.height && Math.random() > 0.975) drops[i] = 0;
             drops[i]++;
         }
     }
     setInterval(draw, 33);
-    window.addEventListener('resize', () => { c.width = window.innerWidth; c.height = window.innerHeight; });
+    window.addEventListener('resize', () => { 
+        c.width = window.innerWidth; 
+        c.height = window.innerHeight; 
+    });
 }
