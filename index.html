@@ -91,23 +91,24 @@
     <canvas id="matrix-canvas"></canvas>
     <div class="scanlines"></div>
 
-    <!-- 2. LOGIN SCREEN -->
+    <!-- 2. LOGIN SCREEN (FIXED WITH API KEY INPUT) -->
     <div id="loginScreen" class="relative z-50 flex items-center justify-center w-screen h-screen bg-black/80 backdrop-blur-sm">
         <div class="glass-panel p-10 rounded-2xl w-full max-w-md text-center border-green-500/50 animate-fade-in">
             <h1 class="text-4xl font-bold mb-2 text-white glow-text tracking-tighter">TERMOS<span class="text-green-500">LT</span></h1>
-            <p class="text-green-400/70 retro-text mb-8 text-sm">MULTIVERSE OPERATING SYSTEM v2.0</p>
+            <p class="text-green-400/70 retro-text mb-6 text-sm">MULTIVERSE OS v2.0</p>
             
-            <div class="space-y-4">
-                <div class="relative">
-                    <input type="text" id="usernameInput" class="w-full p-4 rounded-lg glass-input text-center text-lg placeholder-green-800" placeholder="ENTER CODENAME" autocomplete="off">
-                    <div class="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-green-500 to-transparent opacity-50"></div>
-                </div>
+            <div class="space-y-3">
+                <!-- USERNAME -->
+                <input type="text" id="usernameInput" class="w-full p-3 rounded-lg glass-input text-center text-lg placeholder-green-800" placeholder="ENTER CODENAME" autocomplete="off">
+                
+                <!-- NEW: API KEY INPUT -->
+                <input type="password" id="apiKeyInput" class="w-full p-3 rounded-lg glass-input text-center text-base placeholder-green-900" placeholder="OPTIONAL: ENTER GROQ API KEY" autocomplete="off">
                 
                 <button onclick="login()" class="w-full bg-green-600 hover:bg-green-500 text-black font-bold py-3 rounded-lg shadow-[0_0_20px_rgba(0,255,65,0.3)] transition-all retro-text text-lg hover:scale-[1.02]">
                     INITIALIZE
                 </button>
                 
-                <p class="text-xs text-gray-500 mt-4">Secure Connection Required</p>
+                <p class="text-xs text-gray-500 mt-2">API Key is saved locally on your device.</p>
             </div>
         </div>
     </div>
@@ -186,4 +187,3 @@
     <script src="script.js"></script>
 </body>
 </html>
-    
