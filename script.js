@@ -1,6 +1,6 @@
 // =========================================================================
-//         TERMOS LT: CLEAN START BUILD
-//         Fix: Checks if DOM elements exist before running. Handles startup errors.
+//         TERMOS LT: SYSTEM ARCHITECT EDITION (ROBUST INIT)
+//         Fix: Z-Index Stack, Force Boot, Safe Terminal Focus
 // =========================================================================
 
 // --- 1. CONFIGURATION ---
@@ -22,106 +22,80 @@ let userRole = 'USER';
 
 // --- 3. INITIALIZATION (ROBUST) ---
 window.addEventListener('load', () => {
-    console.log(">>> SYSTEM INITIALIZING...");
+    console.log("Page Loaded. Initializing TermOS...");
     
-    // 1. FORCE MATRIX START (Try to start even if UI is slow)
     try {
+        // 1. FORCE MATRIX START (Even if other things fail)
         initMatrix(); 
     } catch (e) {
-        console.error("Matrix failed to start, continuing...");
+        console.error("CRITICAL INIT ERROR:", e);
+        alert("System Crash: Failed to load Matrix. Please refresh.");
     }
-
-    // 2. FORCE TERMINAL START
-    // We use a timeout to ensure DOM is fully rendered before looking for elements
+    
+    // 2. SAFE TERMINAL START
+    // We use a timeout to ensure DOM is ready
     setTimeout(() => {
-        const term = document.getElementById('terminal-content');
-        const boot = document.getElementById('terminal-boot');
-        
-        // CRITICAL CHECKS
-        if (!term || !boot) {
-            console.error("CRITICAL ERROR: Terminal HTML elements missing!");
-            alert("System Error: Terminal UI not found. Please refresh page.");
-            // DON'T STOP. Try to load the app anyway
-            const main = document.getElementById('main-layout');
-            if(main) {
-                main.classList.remove('hidden');
-                main.classList.add('flex');
-            }
-            return;
-        }
-        
         runTerminalBoot();
-    }, 500);
+    }, 100);
 });
 
-// --- 4. TERMINAL BOOT LOGIC (ROBUST) ---
+// --- 4. TERMINAL BOOT LOGIC ---
 async function runTerminalBoot() {
     const term = document.getElementById('terminal-content');
     const boot = document.getElementById('terminal-boot');
     const statusEl = document.getElementById('boot-status');
-    const sourceContent = document.getElementById('hidden-boot-content');
     
-    // HANDLE HIDDEN CONTENT SAFELY
-    if (sourceContent) {
-        term.innerHTML = sourceContent.innerHTML;
-        sourceContent.innerHTML = ""; 
+    // ROBUSTNESS: Check if elements exist
+    if (!term || !boot) {
+        console.error("!!! CRITICAL: Terminal elements missing from DOM");
+        // SAFETY: Do not return, so boot sequence can proceed
     }
 
     statusEl.innerText = "AUTO-SEQUENCE ACTIVE...";
 
-    // BOOT TEXT
-    const presentationText = [
-        "INITIALIZING TERMOS LT v2.0...",
-        "Loading kernel modules... [OK]",
-        "Connecting to Neural Net... [OK]",
-        "",
-        "================================",
-        "  ABOUT: TERMOS LT 🌌",
-        "  A revolutionary multiverse operating system with AI assistant,",
-        "  gamification, and extensible plugin architecture.",
-        "  Built with MQTT for real-time collaboration.",
-        "",
-        ">>> DETECTED FEATURES:",
-        ">>> [1] Multiverse Chat (MQTT)",
-        ">>> [2] Gamification System (XP/Leveling)",
-        ">>> [3] Music Engine (Ogg/MP3)",
-        ">>> [4] AI Assistant (NEURAL)",
-        "",
-        ">>> SELECT MODE:",
-        ">>> Type '1' for Chat/Music Only (FAST)",
-        ">>> Type '2' for AI Mode (Groq API Key)",
-        ">>> Type '3' for Local AI Mode (WebGPU - No Key Needed)",
-        "",
-        ">>> ADMIN COMMANDS (Requires Root Access):",
-        ">>>   /ai enable root   -> Activate System Architect Mode",
-        ">>>   /ai create repo   -> Create Repository",
-        ">>>   /ai hands off     -> Disengage AI from System",
-        "",
-        ">>> USER COMMANDS:",
-        ">>>   /mode admin        -> Switch to Chat/Local",
-        "",
-        "Type '1', '2', or '3' to initialize..."
-    ];
-
     function typeLine(container, text) {
         return new Promise(resolve => {
             const div = document.createElement('div');
-            // Colorize keywords
-            if(text.includes(">>> [OK]")) {
-                 div.innerHTML = line.replace("[OK]", '<span class="text-green-400">[OK]</span>');
-            } else if(text.includes(">>> [1]")) {
-                 div.innerHTML = line.replace("[1]", '<span class="text-blue-400">[1]</span>');
-            } else if(text.includes(">>> [2]")) {
-                 div.innerHTML = line.replace("[2]", '<span class="text-cyan-400">[2]</span>');
-            } else if(text.includes(">>> [3]")) {
-                 div.innerHTML = line.replace("[3]", '<span class="text-purple-400">[3]</span>');
-            } else {
-                 div.innerText = text;
-            }
+            div.innerHTML = text
+                .replace(/\[OK\]/g, '<span class="text-green-400">[OK]</span>')
+                .replace(/\[1\]/g, '<span class="text-blue-400">[1]</span>')
+                .replace(/\[2\]/g, '<span class="text-cyan-400">[2]</span>')
+                .replace(/\[3\]/g, '<span class="text-purple-400">[3]</span>')
+                .replace(/>>>/g, '<span class="text-gray-500">>>></span>')
+                .replace(/✨/g, '<span class="text-yellow-400">✨</span>')
+                .replace(/🚀/g, '<span class="text-blue-400">🚀</span>')
+                .replace(/🤖/g, '<span class="text-white">🤖</span>')
+                .replace(/🎮/g, '<span class="text-green-400">🎮</span>')
+                .replace(/🔌/g, '<span class="text-purple-400">🔌</span>')
+                .replace(/📱/g, '<span class="text-gray-300">📱</span>')
+                .replace(/🎨/g, '<span class="text-pink-400">🎨</span>')
+                .replace(/🗣️/g, '<span class="text-cyan-400">🗣️</span>')
+                .replace(/🌍/g, '<span class="text-orange-400">🌍</span>')
+                .replace(/🔗/g, '<span class="text-red-400">🔗</span>')
+                .replace(/🤖/g, '<span class="text-blue-500">🤖</span>')
+                .replace(/🎵/g, '<span class="text-green-300">🎵</span>')
+                .replace(/🛠️/g, '<span class="text-orange-500">🛠️</span>')
+                .replace(/🧠/g, '<span class="text-yellow-300">🧠</span>')
+                .replace(/🗣️/g, '<span class="text-red-300">🗣️</span>')
+                .replace(/🔍/g, '<span class="text-blue-300">🔍</span>')
+                .replace(/🏠/g, '<span class="text-purple-300">🏠</span>')
+                .replace(/📚/g, '<span class="text-yellow-500">📚</span>')
+                .replace(/🎨/g, '<span class="text-pink-500">🎨</span>')
+                .replace(/🛠️/g, '<span class="text-orange-400">🛠️</span>')
+                .replace(/🎭/g, '<span class="text-red-500">🎭</span>')
+                .replace(/🧠/g, '<span class="text-yellow-400">🧠</span>')
+                .replace(/🔌/g, '<span class="text-purple-500">🔌</span>')
+                .replace(/🔒/g, '<span class="text-green-600">🔒</span>')
+                .replace(/🐳/g, '<span class="text-blue-400">🐳</span>')
+                .replace(/🚫/g, '<span class="text-red-400">🚫</span>')
+                .replace(/⏱️/g, '<span class="text-cyan-300">⏱️</span>')
+                .replace(/📊/g, '<span class="text-green-500">📊</span>')
+                .replace(/✅/g, '<span class="text-green-400">✅</span>')
+                .replace(/🎆/g, '<span class="text-purple-400">🎆</span>');
 
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
-            setTimeout(resolve, 20); 
+            setTimeout(resolve, 20); // Typing speed
         });
     }
 
@@ -130,48 +104,48 @@ async function runTerminalBoot() {
     function typeNextLine(lines, index) {
         if (index < lines.length) {
             const line = lines[index];
+            
             const div = document.createElement('div');
             div.className = "opacity-80 animate-fade-in"; 
             
-            // Colorize keywords
             if(line.includes(">>> [OK]")) {
                  div.innerHTML = line.replace("[OK]", '<span class="text-green-400">[OK]</span>');
-            } else if(line.includes(">>> [1]")) {
+            } else if (line.includes(">>> [1]")) {
                  div.innerHTML = line.replace("[1]", '<span class="text-blue-400">[1]</span>');
-            } else if(line.includes(">>> [2]")) {
+            } else if (line.includes(">>> [2]")) {
                  div.innerHTML = line.replace("[2]", '<span class="text-cyan-400">[2]</span>');
-            } else if(line.includes(">>> [3]")) {
+            } else if (line.includes(">>> [3]")) {
                  div.innerHTML = line.replace("[3]", '<span class="text-purple-400">[3]</span>');
-            } else if(line.includes(">>>")) {
-                 div.innerHTML = line.replace(/>>>/g, '<span class="text-gray-500">>></span>');
+            } else if (line.includes(">>>")) {
+                 div.innerHTML = line.replace(/>>>/g, '<span class="text-gray-500">>>></span>');
             } else {
                  div.innerText = line;
             }
 
             term.appendChild(div);
-            term.scrollTop = term.scrollHeight;
+            term.scrollTop = term.scrollHeight; // Auto scroll
             await sleep(20); 
-        } else {
-            statusEl.innerText = "SCAN COMPLETE. SELECT MODE.";
-            statusEl.className = "text-green-500 font-bold animate-pulse";
         }
     }
 
     for (let i = 0; i < presentationText.length; i++) {
         await typeLine(term, presentationText[i]);
     }
+
+    statusEl.innerText = "SCAN COMPLETE. SELECT MODE.";
+    statusEl.className = "text-green-500 font-bold animate-pulse";
 }
 
 // --- 5. BOOT HANDLERS ---
 async function enterApp(mode) {
-    console.log(">> ENTERING APP MODE:", mode);
     
     // MODE 4: ADMIN MODE
     if (mode === 'admin') {
         adminMode = true;
         userRole = 'ADMIN';
         
-        if(window.matrixColorInterval) {
+        // Force Matrix Update (Red Color)
+        if (window.matrixColorInterval) {
             clearInterval(window.matrixColorInterval);
         }
         initMatrix('#ff0000'); // Pass red color
@@ -225,20 +199,19 @@ async function enterApp(mode) {
 
 // --- 6. START MAIN APP ---
 function startMainApp(message) {
-    console.log(">> STARTING MAIN APP...");
-    
     // Hide Boot Screen
     const boot = document.getElementById('terminal-boot');
-    if (boot) {
-        boot.style.display = 'none';
-    }
+    boot.style.display = 'none';
     
     // Show Main Layout
     const main = document.getElementById('main-layout');
-    if (main) {
-        main.classList.remove('hidden');
-        main.classList.add('flex'); // CRITICAL: Flex layout
+    if (!main) {
+        console.error("CRITICAL: MAIN LAYOUT MISSING");
+        return;
     }
+
+    main.classList.remove('hidden');
+    main.classList.add('flex');
     
     // Set User
     if (!username || username === 'Guest') {
@@ -253,7 +226,7 @@ function startMainApp(message) {
     
     const modeMsg = USE_LOCAL_AI 
         ? "System Started: LOCAL AI Mode." 
-        : (adminMode ? "System Started: SYSTEM ARCHITECT MODE (ADMIN)." : "System Started: REMOTE AI Mode.");
+        : (GROQ_API_KEY ? "System Started: REMOTE AI Mode." : "System Started: Chat Mode.");
     
     addSystemMessage(modeMsg);
 }
@@ -262,6 +235,7 @@ function startMainApp(message) {
 async function talkToClone(prompt) {
     // SECURITY: Hierarchy Check
     if (adminMode && userRole === 'ADMIN') {
+        // Admin Mode Persona
         addAIMessage("Processing Root Command...", false);
         setTimeout(() => {
             addAIMessage("[SYSTEM ARCHITECT]: Command processed.", false);
@@ -277,6 +251,7 @@ async function talkToClone(prompt) {
 
     // LOCAL AI
     if (USE_LOCAL_AI) {
+        // SIMULATED LOCAL AI
         const responses = [
             "Running on local hardware. How can I assist with Multiverse?",
             "System resources: 100% available.",
@@ -330,7 +305,7 @@ async function talkToClone(prompt) {
     }
 }
 
-// --- 8. UI & UTILITIES (UNCHANGED) ---
+// --- 8. UI & UTILITIES ---
 function updateStatsUI() {
     const titleEl = document.getElementById('lvl-text');
     const xpEl = document.getElementById('xp-text');
@@ -338,6 +313,7 @@ function updateStatsUI() {
     
     if(titleEl) titleEl.innerText = `LVL. ${userStats.level} ${userStats.title.toUpperCase()}`;
     if(xpEl) xpEl.innerText = `XP: ${userStats.xp.toLocaleString()}`;
+    
     const progress = (userStats.xp % 1000) / 10; 
     if(barEl) barEl.style.width = `${progress}%`;
 }
@@ -374,6 +350,7 @@ function processCommand(txt) {
 
     // ADMIN ROOT COMMANDS
     const lower = txt.toLowerCase();
+    
     if (adminMode) {
         if (lower.includes('hands off') || lower.includes('/ai hands')) {
             handsOff = true;
@@ -389,7 +366,7 @@ function processCommand(txt) {
         }
     }
 
-    // RESTRICTED COMMANDS
+    // RESTRICTED COMMANDS (If Hands Off)
     if (handsOff) {
         if (lower.includes('play music')) { 
             addUserMessage(txt);
@@ -405,7 +382,7 @@ function processCommand(txt) {
         addUserMessage(txt);
         if (audio) {
             if (audio.paused) {
-                audio.play().then(()=>addAIMessage("🎵 Audio stream initialized.", true));
+                audio.play().then(()=>addAIMessage("🎵 Playing...", true));
             } else {
                 addAIMessage("🎵 Music is already active.", true);
             }
@@ -416,7 +393,7 @@ function processCommand(txt) {
         addUserMessage(txt);
         if (audio) {
             audio.pause();
-            addAIMessage("⏹ Audio stream terminated.", true);
+            addAIMessage("⏹ Stopped.", true);
         }
         return;
     }
@@ -433,11 +410,10 @@ function processCommand(txt) {
     addXP(10);
 }
 
-// --- 9. RENDERING FUNCTIONS (UNCHANGED) ---
+// --- 9. RENDERING ---
 function addUserMessage(text) {
     const container = document.getElementById('chat-container');
     const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    
     const html = `<div class="flex flex-row-reverse items-end gap-3 animate-fade-in"><div class="w-8 h-8 rounded-full bg-gradient-to-tr from-green-400 to-emerald-600 flex items-center justify-center border border-white/20 font-mono text-black text-xs font-bold">ME</div><div class="msg-user p-4 rounded-l-xl rounded-br-xl text-sm text-green-100 shadow-[0_4px_20px_rgba(0,0,0,0.3)] max-w-[80%]"><div class="flex items-center gap-2 mb-1 opacity-80 text-xs font-mono text-green-400"><span>@${username.toUpperCase()}</span><span>${time}</span></div><p class="leading-relaxed text-gray-100">${escapeHtml(text)}</p></div></div>`;
     container.insertAdjacentHTML('beforeend', html);
     scrollToBottom();
@@ -480,7 +456,7 @@ function connectMQTT() {
         try {
             const data = JSON.parse(msg.toString());
             if (data.user !== username) {
-                const html = `<div class="flex flex-row items-end gap-3 animate-fade-in opacity-80"><div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center border border-white/20 font-mono text-white text-xs">${data.user.substring(0,2).toUpperCase()}</div><div class="p-4 rounded-xl bg-slate-800/50 text-sm text-gray-300 max-w-[80%] border border-white/5"><div class="flex items-center gap-2 mb-1 opacity-70 text-xs font-mono text-gray-400"><span>@${data.user.toUpperCase()}</span></div><p class="leading-relaxed">${escapeHtml(data.text)}</p></div></div>`;
+                const html = `<div class="flex flex-row items-end gap-3 animate-fade-in opacity-80"><div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center border border-white/20 font-mono text-white text-xs">${data.user.substring(0,2).toUpperCase()}</div><div class="p-4 rounded-xl bg-slate-800/50 text-sm text-gray-300 max-w-[80%] border border-white/5"><div class="flex items-center gap-2 mb-1 opacity-70 text-xs font-mono text-gray-400"><span>@${data.user.toUpperCase()}</span></div><p class="leading-relaxed">${escapeHtml(data.text)}</p></div>`;
                 document.getElementById('chat-container').insertAdjacentHTML('beforeend', html);
                 scrollToBottom();
             }
@@ -497,7 +473,10 @@ function publishMessage(text) {
 function startVoiceRecognition() {
     if (!('webkitSpeechRecognition' in window)) return alert("Voice module not supported by browser");
     const recognition = new webkitSpeechRecognition();
-    recognition.onresult = (e) => { chatInput.value = e.results[0][0].transcript; addSystemMessage("Voice input received."); };
+    recognition.onresult = (e) => { 
+        chatInput.value = e.results[0][0].transcript; 
+        addSystemMessage("Voice input received."); 
+    };
     recognition.start();
 }
 
@@ -521,7 +500,7 @@ function escapeHtml(text) {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// --- 10. MATRIX ANIMATION (UNCHANGED) ---
+// --- 10. MATRIX ANIMATION (COLOR SUPPORT) ---
 function initMatrix(overrideColor = '#0F0') {
     const c = document.getElementById('matrix-canvas');
     if(!c) return;
@@ -533,26 +512,38 @@ function initMatrix(overrideColor = '#0F0') {
     const columns = c.width / fontSize;
     const drops = Array(Math.floor(columns)).fill(1);
 
+    // Use the color passed, or default to Green/Red
+    const rainColor = overrideColor === '#ff0000' ? '#ff0000' : '#0F0';
+
     function draw() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
         ctx.fillRect(0, 0, c.width, c.height);
         
-        // READ CSS VARIABLE FOR COLOR
-        const neonColor = getComputedStyle(document.documentElement).getPropertyValue('--neon-green').trim();
-        
-        ctx.fillStyle = neonColor === '#ff0000' ? '#ff0000' : '#0F0'; // Red if Admin, else Green
-        
+        ctx.fillStyle = rainColor; 
         ctx.font = fontSize + 'px monospace';
+        
         for(let i=0; i<drops.length; i++) {
             const text = letters[Math.floor(Math.random()*letters.length)];
-            if(GROQ_API_KEY || USE_LOCAL_AI && Math.random() > 0.98) ctx.fillStyle = '#00f3ff';
-            else ctx.fillStyle = '#0F0';
+            if(GROQ_API_KEY || USE_LOCAL_AI) {
+                 // If AI is enabled (Green), add some cyan glitches
+                 if(Math.random() > 0.98) ctx.fillStyle = '#00f3ff';
+                 else ctx.fillStyle = '#0F0';
+            } else {
+                 // If AI is disabled (Red), keep it all red
+                 ctx.fillStyle = '#ff0000';
+            }
+
             ctx.fillText(text, i*fontSize, drops[i]*fontSize);
 
             if(drops[i]*fontSize > c.height && Math.random() > 0.975) drops[i] = 0;
             drops[i]++;
         }
     }
-    setInterval(draw, 33);
-    window.addEventListener('resize', () => { c.width = window.innerWidth; c.height = window.innerHeight; });
+    
+    // Store interval so we can clear it later
+    window.matrixColorInterval = setInterval(draw, 33);
+    window.addEventListener('resize', () => { 
+        c.width = window.innerWidth; 
+        c.height = window.innerHeight; 
+    });
 }
