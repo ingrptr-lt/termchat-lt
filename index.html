@@ -3,139 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TermOS LT</title>
+    <title>TermOS LT | Multiverse OS</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     
     <style>
         :root {
-            --term-color: #33ff00;
-            --bg-color: #050505;
-            --panel-bg: #0a0a0a;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
-        body { background: var(--bg-color); color: #fff; overflow: hidden; }
-
-        /* LOGIN */
-        #loginScreen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; justify-content: center; align-items: center; z-index: 9999;
-            background: var(--bg-color);
-        }
-        .login-box {
-            background: rgba(0,0,0,0.9); border: 2px solid var(--term-color); padding: 40px; text-align: center;
-            box-shadow: 0 0 20px rgba(51,255,0,0.3);
-        }
-        .login-box input {
-            background: #000; color: var(--term-color); border: 1px solid var(--term-color);
-            padding: 10px; width: 100%; margin: 10px 0; text-align: center; font-size: 16px;
-        }
-        .login-box button {
-            background: var(--term-color); color: #000; border: none; padding: 10px 20px; width: 100%; cursor: pointer; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;
+            --neon-green: #00ff41;
+            --neon-cyan: #00f3ff;
+            --glass-bg: rgba(0, 10, 0, 0.75);
+            --glass-border: rgba(0, 255, 65, 0.3);
         }
 
-        /* MAIN LAYOUT */
-        #main-layout {
-            display: none; /* Hidden */
-            display: grid;
-            grid-template-columns: 1fr 300px;
-            grid-template-rows: auto 1fr auto;
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #000;
+            color: white;
+        }
+
+        /* --- MATRIX BACKGROUND --- */
+        #matrix-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            width: 100vw;
             height: 100vh;
-            padding: 0;
         }
 
-        /* HEADER */
-        #room-header {
-            grid-column: 1 / -1;
-            border-bottom: 2px solid var(--term-color);
-            padding: 15px;
-            font-family: 'Courier New', monospace;
-            color: var(--term-color);
-            font-size: 1.2em;
+        /* --- CRT SCANLINES --- */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            z-index: 50;
+            pointer-events: none;
+            opacity: 0.6;
         }
 
-        /* TERMINAL */
-        #terminal-body {
-            grid-column: 1 / -1;
-            grid-row: 2;
-            overflow-y: auto;
-            padding: 15px;
-            font-family: 'Courier New', monospace;
-            font-size: 15px;
-            background: rgba(0,0,0,0.8);
-            color: #ccc;
+        /* --- GLASS PANELS --- */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
         }
 
-        /* PANEL */
-        #multiverse-panel {
-            grid-column: 2;
-            grid-row: 2;
-            border-left: 2px solid var(--term-color);
-            background: var(--panel-bg);
-            padding: 15px;
-            display: none;
+        /* --- INPUTS --- */
+        .glass-input {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            color: var(--neon-green);
+            font-family: 'Share Tech Mono', monospace;
+            transition: all 0.3s ease;
         }
-        #multiverse-panel.active { display: block; }
-
-        /* INPUT */
-        .input-line {
-            grid-column: 1 / -1;
-            display: flex;
-            border-top: 2px solid var(--term-color);
-            padding: 10px;
-            background: rgba(0,0,0,0.9);
-            align-items: center;
-        }
-        #chatInput {
-            flex: 1; background: transparent; border: none; color: #fff;
-            font-family: 'Courier New', monospace; font-size: 16px; outline: none;
-        }
-        #sendButton {
-            background: var(--term-color); color: #000; border: none; padding: 8px 15px; cursor: pointer; margin-left: 10px; font-weight: bold;
+        .glass-input:focus {
+            outline: none;
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.2);
         }
 
-        /* MOBILE */
-        @media (max-width: 768px) {
-            #main-layout { grid-template-columns: 1fr; display: flex; flex-direction: column; }
-            #multiverse-panel { display: none !important; }
-            .input-line { position: fixed; bottom: 0; left: 0; width: 100%; z-index: 100; padding: 15px; }
-        }
+        /* --- TYPOGRAPHY --- */
+        .retro-text { font-family: 'Share Tech Mono', monospace; letter-spacing: 2px; }
+        .glow-text { text-shadow: 0 0 10px var(--neon-green); }
 
-        /* DEBUG INDICATOR */
-        #debug-status {
-            position: fixed; top: 5px; right: 5px; font-size: 10px; color: #555; z-index: 10000;
-            font-family: monospace;
-        }
+        /* --- MESSAGES --- */
+        .msg-user { background: rgba(0, 255, 65, 0.1); border-left: 3px solid var(--neon-green); }
+        .msg-system { background: rgba(0, 243, 255, 0.1); border-left: 3px solid var(--neon-cyan); }
+        
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
     </style>
 </head>
 <body>
 
-    <!-- DEBUG INDICATOR -->
-    <div id="debug-status">JS LOADING...</div>
+    <!-- 1. MATRIX BACKGROUND -->
+    <canvas id="matrix-canvas"></canvas>
+    <div class="scanlines"></div>
 
-    <!-- LOGIN -->
-    <div id="loginScreen">
-        <div class="login-box">
-            <h2 style="color:var(--term-color);">TERMOS LT</h2>
-            <input type="text" id="usernameInput" placeholder="Username" maxlength="20">
-            <button onclick="login()">ENTER</button>
+    <!-- 2. LOGIN SCREEN (Initially Visible) -->
+    <div id="loginScreen" class="relative z-50 flex items-center justify-center w-screen h-screen bg-black/80 backdrop-blur-sm">
+        <div class="glass-panel p-10 rounded-2xl w-full max-w-md text-center border-green-500/50 animate-fade-in">
+            <h1 class="text-4xl font-bold mb-2 text-white glow-text tracking-tighter">TERMOS<span class="text-green-500">LT</span></h1>
+            <p class="text-green-400/70 retro-text mb-8 text-sm">MULTIVERSE OPERATING SYSTEM v2.0</p>
+            
+            <div class="space-y-4">
+                <div class="relative">
+                    <input type="text" id="usernameInput" class="w-full p-4 rounded-lg glass-input text-center text-lg placeholder-green-800" placeholder="ENTER CODENAME" autocomplete="off">
+                    <div class="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-green-500 to-transparent opacity-50"></div>
+                </div>
+                
+                <button onclick="login()" class="w-full bg-green-600 hover:bg-green-500 text-black font-bold py-3 rounded-lg shadow-[0_0_20px_rgba(0,255,65,0.3)] transition-all retro-text text-lg hover:scale-[1.02]">
+                    INITIALIZE
+                </button>
+                
+                <p class="text-xs text-gray-500 mt-4">Secure Connection Required</p>
+            </div>
         </div>
     </div>
 
-    <!-- MAIN -->
-    <div id="main-layout">
-        <div id="room-header">TERMCHAT LT - LIVING ROOM</div>
-        <div id="terminal-body"></div>
-        <div id="multiverse-panel"></div>
-        <div class="input-line">
-            <span style="margin-right: 10px; color: var(--term-color);">&gt;</span>
-            <input id="chatInput" type="text" placeholder="Type..." autocomplete="off">
-            <button id="sendButton">SEND</button>
-        </div>
+    <!-- 3. MAIN APP LAYOUT (Initially Hidden) -->
+    <div id="main-layout" class="hidden relative z-10 h-screen w-screen flex flex-col md:flex-row overflow-hidden p-2 md:p-4 gap-4">
+        
+        <!-- SIDEBAR -->
+        <aside class="glass-panel w-full md:w-64 rounded-2xl flex flex-col">
+            <div class="p-6 border-b border-green-500/20 flex items-center gap-3">
+                <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#00ff41]"></div>
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-widest glow-text">TermOS</h1>
+                    <p id="user-display" class="text-[10px] text-green-400 retro-text opacity-70">GUEST</p>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-4 space-y-2">
+                <p class="text-xs text-gray-500 retro-text mb-2 pl-2">:: SECTORS ::</p>
+                <button onclick="switchRoom('living_room')" class="w-full text-left p-3 rounded-xl bg-green-500/10 border border-green-500/30 hover:bg-green-500/20 transition-all text-sm">
+                    <span class="text-green-400 font-mono">01.</span> Living Room
+                </button>
+                <button onclick="switchRoom('workshop')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all text-sm text-gray-300">
+                    <span class="text-gray-500 font-mono">02.</span> Workshop
+                </button>
+                <button onclick="switchRoom('library')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all text-sm text-gray-300">
+                    <span class="text-gray-500 font-mono">03.</span> Library
+                </button>
+            </div>
+
+            <div class="p-4 border-t border-green-500/20 bg-black/20">
+                <div class="flex justify-between items-center mb-1">
+                    <span id="lvl-text" class="text-xs text-green-400 retro-text">LVL. 1 NEWBIE</span>
+                    <span id="xp-text" class="text-xs text-gray-400 font-mono">XP: 0</span>
+                </div>
+                <div class="w-full h-1 bg-gray-700 rounded-full overflow-hidden">
+                    <div id="xp-bar" class="h-full bg-gradient-to-r from-green-500 to-cyan-400 w-0 shadow-[0_0_10px_#00ff41]"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CHAT -->
+        <main class="flex-1 glass-panel rounded-2xl flex flex-col relative overflow-hidden">
+            <header class="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-black/20">
+                <h2 id="room-title" class="text-lg font-semibold tracking-wide text-white text-cyan-400">LIVING_ROOM</h2>
+                <button onclick="location.reload()" class="text-xs text-red-500 hover:text-red-400 border border-red-900 px-2 py-1 rounded">LOGOUT</button>
+            </header>
+
+            <div id="chat-container" class="flex-1 overflow-y-auto p-6 space-y-6">
+                <!-- Messages injected here -->
+            </div>
+
+            <footer class="p-4 border-t border-white/10 bg-black/30 backdrop-blur-xl">
+                <div class="flex items-center gap-4 max-w-4xl mx-auto">
+                    <button onclick="startVoiceRecognition()" class="text-green-500 hover:text-white transition-colors" title="Voice Command">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                    </button>
+                    <input type="text" id="chatInput" class="flex-1 rounded-xl px-6 py-4 glass-input placeholder-green-900 text-green-400" placeholder="Enter command or message..." autocomplete="off">
+                    <button onclick="handleSend()" class="bg-green-600 hover:bg-green-500 text-black font-bold py-3 px-6 rounded-xl shadow-[0_0_15px_rgba(0,255,65,0.4)] hover:shadow-[0_0_25px_rgba(0,255,65,0.6)] transition-all font-mono tracking-wider">
+                        SEND
+                    </button>
+                </div>
+            </footer>
+        </main>
     </div>
 
-    <!-- SCRIPTS -->
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-    <script src="./config.js"></script>
-    <script src="./script.js?v=FINAL"></script>
+    <!-- LOAD SCRIPT -->
+    <script src="script.js"></script>
 </body>
 </html>
     
