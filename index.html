@@ -4,16 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TERMOS LT</title>
-    <!-- Tailwind CSS -->
+    <!-- 1. Tailwind CSS (Styling) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- MQTT Library -->
+    <!-- 2. MQTT Library (Chat Connectivity) -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; color: #0f0; font-family: monospace; }
         #matrix-canvas { position: fixed; top: 0; left: 0; z-index: -1; }
         .animate-fade-in { animation: fadeIn 0.3s ease-in; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        /* Custom Scrollbar */
+        /* Scrollbar styling */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #000; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
@@ -22,96 +23,86 @@
 </head>
 <body class="h-screen w-screen text-green-500">
 
-    <!-- Background Canvas -->
+    <!-- Background Matrix Rain -->
     <canvas id="matrix-canvas"></canvas>
 
-    <!-- 1. BOOT SCREEN -->
-    <div id="terminal-boot" class="fixed inset-0 flex flex-col items-center justify-center bg-black/90 z-50 p-4">
+    <!-- === SCREEN 1: BOOT TERMINAL === -->
+    <div id="terminal-boot" class="fixed inset-0 flex flex-col items-center justify-center bg-black/95 z-50 p-4">
         <div class="w-full max-w-2xl bg-black border border-green-900 rounded-lg shadow-2xl p-6 relative overflow-hidden">
-            <!-- Scanline effect -->
-            <div class="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-10 pointer-events-none bg-[length:100%_2px,3px_100%]"></div>
             
-            <h1 class="text-2xl font-bold mb-4 text-center tracking-widest text-green-400">TERMOS OS v1.0</h1>
+            <!-- Header -->
+            <h1 class="text-2xl font-bold mb-4 text-center tracking-widest text-green-400">TERMOS OS <span class="text-xs opacity-50">v1.0</span></h1>
             
-            <!-- Terminal Output Area -->
-            <div id="terminal-content" class="h-64 overflow-y-auto font-mono text-xs mb-4 border-l-2 border-green-800 pl-2"></div>
+            <!-- Terminal Output -->
+            <div id="terminal-content" class="h-64 overflow-y-auto font-mono text-xs mb-4 border-l-2 border-green-800 pl-2 text-cyan-300"></div>
             
             <!-- Status -->
-            <div id="boot-status" class="text-center text-sm font-bold animate-pulse mb-6">INITIALIZING...</div>
+            <div id="boot-status" class="text-center text-sm font-bold animate-pulse mb-6 text-cyan-500">INITIALIZING...</div>
 
-            <!-- Mode Selection Buttons -->
+            <!-- Mode Buttons -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-20">
-                <button onclick="enterApp('chat')" class="p-3 border border-green-700 hover:bg-green-900/30 text-xs transition-all uppercase">Mode 1: Chat</button>
-                <button onclick="enterApp('api')" class="p-3 border border-cyan-700 hover:bg-cyan-900/30 text-cyan-400 text-xs transition-all uppercase">Mode 2: Remote AI</button>
-                <button onclick="enterApp('local')" class="p-3 border border-purple-700 hover:bg-purple-900/30 text-purple-400 text-xs transition-all uppercase">Mode 3: Local</button>
+                <button onclick="enterApp('chat')" class="p-3 border border-green-700 hover:bg-green-900/30 text-xs transition-all uppercase rounded">Mode 1: Chat</button>
+                <button onclick="enterApp('api')" class="p-3 border border-cyan-700 hover:bg-cyan-900/30 text-cyan-400 text-xs transition-all uppercase rounded">Mode 2: Remote AI</button>
+                <button onclick="enterApp('local')" class="p-3 border border-purple-700 hover:bg-purple-900/30 text-purple-400 text-xs transition-all uppercase rounded">Mode 3: Local</button>
             </div>
             
             <div class="text-center mt-4">
-                <button onclick="skipPresentation()" class="text-[10px] text-gray-600 hover:text-white underline">SKIP BOOT SEQUENCE</button>
+                <button onclick="skipPresentation()" class="text-[10px] text-gray-600 hover:text-white underline cursor-pointer">SKIP BOOT SEQUENCE</button>
             </div>
         </div>
     </div>
 
-    <!-- 2. MAIN APP LAYOUT (Initially Hidden) -->
+    <!-- === SCREEN 2: MAIN APP (Hidden initially) === -->
     <div id="main-layout" class="hidden flex-col h-screen w-full relative z-10">
         
-        <!-- Header -->
+        <!-- Header Bar -->
         <header class="flex justify-between items-center p-4 bg-black/80 border-b border-green-900 backdrop-blur">
             <div class="flex items-center gap-4">
-                <div class="text-xl font-bold tracking-tighter">TERMOS<span class="text-xs align-top opacity-50">LT</span></div>
-                <div id="room-title" class="text-xs bg-green-900/40 px-2 py-1 rounded text-green-300">LIVING_ROOM</div>
+                <div class="text-xl font-bold tracking-tighter text-white">TERMOS<span class="text-xs align-top text-green-600">LT</span></div>
+                <div id="room-title" class="text-xs bg-green-900/40 px-2 py-1 rounded text-green-300 border border-green-800">LIVING_ROOM</div>
             </div>
             
-            <!-- Stats Bar -->
+            <!-- XP Stats -->
             <div class="flex items-center gap-4 text-[10px] md:text-xs font-mono w-1/3">
-                <span id="lvl-text">LVL 1 NEWBIE</span>
-                <div class="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
-                    <div id="xp-bar" class="h-full bg-green-500 w-0 transition-all duration-500"></div>
+                <span id="lvl-text" class="text-cyan-400">LVL 1 NEWBIE</span>
+                <div class="flex-1 h-2 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
+                    <div id="xp-bar" class="h-full bg-gradient-to-r from-green-800 to-green-500 w-0 transition-all duration-500"></div>
                 </div>
-                <span id="xp-text">XP: 0</span>
+                <span id="xp-text" class="text-gray-500">XP: 0</span>
             </div>
 
             <div class="flex items-center gap-3">
-                 <div id="user-display" class="text-xs font-bold text-cyan-400">@GUEST</div>
+                 <div id="user-display" class="text-xs font-bold text-cyan-400 border border-cyan-900 px-2 py-1 rounded bg-cyan-900/10">@GUEST</div>
             </div>
         </header>
 
-        <!-- Chat Area -->
-        <main class="flex-1 overflow-hidden relative flex flex-col md:flex-row">
+        <!-- Main Chat Area -->
+        <main class="flex-1 overflow-hidden relative flex flex-col">
             
-            <!-- Chat Container -->
-            <div class="flex-1 flex flex-col relative bg-black/40">
-                <!-- Audio Element (Hidden) -->
-                <audio id="bg-music" loop>
-                    <!-- Add a src here if you have a file, e.g. src="cyberpunk.mp3" -->
-                </audio>
-
-                <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-2">
-                    <!-- Messages go here -->
-                </div>
-
-                <!-- Input Area -->
-                <div class="p-4 bg-black/90 border-t border-green-900 flex gap-2">
-                    <input type="text" id="chatInput" placeholder="Enter command or message..." class="flex-1 bg-gray-900 text-green-400 border border-green-800 rounded p-2 focus:outline-none focus:border-green-500 font-mono text-sm">
-                    <button onclick="startVoiceRecognition()" class="p-2 border border-gray-700 rounded hover:bg-gray-800 text-gray-400">🎤</button>
-                    <button onclick="handleSend()" class="p-2 bg-green-800 text-black font-bold rounded hover:bg-green-500 px-4">SEND</button>
-                </div>
+            <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-3">
+                <!-- Messages will appear here -->
             </div>
 
+            <!-- Input Area -->
+            <div class="p-4 bg-black/90 border-t border-green-900 flex gap-2 items-center">
+                <input type="text" id="chatInput" placeholder="Enter command or message..." autocomplete="off" class="flex-1 bg-gray-900 text-green-400 border border-green-800 rounded p-3 focus:outline-none focus:border-green-500 font-mono text-sm placeholder-gray-700">
+                
+                <button onclick="startVoiceRecognition()" class="p-3 border border-gray-700 rounded hover:bg-gray-800 text-gray-400 transition-colors" title="Voice Input">🎤</button>
+                <button onclick="handleSend()" class="p-3 bg-green-800 text-black font-bold rounded hover:bg-green-500 hover:text-black px-6 transition-all">SEND</button>
+            </div>
         </main>
     </div>
 
-    <!-- HIDDEN BOOT CONTENT (Used by JS) -->
+    <!-- Hidden Source for Boot Text -->
     <div id="hidden-boot-content" style="display:none;">
         <div>>> CHECKING MEMORY INTEGRITY...</div>
         <div>>> LOADING CORE MODULES...</div>
         <div>>> [1] MOUNTING FILE SYSTEMS...</div>
+        <div>>> [2] ESTABLISHING SECURE UPLINK...</div>
         <div>>> [OK] SYSTEM READY.</div>
     </div>
 
-    <!-- PASTE THE FIXED SCRIPT HERE -->
-    <script>
-        // Paste the Javascript code I provided above here
-    </script>
+    <!-- Link to your JS file -->
+    <script src="script.js"></script>
 </body>
 </html>
