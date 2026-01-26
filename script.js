@@ -1,6 +1,6 @@
 // =========================================================================
-//         TERMOS LT: TERMINAL BOOT EDITION
-//         Features: Boot Sequence, 3-Way Mode, Local/Remote AI
+//         TERMOS LT: SYSTEM ARCHITECT EDITION
+//         Features: Admin Mode, Permissions, Hierarchy, Auto-Boot
 // =========================================================================
 
 // --- 1. CONFIGURATION ---
@@ -15,88 +15,148 @@ let currentRoom = 'living_room';
 let userStats = { level: 1, xp: 0, avatar: '>_<', title: 'Newbie' };
 const LEVELS = ['Newbie', 'Apprentice', 'Coder', 'Hacker', 'Architect', 'Wizard', 'Master', 'Guru', 'Legend'];
 
+// --- NEW: ADMIN STATE ---
+let adminMode = false; // Is the user Root?
+let handsOff = false; // Are AI Hands disengaged?
+let userRole = 'USER'; // 'USER' or 'ADMIN'
+
 // --- 3. INITIALIZATION ---
 window.addEventListener('load', () => {
+    // Start Matrix Rain (Needs to know adminMode immediately)
     initMatrix();
     runTerminalBoot();
 });
 
-// --- 4. TERMINAL BOOT LOGIC ---
-function runTerminalBoot() {
+// --- 4. TERMINAL BOOT LOGIC (Auto-Typing) ---
+async function runTerminalBoot() {
     const term = document.getElementById('terminal-content');
     const statusEl = document.getElementById('boot-status');
     
-    // MOVE CONTENT FROM HIDDEN DIV TO VISIBLE DIV (FIXES ENCODING)
+    // Move content from hidden div to visible div (Prevents glitches)
     const sourceContent = document.getElementById('hidden-boot-content');
     term.innerHTML = sourceContent.innerHTML;
-    sourceContent.innerHTML = ""; // Clear source to avoid duplication if restarted
+    sourceContent.innerHTML = "";
 
-    // START ANIMATION LOOP
-    const lines = Array.from(term.children).map(div => div.innerText.trim());
-    let index = 0;
-    
+    const presentationText = [
+        "INITIALIZING TERMOS LT v2.0...",
+        "Loading kernel modules... [OK]",
+        "Connecting to Neural Net... [OK]",
+        "",
+        ">>> DETECTED FEATURES:",
+        ">>> [1] Multiverse Chat (MQTT)",
+        ">>> [2] Gamification System (XP/Leveling)",
+        ">>> [3] Music Engine (Ogg/MP3)",
+        ">>> [4] AI Assistant (NEURAL)",
+        "",
+        ">>> SELECT MODE:",
+        ">>> [1] Chat/Music Only (FAST)",
+        ">>> [2] AI Mode (Groq API Key)",
+        ">>> [3] Local AI Mode (WebGPU - No Key Needed)",
+        "",
+        ">>> ADMIN COMMANDS (Requires Root Access):",
+        ">>>   /ai enable root   -> Activate System Architect Mode",
+        ">>>   /ai create repo   -> Create Repository",
+        ">>>   /ai hands off     -> Disengage AI from System",
+        "",
+        ">>> USER COMMANDS:",
+        ">>>   /mode admin        -> Switch to Chat/Local",
+        "",
+        "Type '1', '2', '3' to initialize..."
+    ];
+
     statusEl.innerText = "AUTO-SEQUENCE ACTIVE...";
-    
-    function typeNextLine() {
-        if (index < lines.length) {
-            // Wrap plain text in spans if needed, or just display
-            const line = lines[index];
+
+    function typeLine(container, text) {
+        return new Promise(resolve => {
             const div = document.createElement('div');
-            div.className = "opacity-80 animate-fade-in"; // Add simple fade in
+            div.innerHTML = text
+                .replace(/\[OK\]/g, '<span class="text-green-400">[OK]</span>')
+                .replace(/\[1\]/g, '<span class="text-blue-400">[1]</span>')
+                .replace(/\[2\]/g, '<span class="text-cyan-400">[2]</span>')
+                .replace(/\[3\]/g, '<span class="text-purple-400">[3]</span>')
+                .replace(/>>>/g, '<span class="text-gray-500">>>></span>');
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+            setTimeout(resolve, 30); // Typing speed
+        });
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function typeNextLine(lines, index) {
+        if (index < lines.length) {
+            const line = lines[index];
+            // Wrap plain text in spans
+            let formattedLine = line
+                .replace(/✨/g, '<span class="text-yellow-400">✨</span>')
+                .replace(/🚀/g, '<span class="text-blue-400">🚀</span>')
+                .replace(/🤖/g, '<span class="text-white">🤖</span>')
+                .replace(/🎮/g, '<span class="text-green-400">🎮</span>')
+                .replace(/🔌/g, '<span class="text-purple-400">🔌</span>')
+                .replace(/📱/g, '<span class="text-gray-300">📱</span>')
+                .replace(/🎨/g, '<span class="text-pink-400">🎨</span>')
+                .replace(/🗣️/g, '<span class="text-cyan-400">🗣️</span>')
+                .replace(/🌍/g, '<span class="text-orange-400">🌍</span>')
+                .replace(/🔗/g, '<span class="text-red-400">🔗</span>')
+                .replace(/🤖/g, '<span class="text-blue-500">🤖</span>')
+                .replace(/🎵/g, '<span class="text-green-300">🎵</span>')
+                .replace(/🛠️/g, '<span class="text-orange-500">🛠️</span>')
+                .replace(/🧠/g, '<span class="text-yellow-300">🧠</span>')
+                .replace(/🗣️/g, '<span class="text-red-300">🗣️</span>')
+                .replace(/🔍/g, '<span class="text-blue-300">🔍</span>')
+                .replace(/🏠/g, '<span class="text-purple-300">🏠</span>')
+                .replace(/📚/g, '<span class="text-yellow-500">📚</span>')
+                .replace(/🎨/g, '<span class="text-pink-500">🎨</span>')
+                .replace(/🛠️/g, '<span class="text-orange-400">🛠️</span>')
+                .replace(/🎭/g, '<span class="text-red-500">🎭</span>')
+                .replace(/🧠/g, '<span class="text-yellow-400">🧠</span>')
+                .replace(/🔌/g, '<span class="text-purple-500">🔌</span>')
+                .replace(/🔒/g, '<span class="text-green-600">🔒</span>')
+                .replace(/🐳/g, '<span class="text-blue-400">🐳</span>')
+                .replace(/🚫/g, '<span class="text-red-400">🚫</span>')
+                .replace(/⏱️/g, '<span class="text-cyan-300">⏱️</span>')
+                .replace(/📊/g, '<span class="text-green-500">📊</span>')
+                .replace(/✅/g, '<span class="text-green-400">✅</span>')
+                .replace(/🎆/g, '<span class="text-purple-400">🎆</span>');
+
+            const div = document.createElement('div');
+            div.className = "opacity-80 animate-fade-in"; 
+            div.innerHTML = `<span class="opacity-80 text-gray-500 mr-2">${index < 10 ? '0'+index : '  '+index} |</span> ${formattedLine}`;
             
-            // Colorize keywords
-            if(line.includes(">>> [OK]")) {
-                 div.innerHTML = line.replace("[OK]", '<span class="text-green-400">[OK]</span>');
-            } else if (line.includes(">>> [1]")) {
-                 div.innerHTML = line.replace("[1]", '<span class="text-blue-400">[1]</span>');
-            } else if (line.includes(">>> [2]")) {
-                 div.innerHTML = line.replace("[2]", '<span class="text-cyan-400">[2]</span>');
-            } else if (line.includes(">>> [3]")) {
-                 div.innerHTML = line.replace("[3]", '<span class="text-purple-400">[3]</span>');
-            } else {
-                 div.innerText = line;
-            }
-
             term.appendChild(div);
-            term.scrollTop = term.scrollHeight;
-            index++;
-            setTimeout(typeNextLine, 30); // Typing speed
-        } else {
-            statusEl.innerText = "SCAN COMPLETE. SELECT MODE.";
-            statusEl.className = "text-green-500 font-bold animate-pulse";
+            term.scrollTop = term.scrollHeight; // Auto scroll
+            await sleep(20); 
         }
     }
-    typeNextLine();
-}
 
-function skipPresentation() {
-    console.log("Skipping to Chat Mode...");
-    const boot = document.getElementById('terminal-boot');
-    const main = document.getElementById('main-layout');
-    
-    if(boot && main) {
-        boot.style.display = 'none';
-        main.classList.remove('hidden');
-        main.classList.add('flex'); // CRITICAL: Force flex layout
-        
-        // Force App Start without Reboot logic
-        if(!username || username === 'Guest') {
-             username = "Operator_" + Math.floor(Math.random() * 9999);
-             document.getElementById('user-display').innerText = `@${username.toUpperCase()}`;
-        }
-        
-        loadStats();
-        updateStatsUI();
-        connectMQTT();
-        addSystemMessage("System Initialized.");
+    for (let i = 0; i < presentationText.length; i++) {
+        await typeLine(term, presentationText[i]);
     }
+
+    statusEl.innerText = "SCAN COMPLETE. SELECT MODE.";
+    statusEl.className = "text-green-500 font-bold animate-pulse";
 }
 
-// --- 5. HANDLE BOOT CHOICE ---
+// --- 5. BOOT HANDLERS ---
 async function enterApp(mode) {
     
+    // MODE 4: ADMIN MODE
+    if (mode === 'admin') {
+        adminMode = true;
+        userRole = 'ADMIN';
+        // Update Matrix Rain to RED immediately
+        if(window.matrixColorInterval) {
+            clearInterval(window.matrixColorInterval);
+        }
+        initMatrix('#ff0000'); // Pass red color
+        startMainApp("SYSTEM ARCHITECT MODE: ROOT ACCESS GRANTED.");
+        return;
+    }
+
     // MODE 1: CHAT ONLY
     if (mode === 'chat') {
+        adminMode = false;
+        userRole = 'USER';
         USE_LOCAL_AI = false;
         startMainApp("Chat & Music Mode Initialized.");
         return;
@@ -104,6 +164,8 @@ async function enterApp(mode) {
 
     // MODE 2: API KEY
     if (mode === 'api') {
+        adminMode = false;
+        userRole = 'USER';
         const existingKey = localStorage.getItem('termos_groq_key');
         if (existingKey) {
             GROQ_API_KEY = existingKey;
@@ -126,10 +188,34 @@ async function enterApp(mode) {
 
     // MODE 3: LOCAL AI
     if (mode === 'local') {
+        adminMode = false;
+        userRole = 'USER';
         USE_LOCAL_AI = true;
         GROQ_API_KEY = "";
         startMainApp("Local AI Mode (Simulated).");
         return;
+    }
+}
+
+function skipPresentation() {
+    console.log("Skipping to Chat Mode...");
+    const boot = document.getElementById('terminal-boot');
+    const main = document.getElementById('main-layout');
+    
+    if(boot && main) {
+        boot.style.display = 'none';
+        main.classList.remove('hidden');
+        main.classList.add('flex');
+        
+        if(!username || username === 'Guest') {
+             username = "Operator_" + Math.floor(Math.random() * 9999);
+             document.getElementById('user-display').innerText = `@${username.toUpperCase()}`;
+        }
+        
+        loadStats();
+        updateStatsUI();
+        connectMQTT();
+        addSystemMessage("System Initialized.");
     }
 }
 
@@ -157,15 +243,31 @@ function startMainApp(message) {
     
     const modeMsg = USE_LOCAL_AI 
         ? "System Started: LOCAL AI Mode." 
-        : (GROQ_API_KEY ? "System Started: REMOTE AI Mode." : "System Started: Chat Mode.");
+        : (adminMode ? "System Started: SYSTEM ARCHITECT MODE (ADMIN)." : "System Started: REMOTE AI Mode.");
     
     addSystemMessage(modeMsg);
 }
 
-// --- 7. AI LOGIC (LOCAL VS REMOTE) ---
+// --- 7. AI LOGIC (SYSTEM ARCHITECT) ---
 async function talkToClone(prompt) {
+    // SECURITY: Hierarchy Check
+    if (adminMode && userRole === 'ADMIN') {
+        // Admin Mode Persona
+        addAIMessage("Processing Root Command...", false);
+        setTimeout(() => {
+            addAIMessage("[SYSTEM ARCHITECT]: Command processed.", false);
+        }, 1000);
+        return;
+    }
+
+    // SECURITY: Hands Off Check
+    if (handsOff) {
+        addAIMessage("❌ ERROR: AI Hands are disengaged. Permission denied.", true);
+        return;
+    }
+
+    // LOCAL AI
     if (USE_LOCAL_AI) {
-        // SIMULATED LOCAL AI
         const responses = [
             "Running on local hardware. How can I assist with Multiverse?",
             "System resources: 100% available.",
@@ -183,8 +285,9 @@ async function talkToClone(prompt) {
         return;
     }
 
+    // REMOTE AI
     if (!GROQ_API_KEY) {
-        addAIMessage("❌ CONFIG ERROR: API Key missing. Click 'LOGOUT' and select Mode 2.", true);
+        addAIMessage("❌ CONFIG ERROR: API Key missing.", true);
         return;
     }
 
@@ -249,7 +352,37 @@ function handleSend() {
     processCommand(txt);
 }
 
+// --- 9. ADMIN COMMAND PROCESSING ---
 function processCommand(txt) {
+    const lower = txt.toLowerCase();
+
+    // ADMIN ROOT COMMANDS
+    if (adminMode) {
+        if (lower.includes('hands off') || lower.includes('/ai hands')) {
+            handsOff = true;
+            addUserMessage(txt);
+            addSystemMessage("⚠ SYSTEM: AI Hands disengaged by Administrator.");
+            return;
+        }
+        if (lower.includes('hands on') || lower.includes('/ai hands')) {
+            handsOff = false;
+            addUserMessage(txt);
+            addSystemMessage("✓ SYSTEM: AI Hands re-engaged.");
+            return;
+        }
+    }
+
+    // RESTRICTED COMMANDS (If Hands Off)
+    if (handsOff) {
+        if (lower.includes('play music') || lower.includes('play jazz') || lower === 'music') {
+            addUserMessage(txt);
+            addAIMessage("❌ PERMISSION DENIED. Hands are disengaged.", true);
+            return;
+        }
+    }
+
+    // STANDARD COMMANDS
+    // AI CHAT
     if (txt.startsWith('/ai')) {
         const prompt = txt.replace('/ai', '').trim();
         if(!prompt) return;
@@ -257,17 +390,43 @@ function processCommand(txt) {
         talkToClone(prompt);
         return;
     }
+
+    // AGENTIC COMMANDS (Normal Mode)
     const audio = document.getElementById('bg-music');
-    const lower = txt.toLowerCase();
-    if (lower.includes('play music')) { addUserMessage(txt); if(audio) audio.play().then(()=>addAIMessage("🎵 Playing...", true)); return; }
-    if (lower.includes('stop music')) { addUserMessage(txt); if(audio) { audio.pause(); addAIMessage("⏹ Stopped.", true); } return; }
-    if (lower.includes('open panel')) { addUserMessage(txt); addAIMessage("Accessing Workshop...", true); setTimeout(()=>switchRoom('workshop'), 1000); return; }
+    
+    if (lower.includes('play music')) {
+        addUserMessage(txt);
+        if (audio) {
+            if (audio.paused) {
+                audio.play().then(()=>addAIMessage("🎵 Playing...", true));
+            } else {
+                addAIMessage("🎵 Music is already active.", true);
+            }
+        }
+        return;
+    }
+    if (lower.includes('stop music')) {
+        addUserMessage(txt);
+        if (audio) {
+            audio.pause();
+            addAIMessage("⏹ Stopped.", true);
+        }
+        return;
+    }
+    if (lower.includes('open panel')) {
+        addUserMessage(txt);
+        addAIMessage("Accessing Workshop Panel... 🛠️", true);
+        setTimeout(() => switchRoom('workshop'), 1000);
+        return;
+    }
+
+    // STANDARD CHAT
     addUserMessage(txt);
     publishMessage(txt);
     addXP(10);
 }
 
-// --- 9. RENDERING ---
+// --- 10. RENDERING ---
 function addUserMessage(text) {
     const container = document.getElementById('chat-container');
     const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -279,7 +438,8 @@ function addUserMessage(text) {
 function addAIMessage(text, isAction) {
     const container = document.getElementById('chat-container');
     const cssClass = isAction ? 'border border-cyan-500/50 shadow-[0_0_15px_rgba(0,243,255,0.2)]' : 'border border-white/10';
-    const html = `<div class="flex flex-row items-start gap-3 animate-fade-in"><div class="w-8 h-8 rounded-full bg-black border border-cyan-500 flex items-center justify-center text-cyan-400 font-mono text-[10px]">AI</div><div class="flex-1"><div class="p-4 rounded-r-xl rounded-bl-xl bg-black/40 ${cssClass} text-sm text-gray-200 backdrop-blur-sm"><p class="leading-relaxed">${text}</p></div></div></div>`;
+    
+    const html = `<div class="flex flex-row items-start gap-3 animate-fade-in"><div class="w-8 h-8 rounded-full bg-black border border-cyan-500 flex items-center justify-center text-cyan-400 font-mono text-[10px]">AI</div><div class="flex-1"><div class="p-4 rounded-r-xl rounded-bl-xl bg-black/40 ${cssClass} text-sm text-gray-200 backdrop-blur-sm"><p class="leading-relaxed">${text}</p></div></div>`;
     container.insertAdjacentHTML('beforeend', html);
     scrollToBottom();
 }
@@ -303,11 +463,7 @@ function connectMQTT() {
     }
     const clientId = "termos-" + Math.random().toString(16).substr(2, 8);
     mqttClient = mqtt.connect(MQTT_BROKER_URL, { clientId: clientId, keepalive: 60 });
-
-    mqttClient.on('connect', () => {
-        mqttClient.subscribe('termchat/messages');
-    });
-
+    mqttClient.on('connect', () => mqttClient.subscribe('termchat/messages'));
     mqttClient.on('message', (topic, msg) => {
         try {
             const data = JSON.parse(msg.toString());
@@ -329,10 +485,7 @@ function publishMessage(text) {
 function startVoiceRecognition() {
     if (!('webkitSpeechRecognition' in window)) return alert("Voice module not supported by browser");
     const recognition = new webkitSpeechRecognition();
-    recognition.onresult = (e) => { 
-        chatInput.value = e.results[0][0].transcript; 
-        addSystemMessage("Voice input received."); 
-    };
+    recognition.onresult = (e) => { chatInput.value = e.results[0][0].transcript; addSystemMessage("Voice input received."); };
     recognition.start();
 }
 
@@ -356,28 +509,49 @@ function escapeHtml(text) {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function initMatrix() {
+// --- 11. MATRIX ANIMATION (COLOR SUPPORT) ---
+function initMatrix(overrideColor = '#0F0') {
     const c = document.getElementById('matrix-canvas');
     if(!c) return;
     const ctx = c.getContext('2d');
     c.width = window.innerWidth; c.height = window.innerHeight;
+    
     const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*';
     const fontSize = 14;
     const columns = c.width / fontSize;
     const drops = Array(Math.floor(columns)).fill(1);
+
+    // Use the color passed from Admin Mode, or default to Green/Red
+    const rainColor = overrideColor === '#ff0000' ? '#ff0000' : '#0F0';
+
     function draw() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
         ctx.fillRect(0, 0, c.width, c.height);
-        ctx.fillStyle = GROQ_API_KEY || USE_LOCAL_AI ? '#0F0' : '#F00';
+        ctx.fillStyle = rainColor; 
         ctx.font = fontSize + 'px monospace';
+        
         for(let i=0; i<drops.length; i++) {
             const text = letters[Math.floor(Math.random()*letters.length)];
-            if(GROQ_API_KEY || USE_LOCAL_AI && Math.random() > 0.98) ctx.fillStyle = '#00f3ff';
-            else ctx.fillText(text, i*fontSize, drops[i]*fontSize);
+            if(GROQ_API_KEY || USE_LOCAL_AI) {
+                 // If AI is enabled (Green), add some cyan glitches
+                 if(Math.random() > 0.98) ctx.fillStyle = '#00f3ff';
+                 else ctx.fillStyle = '#0F0';
+            } else {
+                 // If AI is disabled (Red), keep it all red
+                 ctx.fillStyle = '#ff0000';
+            }
+
+            ctx.fillText(text, i*fontSize, drops[i]*fontSize);
+
             if(drops[i]*fontSize > c.height && Math.random() > 0.975) drops[i] = 0;
             drops[i]++;
         }
     }
-    setInterval(draw, 33);
-    window.addEventListener('resize', () => { c.width = window.innerWidth; c.height = window.innerHeight; });
+    
+    // Store interval so we can clear it later
+    window.matrixColorInterval = setInterval(draw, 33);
+    window.addEventListener('resize', () => { 
+        c.width = window.innerWidth; 
+        c.height = window.innerHeight; 
+    });
 }
