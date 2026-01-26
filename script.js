@@ -1,5 +1,5 @@
 // =========================================================================
-//         TERMOS LT: TERMINAL BOOT EDITION
+//         TERMOS LT: TERMINAL BOOT EDITION (FIXED)
 //         Features: Boot Sequence, 3-Way Mode, Local/Remote AI
 // =========================================================================
 
@@ -21,38 +21,55 @@ window.addEventListener('load', () => {
     runTerminalBoot();
 });
 
-// --- 4. TERMINAL BOOT LOGIC ---
+// --- 4. TERMINAL BOOT LOGIC (FIXED) ---
 function runTerminalBoot() {
     const term = document.getElementById('terminal-content');
     const statusEl = document.getElementById('boot-status');
     
-    // MOVE CONTENT FROM HIDDEN DIV TO VISIBLE DIV (FIXES ENCODING)
+    if (!term) return; // Safety check
+
+    // MOVE CONTENT FROM HIDDEN DIV TO VISIBLE DIV
+    // FIX: Added fallback if hidden div is missing
+    let lines = [];
     const sourceContent = document.getElementById('hidden-boot-content');
-    term.innerHTML = sourceContent.innerHTML;
-    sourceContent.innerHTML = ""; // Clear source to avoid duplication if restarted
+    
+    if (sourceContent && sourceContent.innerHTML.trim() !== "") {
+        term.innerHTML = sourceContent.innerHTML;
+        sourceContent.innerHTML = ""; 
+        const children = Array.from(term.children);
+        lines = children.map(div => div.innerText.trim());
+        term.innerHTML = ""; // Clear to re-type
+    } else {
+        // FALLBACK: Default boot text if HTML div is missing
+        lines = [
+            "Initializing BIOS...",
+            "Loading Kernel Modules...",
+            "Mounting Virtual File System...",
+            ">>> [1] Checking Network Interface...",
+            ">>> [2] Establishing Secure Handshake...",
+            ">>> [OK] Connection Established.",
+            "Loading User Interface...",
+            "System Ready."
+        ];
+    }
 
     // START ANIMATION LOOP
-    const lines = Array.from(term.children).map(div => div.innerText.trim());
     let index = 0;
-    
     statusEl.innerText = "AUTO-SEQUENCE ACTIVE...";
     
     function typeNextLine() {
         if (index < lines.length) {
-            // Wrap plain text in spans if needed, or just display
             const line = lines[index];
             const div = document.createElement('div');
-            div.className = "opacity-80 animate-fade-in"; // Add simple fade in
+            div.className = "opacity-80 animate-fade-in mb-1 font-mono text-sm text-cyan-300";
             
             // Colorize keywords
             if(line.includes(">>> [OK]")) {
-                 div.innerHTML = line.replace("[OK]", '<span class="text-green-400">[OK]</span>');
+                 div.innerHTML = line.replace("[OK]", '<span class="text-green-400 font-bold">[OK]</span>');
             } else if (line.includes(">>> [1]")) {
                  div.innerHTML = line.replace("[1]", '<span class="text-blue-400">[1]</span>');
             } else if (line.includes(">>> [2]")) {
-                 div.innerHTML = line.replace("[2]", '<span class="text-cyan-400">[2]</span>');
-            } else if (line.includes(">>> [3]")) {
-                 div.innerHTML = line.replace("[3]", '<span class="text-purple-400">[3]</span>');
+                 div.innerHTML = line.replace("[2]", '<span class="text-purple-400">[2]</span>');
             } else {
                  div.innerText = line;
             }
@@ -77,12 +94,12 @@ function skipPresentation() {
     if(boot && main) {
         boot.style.display = 'none';
         main.classList.remove('hidden');
-        main.classList.add('flex'); // CRITICAL: Force flex layout
+        main.classList.add('flex'); 
         
-        // Force App Start without Reboot logic
         if(!username || username === 'Guest') {
              username = "Operator_" + Math.floor(Math.random() * 9999);
-             document.getElementById('user-display').innerText = `@${username.toUpperCase()}`;
+             const userDisplay = document.getElementById('user-display');
+             if(userDisplay) userDisplay.innerText = `@${username.toUpperCase()}`;
         }
         
         loadStats();
@@ -94,7 +111,6 @@ function skipPresentation() {
 
 // --- 5. HANDLE BOOT CHOICE ---
 async function enterApp(mode) {
-    
     // MODE 1: CHAT ONLY
     if (mode === 'chat') {
         USE_LOCAL_AI = false;
@@ -135,22 +151,22 @@ async function enterApp(mode) {
 
 // --- 6. START MAIN APP ---
 function startMainApp(message) {
-    // Hide Boot Screen
     const boot = document.getElementById('terminal-boot');
-    boot.style.display = 'none';
-    
-    // Show Main Layout
     const main = document.getElementById('main-layout');
-    main.classList.remove('hidden');
-    main.classList.add('flex');
     
-    // Set User
+    if(boot) boot.style.display = 'none';
+    
+    if(main) {
+        main.classList.remove('hidden');
+        main.classList.add('flex');
+    }
+    
     if (!username || username === 'Guest') {
         username = "Operator_" + Math.floor(Math.random() * 9999);
     }
-    document.getElementById('user-display').innerText = `@${username.toUpperCase()}`;
+    const userDisplay = document.getElementById('user-display');
+    if(userDisplay) userDisplay.innerText = `@${username.toUpperCase()}`;
     
-    // Init Systems
     loadStats();
     updateStatsUI();
     connectMQTT();
@@ -165,7 +181,6 @@ function startMainApp(message) {
 // --- 7. AI LOGIC (LOCAL VS REMOTE) ---
 async function talkToClone(prompt) {
     if (USE_LOCAL_AI) {
-        // SIMULATED LOCAL AI
         const responses = [
             "Running on local hardware. How can I assist with Multiverse?",
             "System resources: 100% available.",
@@ -189,7 +204,7 @@ async function talkToClone(prompt) {
     }
 
     try {
-        addAIMessage("Processing...", false);
+        addAIMessage("Connecting to Neural Net...", false);
         
         const req = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
@@ -198,17 +213,21 @@ async function talkToClone(prompt) {
                 "Authorization": `Bearer ${GROQ_API_KEY}` 
             },
             body: JSON.stringify({
-                model: "llama-3.3-70b-versatile", 
-                temperature: 0.1,
-                max_tokens: 50,
+                model: "llama3-70b-8192", // FIXED: Updated to valid model ID
+                temperature: 0.7,
+                max_tokens: 100, // Increased slightly for better answers
                 messages: [
-                    { role: "system", content: "You are a helpful AI assistant. Answer briefly." }, 
+                    { role: "system", content: "You are a helpful cyberpunk AI assistant. Answer concisely." }, 
                     { role: "user", content: prompt }
                 ]
             })
         });
 
-        if (!req.ok) throw new Error(`API Error: ${req.status}`);
+        if (!req.ok) {
+            const errData = await req.json();
+            throw new Error(errData.error?.message || req.status);
+        }
+        
         const json = await req.json();
         const reply = json.choices[0].message.content;
         addAIMessage(reply, false);
@@ -223,15 +242,18 @@ function updateStatsUI() {
     const titleEl = document.getElementById('lvl-text');
     const xpEl = document.getElementById('xp-text');
     const barEl = document.getElementById('xp-bar');
+    
     if(titleEl) titleEl.innerText = `LVL. ${userStats.level} ${userStats.title.toUpperCase()}`;
     if(xpEl) xpEl.innerText = `XP: ${userStats.xp.toLocaleString()}`;
+    
     const progress = (userStats.xp % 1000) / 10; 
     if(barEl) barEl.style.width = `${progress}%`;
 }
 
 function switchRoom(roomId) {
     currentRoom = roomId;
-    document.getElementById('room-title').innerText = roomId.toUpperCase().replace('_', ' ');
+    const roomTitle = document.getElementById('room-title');
+    if(roomTitle) roomTitle.innerText = roomId.toUpperCase().replace('_', ' ');
     addSystemMessage(`Switched to sector [${roomId.toUpperCase()}]`);
 }
 
@@ -243,6 +265,7 @@ if(chatInput) {
 }
 
 function handleSend() {
+    if(!chatInput) return;
     const txt = chatInput.value.trim();
     if(!txt) return;
     chatInput.value = '';
@@ -257,11 +280,27 @@ function processCommand(txt) {
         talkToClone(prompt);
         return;
     }
+    
     const audio = document.getElementById('bg-music');
     const lower = txt.toLowerCase();
-    if (lower.includes('play music')) { addUserMessage(txt); if(audio) audio.play().then(()=>addAIMessage("🎵 Playing...", true)); return; }
-    if (lower.includes('stop music')) { addUserMessage(txt); if(audio) { audio.pause(); addAIMessage("⏹ Stopped.", true); } return; }
-    if (lower.includes('open panel')) { addUserMessage(txt); addAIMessage("Accessing Workshop...", true); setTimeout(()=>switchRoom('workshop'), 1000); return; }
+    
+    if (lower.includes('play music')) { 
+        addUserMessage(txt); 
+        if(audio) audio.play().then(()=>addAIMessage("🎵 Playing...", true)).catch(e=>addAIMessage("Audio file missing or blocked.", true)); 
+        return; 
+    }
+    if (lower.includes('stop music')) { 
+        addUserMessage(txt); 
+        if(audio) { audio.pause(); addAIMessage("⏹ Stopped.", true); } 
+        return; 
+    }
+    if (lower.includes('open panel')) { 
+        addUserMessage(txt); 
+        addAIMessage("Accessing Workshop...", true); 
+        setTimeout(()=>switchRoom('workshop'), 1000); 
+        return; 
+    }
+    
     addUserMessage(txt);
     publishMessage(txt);
     addXP(10);
@@ -270,6 +309,7 @@ function processCommand(txt) {
 // --- 9. RENDERING ---
 function addUserMessage(text) {
     const container = document.getElementById('chat-container');
+    if(!container) return;
     const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     const html = `<div class="flex flex-row-reverse items-end gap-3 animate-fade-in"><div class="w-8 h-8 rounded-full bg-gradient-to-tr from-green-400 to-emerald-600 flex items-center justify-center border border-white/20 font-mono text-black text-xs font-bold">ME</div><div class="msg-user p-4 rounded-l-xl rounded-br-xl text-sm text-green-100 shadow-[0_4px_20px_rgba(0,0,0,0.3)] max-w-[80%]"><div class="flex items-center gap-2 mb-1 opacity-80 text-xs font-mono text-green-400"><span>@${username.toUpperCase()}</span><span>${time}</span></div><p class="leading-relaxed text-gray-100">${escapeHtml(text)}</p></div></div>`;
     container.insertAdjacentHTML('beforeend', html);
@@ -278,6 +318,7 @@ function addUserMessage(text) {
 
 function addAIMessage(text, isAction) {
     const container = document.getElementById('chat-container');
+    if(!container) return;
     const cssClass = isAction ? 'border border-cyan-500/50 shadow-[0_0_15px_rgba(0,243,255,0.2)]' : 'border border-white/10';
     const html = `<div class="flex flex-row items-start gap-3 animate-fade-in"><div class="w-8 h-8 rounded-full bg-black border border-cyan-500 flex items-center justify-center text-cyan-400 font-mono text-[10px]">AI</div><div class="flex-1"><div class="p-4 rounded-r-xl rounded-bl-xl bg-black/40 ${cssClass} text-sm text-gray-200 backdrop-blur-sm"><p class="leading-relaxed">${text}</p></div></div></div>`;
     container.insertAdjacentHTML('beforeend', html);
@@ -286,7 +327,8 @@ function addAIMessage(text, isAction) {
 
 function addSystemMessage(text) {
     const container = document.getElementById('chat-container');
-    const html = `<div class="msg-system p-4 rounded-xl text-sm text-cyan-100 shadow-[0_4px_20px_rgba(0,0,0,0.3)] animate-fade-in"><div class="flex items-center gap-2 mb-1 opacity-80 text-xs font-mono text-cyan-400"><span>⚠ SYSTEM</span></div><p class="leading-relaxed">${text}</p></div>`;
+    if(!container) return;
+    const html = `<div class="msg-system p-4 rounded-xl text-sm text-cyan-100 shadow-[0_4px_20px_rgba(0,0,0,0.3)] animate-fade-in mb-2"><div class="flex items-center gap-2 mb-1 opacity-80 text-xs font-mono text-cyan-400"><span>⚠ SYSTEM</span></div><p class="leading-relaxed">${text}</p></div>`;
     container.insertAdjacentHTML('beforeend', html);
     scrollToBottom();
 }
@@ -297,15 +339,20 @@ function scrollToBottom() {
 }
 
 function connectMQTT() {
+    // FIX: Check if library is actually loaded
     if (typeof mqtt === 'undefined') {
-        console.warn("MQTT Library not loaded");
+        console.warn("MQTT Library not loaded. Chat will be local only.");
+        addSystemMessage("Warning: MQTT Module missing. Chat is local only.");
         return;
     }
+    
     const clientId = "termos-" + Math.random().toString(16).substr(2, 8);
     mqttClient = mqtt.connect(MQTT_BROKER_URL, { clientId: clientId, keepalive: 60 });
 
     mqttClient.on('connect', () => {
+        console.log("MQTT Connected");
         mqttClient.subscribe('termchat/messages');
+        addSystemMessage("Uplink Established.");
     });
 
     mqttClient.on('message', (topic, msg) => {
@@ -318,6 +365,11 @@ function connectMQTT() {
             }
         } catch (e) {}
     });
+    
+    mqttClient.on('error', (err) => {
+        console.error("MQTT Error:", err);
+        addSystemMessage("Uplink Failed. Switching to local mode.");
+    });
 }
 
 function publishMessage(text) {
@@ -329,6 +381,8 @@ function publishMessage(text) {
 function startVoiceRecognition() {
     if (!('webkitSpeechRecognition' in window)) return alert("Voice module not supported by browser");
     const recognition = new webkitSpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
     recognition.onresult = (e) => { 
         chatInput.value = e.results[0][0].transcript; 
         addSystemMessage("Voice input received."); 
@@ -349,10 +403,11 @@ function addXP(amount) {
 
 function loadStats() {
     const saved = localStorage.getItem('termos_stats');
-    if(saved) userStats = JSON.parse(saved);
+    if(saved) try { userStats = JSON.parse(saved); } catch(e){}
 }
 
 function escapeHtml(text) {
+    if(!text) return "";
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
@@ -360,24 +415,38 @@ function initMatrix() {
     const c = document.getElementById('matrix-canvas');
     if(!c) return;
     const ctx = c.getContext('2d');
-    c.width = window.innerWidth; c.height = window.innerHeight;
+    
+    function resize() {
+        c.width = window.innerWidth; 
+        c.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
     const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*';
     const fontSize = 14;
     const columns = c.width / fontSize;
     const drops = Array(Math.floor(columns)).fill(1);
+    
     function draw() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
         ctx.fillRect(0, 0, c.width, c.height);
-        ctx.fillStyle = GROQ_API_KEY || USE_LOCAL_AI ? '#0F0' : '#F00';
+        
+        // Color based on AI Mode
+        ctx.fillStyle = (GROQ_API_KEY || USE_LOCAL_AI) ? '#0F0' : '#F00';
         ctx.font = fontSize + 'px monospace';
+        
         for(let i=0; i<drops.length; i++) {
             const text = letters[Math.floor(Math.random()*letters.length)];
-            if(GROQ_API_KEY || USE_LOCAL_AI && Math.random() > 0.98) ctx.fillStyle = '#00f3ff';
-            else ctx.fillText(text, i*fontSize, drops[i]*fontSize);
+            
+            // Random cyan highlight
+            if((GROQ_API_KEY || USE_LOCAL_AI) && Math.random() > 0.98) ctx.fillStyle = '#00f3ff';
+            else ctx.fillStyle = (GROQ_API_KEY || USE_LOCAL_AI) ? '#0F0' : '#F00';
+            
+            ctx.fillText(text, i*fontSize, drops[i]*fontSize);
             if(drops[i]*fontSize > c.height && Math.random() > 0.975) drops[i] = 0;
             drops[i]++;
         }
     }
     setInterval(draw, 33);
-    window.addEventListener('resize', () => { c.width = window.innerWidth; c.height = window.innerHeight; });
 }
