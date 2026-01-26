@@ -1,4 +1,3 @@
-```javascript
 // =========================================================================
 //         TERMOS LT: MULTIUNIVERSE OS (ROBUST BUILD)
 //         Features: Robust Boot, Safe Init, Matrix Animation
