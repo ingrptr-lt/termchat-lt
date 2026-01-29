@@ -2,460 +2,632 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TermChat - Fixed & Working</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TermOS LT 🌌 - Multiverse OS</title>
     <style>
+        /* --- CRT & TERMINAL AESTHETICS --- */
         :root {
-            --bg-color: #0d1117;
-            --chat-bg: #161b22;
-            --primary-color: #58a6ff;
-            --text-color: #c9d1d9;
-            --user-msg-bg: #1f6feb;
-            --user-msg-text: #ffffff;
-            --ai-msg-bg: #21262d;
-            --border-color: #30363d;
-            --terminal-font: 'Courier New', Courier, monospace;
-            --error-color: #f85149;
-            --success-color: #3fb950;
-            --warning-color: #d29922;
+            --bg-color: #051005;
+            --term-green: #33ff00;
+            --term-glow: #33ff00;
+            --term-amber: #ffb000;
+            --term-blue: #00ccff;
+            --term-dim: #1a8000;
+            --crt-scanline: rgba(18, 16, 16, 0.5);
+            --font-main: 'Courier New', Courier, monospace;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
-            color: var(--text-color);
+            color: var(--term-green);
+            font-family: var(--font-main);
             height: 100vh;
+            overflow: hidden;
+            text-shadow: 0 0 5px var(--term-glow);
             display: flex;
             flex-direction: column;
-            overflow: hidden;
         }
 
-        /* Header */
+        /* CRT Scanline Overlay */
+        .crt::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+        
+        @keyframes flicker {
+            0% { opacity: 0.97; } 5% { opacity: 0.95; } 10% { opacity: 0.9; } 15% { opacity: 0.95; } 100% { opacity: 0.97; }
+        }
+        body { animation: flicker 0.15s infinite; }
+
+        /* --- LAYOUT --- */
         header {
-            background-color: var(--chat-bg);
-            border-bottom: 1px solid var(--border-color);
-            padding: 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            height: 60px;
-            flex-shrink: 0;
+            padding: 10px 15px;
+            border-bottom: 2px solid var(--term-dim);
+            background: rgba(0,20,0,0.8);
+            z-index: 10;
         }
 
-        .brand {
-            font-family: var(--terminal-font);
-            font-weight: bold;
-            font-size: 1.2rem;
-            color: var(--primary-color);
+        .brand { font-weight: bold; font-size: 1.2rem; }
+        .brand span { animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .status-bar { font-size: 0.8rem; display: flex; gap: 15px; }
+        .xp-bar-container { width: 100px; height: 10px; border: 1px solid var(--term-green); display: inline-block; vertical-align: middle; }
+        .xp-fill { height: 100%; background: var(--term-green); width: 0%; transition: width 0.5s; }
+
+        .main-container {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
         }
 
-        .brand span {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            background-color: var(--success-color);
-            border-radius: 50%;
-            box-shadow: 0 0 8px var(--success-color);
+        /* --- SIDEBAR (Rooms) --- */
+        aside {
+            width: 200px;
+            border-right: 2px solid var(--term-dim);
+            display: flex;
+            flex-direction: column;
+            background: #020a02;
+            z-index: 5;
         }
 
-        .settings-btn {
-            background: none;
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            padding: 0.5rem 1rem;
+        .room-list { list-style: none; padding: 10px; }
+        .room-item {
+            padding: 10px;
             cursor: pointer;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-            font-family: var(--terminal-font);
+            border-bottom: 1px dashed var(--term-dim);
+            transition: background 0.2s;
         }
-        .settings-btn:hover { background-color: var(--border-color); color: var(--primary-color); }
+        .room-item:hover, .room-item.active { background: var(--term-dim); color: #fff; }
+        .room-icon { margin-right: 8px; }
 
-        /* Main Chat Area */
+        /* --- CHAT AREA --- */
         main {
             flex: 1;
             overflow-y: auto;
-            padding: 1rem;
+            padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 10px;
             scroll-behavior: smooth;
         }
 
-        main::-webkit-scrollbar { width: 8px; }
-        main::-webkit-scrollbar-track { background: var(--bg-color); }
-        main::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        .message { line-height: 1.4; word-break: break-word; }
+        .msg-system { color: var(--term-amber); font-style: italic; border-bottom: 1px solid var(--term-dim); margin-bottom: 5px; font-size: 0.9rem;}
+        .msg-ai { color: var(--term-green); }
+        .msg-user { color: #fff; text-align: right; }
+        .msg-ai::before { content: "TERMAI > "; color: var(--term-dim); font-weight: bold; }
+        
+        pre { background: #000; padding: 5px; border: 1px solid var(--term-dim); margin-top: 5px; }
 
-        .message {
-            max-width: 80%;
-            padding: 1rem;
-            border-radius: 8px;
-            line-height: 1.5;
-            position: relative;
-            animation: fadeIn 0.3s ease;
-            word-wrap: break-word;
-        }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        .message.user { align-self: flex-end; background-color: var(--user-msg-bg); color: var(--user-msg-text); border-bottom-right-radius: 2px; }
-        .message.assistant { align-self: flex-start; background-color: var(--ai-msg-bg); border: 1px solid var(--border-color); border-bottom-left-radius: 2px; }
-        .message.system { align-self: center; background-color: transparent; color: #8b949e; font-size: 0.85rem; text-align: center; font-style: italic; border: none; }
-        .message .role-label { font-size: 0.7rem; opacity: 0.7; margin-bottom: 5px; display: block; font-family: var(--terminal-font); }
-
-        pre { background: #0d1117; padding: 10px; border-radius: 4px; overflow-x: auto; margin-top: 10px; border: 1px solid var(--border-color); }
-        code { font-family: var(--terminal-font); font-size: 0.9em; }
-
-        /* Footer */
+        /* --- CONTROLS --- */
         footer {
-            background-color: var(--chat-bg);
-            border-top: 1px solid var(--border-color);
-            padding: 1rem;
+            padding: 10px;
+            border-top: 2px solid var(--term-dim);
+            background: rgba(0,20,0,0.9);
             display: flex;
             gap: 10px;
             align-items: center;
-            flex-shrink: 0;
+            z-index: 10;
         }
 
-        .input-wrapper { flex: 1; position: relative; display: flex; align-items: center; }
-        .terminal-prompt { color: var(--success-color); font-family: var(--terminal-font); margin-right: 10px; font-weight: bold; user-select: none; }
-
-        input[type="text"], input[type="password"] {
-            width: 100%;
-            background-color: var(--bg-color);
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            padding: 0.8rem 1rem;
-            border-radius: 6px;
-            font-family: var(--terminal-font);
-            font-size: 1rem;
+        .cmd-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--term-green);
+            font-family: var(--font-main);
+            font-size: 1.1rem;
             outline: none;
-            transition: border-color 0.2s;
         }
-        input:focus { border-color: var(--primary-color); }
 
-        button.send-btn {
-            background-color: var(--success-color); color: #fff; border: none; padding: 0 1.5rem; height: 46px;
-            border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center;
+        .btn {
+            background: transparent;
+            border: 1px solid var(--term-green);
+            color: var(--term-green);
+            padding: 8px 15px;
+            cursor: pointer;
+            font-family: var(--font-main);
+            text-transform: uppercase;
+            font-weight: bold;
         }
-        button.send-btn:disabled { background-color: var(--border-color); cursor: not-allowed; color: #8b949e; }
+        .btn:hover { background: var(--term-green); color: #000; }
+        .btn-voice.active { background: var(--term-blue); border-color: var(--term-blue); color: #000; }
 
-        /* Modal */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.8); display: none; justify-content: center; align-items: center;
-            z-index: 1000; backdrop-filter: blur(2px);
-        }
-        .modal-overlay.active { display: flex; }
+        /* --- MODALS / PANELS --- */
         .modal {
-            background: var(--chat-bg); border: 1px solid var(--border-color); padding: 2rem;
-            border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid var(--term-green);
+            padding: 20px;
         }
-        .modal h2 { margin-bottom: 1rem; color: var(--primary-color); font-family: var(--terminal-font); }
-        .modal p { margin-bottom: 1rem; font-size: 0.9rem; color: #8b949e; }
-        .modal .warning { color: var(--warning-color); font-size: 0.8rem; margin-bottom: 1rem; border: 1px solid var(--warning-color); padding: 8px; border-radius: 4px; }
-        
-        .form-group { margin-bottom: 1.2rem; }
-        .form-group label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; }
-        
-        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
-        .btn-secondary { background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
-        .btn-primary { background: var(--primary-color); border: none; color: white; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
-
-        /* Utilities */
-        .typing-indicator { display: flex; gap: 4px; padding: 10px 0; align-items: center; }
-        .dot { width: 6px; height: 6px; background: var(--text-color); border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; opacity: 0.6; }
-        .dot:nth-child(1) { animation-delay: -0.32s; }
-        .dot:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
-
-        .toast {
-            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-            background: var(--error-color); color: white; padding: 10px 20px; border-radius: 4px;
-            font-size: 0.9rem; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 2000;
+        .modal.active { display: flex; }
+        .modal-content {
+            background: var(--bg-color);
+            border: 1px solid var(--term-green);
+            padding: 20px;
+            width: 100%; max-width: 600px;
+            max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 0 20px var(--term-glow);
         }
-        .toast.show { opacity: 1; }
+        .modal h2 { border-bottom: 1px solid var(--term-dim); padding-bottom: 10px; margin-bottom: 15px; }
+        
+        .ascii-avatar { white-space: pre; font-size: 10px; line-height: 10px; text-align: center; margin: 10px 0; color: #fff; }
+        .locked { filter: blur(4px); opacity: 0.5; pointer-events: none; }
+        .unlocked { border: 1px dashed var(--term-green); padding: 10px; margin: 5px 0; cursor: pointer; }
+        .unlocked:hover { background: var(--term-dim); }
+
+        /* --- GAME & MUSIC PANELS (Mockups) --- */
+        .panel-content { text-align: center; padding: 20px; }
+        .game-canvas { border: 1px solid var(--term-green); width: 100%; height: 200px; background: #000; display: flex; align-items: center; justify-content: center; color: var(--term-dim); }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 600px) {
+            aside { display: none; /* Hide rooms on mobile for simplicity, or make toggleable */ }
+            .brand span { display: none; }
+        }
     </style>
 </head>
-<body>
+<body class="crt">
 
     <header>
-        <div class="brand">
-            <span></span> TermChat_v2.1 [FIXED]
+        <div class="brand">TermOS LT <span>_</span></div>
+        <div class="status-bar">
+            <span id="levelDisplay">LVL: 1</span>
+            <div class="xp-bar-container"><div class="xp-fill" id="xpFill"></div></div>
+            <span id="roomDisplay">LOUNGE</span>
         </div>
-        <button class="settings-btn" id="settingsBtn">[ CONFIG ]</button>
     </header>
 
-    <main id="chatContainer">
-        <div class="message system">
-            System Ready. "Load Failed" errors are fixed by using a CORS Proxy.
-        </div>
-    </main>
+    <div class="main-container">
+        <aside>
+            <div style="padding:10px; border-bottom:1px solid var(--term-dim);">MULTIVERSE</div>
+            <ul class="room-list">
+                <li class="room-item active" onclick="app.switchRoom('LOUNGE')">🎭 Lounge</li>
+                <li class="room-item" onclick="app.switchRoom('LIBRARY')">📚 Library</li>
+                <li class="room-item" onclick="app.switchRoom('WORKSHOP')">🛠️ Workshop</li>
+                <li class="room-item" onclick="app.switchRoom('STUDIO')">🎨 Studio</li>
+                <li class="room-item" onclick="app.switchRoom('THINKTANK')">🧠 Think Tank</li>
+            </ul>
+        </aside>
+
+        <main id="chatWindow">
+            <!-- Messages go here -->
+        </main>
+    </div>
 
     <footer>
-        <div class="input-wrapper">
-            <span class="terminal-prompt">user@termchat:~$</span>
-            <input type="text" id="userInput" placeholder="Enter command..." autocomplete="off">
-        </div>
-        <button class="send-btn" id="sendBtn">SEND</button>
+        <span style="color:var(--term-amber);">➜</span>
+        <input type="text" class="cmd-input" id="cmdInput" placeholder="Enter command or message..." autocomplete="off">
+        <button class="btn" id="sendBtn">EXEC</button>
+        <button class="btn btn-voice" id="voiceBtn">🎙️</button>
     </footer>
 
-    <!-- Settings Modal -->
-    <div class="modal-overlay" id="settingsModal">
-        <div class="modal">
-            <h2>CONFIGURATION</h2>
-            <p>Enter your OpenAI API Key.</p>
-            
-            <div class="warning">
-                <strong>NETWORK FIX:</strong> To bypass "Load Failed", a public proxy is enabled below. 
-                For production, use your own backend server.
-            </div>
-
-            <div class="form-group">
-                <label for="apiKey">API Key (sk-...)</label>
-                <input type="password" id="apiKey" placeholder="sk-...">
-            </div>
-            
-            <div class="form-group">
-                <label for="apiModel">Model</label>
-                <input type="text" id="apiModel" value="gpt-3.5-turbo" placeholder="gpt-3.5-turbo">
-            </div>
-
-            <div class="form-group">
-                <label for="proxyUrl">CORS Proxy URL (Fixes Network Error)</label>
-                <input type="text" id="proxyUrl" value="https://corsproxy.io/?" placeholder="https://corsproxy.io/?">
-                <p style="font-size:0.75rem; color:#8b949e; margin-top:4px;">Leave this as is to fix connection issues.</p>
-            </div>
-
-            <div class="modal-actions">
-                <button class="btn-secondary" id="closeSettings">Cancel</button>
-                <button class="btn-primary" id="saveSettings">Save & Connect</button>
+    <!-- STATS / AVATAR MODAL -->
+    <div class="modal" id="statsModal">
+        <div class="modal-content">
+            <h2>USER PROFILE</h2>
+            <div id="currentAvatarDisplay" class="ascii-avatar"></div>
+            <p id="profileText">Loading...</p>
+            <hr style="border-color:var(--term-dim); margin: 15px 0;">
+            <h3>UNLOCKED AVATARS</h3>
+            <div id="avatarList"></div>
+            <div style="margin-top:20px; text-align:right;">
+                <button class="btn" onclick="ui.closeModal('statsModal')">CLOSE</button>
             </div>
         </div>
     </div>
 
-    <div class="toast" id="toastMsg">Error Message</div>
+    <!-- GAME CONSOLE MODAL -->
+    <div class="modal" id="gameModal">
+        <div class="modal-content" style="border-color:var(--term-blue);">
+            <h2 style="color:var(--term-blue)">GAME CONSOLE</h2>
+            <div class="panel-content">
+                <div class="game-canvas">
+                    [ GAME ENGINE LOADED ]<br>
+                    Click squares to hack...
+                    <div id="miniGame" style="display:grid; grid-template-columns: repeat(3, 50px); gap:5px; margin-top:10px;">
+                        <!-- JS generates buttons here -->
+                    </div>
+                </div>
+                <p style="margin-top:10px;">HACKING PROGRESS: <span id="hackProgress">0</span>%</p>
+            </div>
+            <div style="margin-top:20px; text-align:right;">
+                <button class="btn" onclick="ui.closeModal('gameModal')">TERMINATE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MUSIC PLAYER MODAL -->
+    <div class="modal" id="musicModal">
+        <div class="modal-content" style="border-color:var(--term-amber);">
+            <h2 style="color:var(--term-amber)">AUDIO SYSTEM</h2>
+            <div class="panel-content">
+                <div style="font-size:3rem; margin:20px;">🎵</div>
+                <p>NOW PLAYING: CYBERPUNK_BEATS.mp3</p>
+                <div style="width:100%; height:2px; background:var(--term-dim); margin:10px 0;">
+                    <div style="width:40%; height:100%; background:var(--term-amber); animation: moveBar 2s infinite linear;"></div>
+                </div>
+                <style>@keyframes moveBar { 0% {width:0;} 100% {width:100%;} }</style>
+                <p>STATUS: STREAMING</p>
+            </div>
+            <div style="margin-top:20px; text-align:right;">
+                <button class="btn" onclick="ui.closeModal('musicModal')">STOP</button>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // --- Elements ---
-        const elements = {
-            chatContainer: document.getElementById('chatContainer'),
-            userInput: document.getElementById('userInput'),
-            sendBtn: document.getElementById('sendBtn'),
-            settingsBtn: document.getElementById('settingsBtn'),
-            settingsModal: document.getElementById('settingsModal'),
-            closeSettings: document.getElementById('closeSettings'),
-            saveSettings: document.getElementById('saveSettings'),
-            apiKeyInput: document.getElementById('apiKey'),
-            apiModelInput: document.getElementById('apiModel'),
-            proxyUrlInput: document.getElementById('proxyUrl'),
-            toast: document.getElementById('toastMsg')
-        };
-
-        // --- State ---
-        let config = {
-            apiKey: localStorage.getItem('termchat_key') || '',
-            model: localStorage.getItem('termchat_model') || 'gpt-3.5-turbo',
-            proxyUrl: localStorage.getItem('termchat_proxy') || 'https://corsproxy.io/?' // Default CORS fix
-        };
+        /* --- TERMOS LT ENGINE --- */
         
-        let conversationHistory = [];
+        const AVATARS = {
+            1: { name: "Newbie", art: "  O  \n /|\\ \n / \\ " },
+            3: { name: "Hacker", art: "/\\_/\\\n( o.o )\n =^.^=" },
+            5: { name: "Wizard", art: "  /\\ \n /  \\ \n o_o \n/|\\ " },
+            8: { name: "Ninja", art: "  ◢◤ \n o_o \n/|\\\n/ \\" }
+        };
 
-        // --- Core Functions ---
+        const ROOMS = {
+            LOUNGE: "Welcome to the Lounge. I am your Entertainment Host. Play games or chat.",
+            LIBRARY: "The Library is open. I am the Librarian. Ask me to learn anything.",
+            WORKSHOP: "Workshop active. I am the Engineer. Let's build apps or debug code.",
+            STUDIO: "Studio initialized. I am the Artist. Create visuals or music.",
+            THINKTANK: "Think Tank online. I am the Strategist. Let's solve complex problems."
+        };
 
-        function init() {
-            if (!config.apiKey) {
-                openSettings();
-            } else {
-                elements.apiKeyInput.value = config.apiKey;
-                elements.apiModelInput.value = config.model;
-                elements.proxyUrlInput.value = config.proxyUrl;
-                addMessage('system', 'Configuration loaded. Ready.');
-            }
-        }
-
-        function addMessage(role, text) {
-            const msgDiv = document.createElement('div');
-            msgDiv.classList.add('message', role);
-            
-            if (role !== 'system') {
-                const label = document.createElement('span');
-                label.classList.add('role-label');
-                label.innerText = role === 'user' ? 'YOU' : 'AI_CORE';
-                msgDiv.appendChild(label);
-            }
-
-            let formattedText = escapeHtml(text);
-            // Basic Markdown handling
-            if (formattedText.includes('```')) {
-                formattedText = formattedText.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-                formattedText = formattedText.replace(/\n/g, '<br>');
-            } else {
-                formattedText = formattedText.replace(/\n/g, '<br>');
-            }
-
-            const content = document.createElement('div');
-            content.innerHTML = formattedText;
-            msgDiv.appendChild(content);
-
-            elements.chatContainer.appendChild(msgDiv);
-            scrollToBottom();
-        }
-
-        function escapeHtml(text) {
-            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-            return text.replace(/[&<>"']/g, m => map[m]);
-        }
-
-        function scrollToBottom() {
-            elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
-        }
-
-        function showToast(msg) {
-            elements.toast.innerText = msg;
-            elements.toast.classList.add('show');
-            setTimeout(() => elements.toast.classList.remove('show'), 3000);
-        }
-
-        function openSettings() { elements.settingsModal.classList.add('active'); }
-        function closeSettings() { elements.settingsModal.classList.remove('active'); }
-
-        // --- API & Network Logic ---
-
-        async function handleSend() {
-            const text = elements.userInput.value.trim();
-            if (!text) return;
-
-            if (!config.apiKey) {
-                showToast("API Key missing.");
-                openSettings();
-                return;
-            }
-
-            // UI Update
-            elements.userInput.value = '';
-            addMessage('user', text);
-            conversationHistory.push({ role: "user", content: text });
-
-            const typingId = 'typing-' + Date.now();
-            const msgDiv = document.createElement('div');
-            msgDiv.classList.add('message', 'assistant');
-            msgDiv.id = typingId;
-            msgDiv.innerHTML = `<span class="role-label">AI_CORE</span><div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
-            elements.chatContainer.appendChild(msgDiv);
-            scrollToBottom();
-
-            elements.sendBtn.disabled = true;
-            elements.userInput.disabled = true;
-
-            try {
-                // Prepare OpenAI Request
-                const openaiUrl = 'https://api.openai.com/v1/chat/completions';
-                const payload = {
-                    model: config.model,
-                    messages: conversationHistory,
-                    temperature: 0.7
+        class App {
+            constructor() {
+                this.state = {
+                    xp: parseInt(localStorage.getItem('termos_xp')) || 0,
+                    level: parseInt(localStorage.getItem('termos_lvl')) || 1,
+                    currentRoom: 'LOUNGE',
+                    currentAvatar: localStorage.getItem('termos_av') || 1,
+                    voiceEnabled: false
                 };
+                this.synth = window.speechSynthesis;
+                this.recognition = null;
+            }
 
-                // PROXY LOGIC: If proxy is set, wrap the URL
-                // corsproxy.io expects the full target URL after the ?
-                const fetchUrl = config.proxyUrl 
-                    ? config.proxyUrl + encodeURIComponent(openaiUrl) 
-                    : openaiUrl;
+            init() {
+                ui.log("System", "Booting TermOS LT v3.0...");
+                setTimeout(() => ui.log("System", "Loading Multiverse Map..."), 500);
+                setTimeout(() => {
+                    ui.log("System", `Connected to Room: ${this.state.currentRoom}`);
+                    ui.speak("System Online");
+                    ui.updateStats();
+                }, 1000);
+                
+                this.setupVoice();
+            }
 
-                const response = await fetch(fetchUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${config.apiKey}`
-                    },
-                    body: JSON.stringify(payload)
-                });
+            addXP(amount) {
+                this.state.xp += amount;
+                localStorage.setItem('termos_xp', this.state.xp);
+                
+                // Level Up Logic (Simple curve: Level * 10)
+                const nextLevelXp = this.state.level * 10;
+                if (this.state.xp >= nextLevelXp) {
+                    this.state.level++;
+                    localStorage.setItem('termos_lvl', this.state.level);
+                    ui.log("SYSTEM", `*** LEVEL UP! You are now Level ${this.state.level} ***`);
+                    ui.speak(`Level up achieved. Level ${this.state.level}.`);
+                    this.checkUnlocks();
+                }
+                ui.updateStats();
+            }
 
-                const data = await response.json();
+            checkUnlocks() {
+                // Check for new avatar unlocks
+                if (AVATARS[this.state.level] && this.state.level > this.state.currentAvatar) {
+                    ui.log("REWARD", `Unlocked new avatar: ${AVATARS[this.state.level].name}`);
+                }
+            }
 
-                // Remove typing indicator
-                const el = document.getElementById(typingId);
-                if (el) el.remove();
-
-                if (response.ok) {
-                    const aiText = data.choices[0].message.content;
-                    addMessage('assistant', aiText);
-                    conversationHistory.push({ role: "assistant", content: aiText });
-                } else {
-                    // Handle API Errors (Invalid Key, Quota, etc)
-                    let errorMsg = "Unknown Error";
-                    if (data.error && data.error.message) {
-                        errorMsg = data.error.message;
-                    } else {
-                        errorMsg = `Status ${response.status}: ${response.statusText}`;
-                    }
-                    addMessage('system', `API ERROR: ${errorMsg}`);
-                    console.error(data);
+            switchRoom(roomName) {
+                if (this.state.currentRoom === roomName) return;
+                
+                this.state.currentRoom = roomName;
+                document.getElementById('roomDisplay').innerText = roomName;
+                
+                // UI Update for Sidebar
+                document.querySelectorAll('.room-item').forEach(el => el.classList.remove('active'));
+                // Find element by text content (simplified)
+                const items = document.querySelectorAll('.room-item');
+                for(let item of items) {
+                    if(item.innerText.includes(roomName)) item.classList.add('active');
                 }
 
-            } catch (error) {
-                const el = document.getElementById(typingId);
-                if (el) el.remove();
+                ui.log("SYSTEM", `Navigating to Multiverse Sector: ${roomName}...`);
+                setTimeout(() => {
+                    ui.log(roomName, ROOMS[roomName]);
+                    ui.speak(ROOMS[roomName].split('.')[0]); // Speak first sentence
+                }, 600);
+            }
+
+            setupVoice() {
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    this.recognition = new SpeechRecognition();
+                    this.recognition.continuous = false;
+                    this.recognition.lang = 'en-US';
+                    
+                    this.recognition.onstart = () => {
+                        this.state.voiceEnabled = true;
+                        document.getElementById('voiceBtn').classList.add('active');
+                    };
+                    
+                    this.recognition.onend = () => {
+                        this.state.voiceEnabled = false;
+                        document.getElementById('voiceBtn').classList.remove('active');
+                    };
+
+                    this.recognition.onresult = (event) => {
+                        const transcript = event.results[0][0].transcript;
+                        document.getElementById('cmdInput').value = transcript;
+                        this.processCommand(transcript);
+                    };
+                } else {
+                    console.warn("Web Speech API not supported");
+                }
+            }
+
+            toggleVoice() {
+                if (!this.recognition) {
+                    ui.log("ERROR", "Voice API not supported in this browser.");
+                    return;
+                }
+                if (this.state.voiceEnabled) {
+                    this.recognition.stop();
+                } else {
+                    this.recognition.start();
+                }
+            }
+
+            processCommand(input) {
+                const txt = input.trim().toLowerCase();
+                if (!txt) return;
+
+                // 1. Log User Message
+                ui.log("YOU", input);
+                this.addXP(1); // Gamification: +1 XP per message
+
+                // 2. Handle System Commands
+                if (txt.startsWith('/')) {
+                    this.handleSlashCommands(txt);
+                    return;
+                }
+
+                // 3. Agentic AI Simulation (Regex Matching)
+                setTimeout(() => {
+                    let response = "";
+                    
+                    if (txt.includes("play music") || txt.includes("play jazz")) {
+                        this.triggerAction("MUSIC");
+                        response = "Activating Audio Subsystem. Loading tracks...";
+                    } 
+                    else if (txt.includes("start game") || txt.includes("play game")) {
+                        this.triggerAction("GAME");
+                        response = "Initializing Game Console. Ready player one.";
+                    }
+                    else if (txt.includes("avatar") || txt.includes("who am i")) {
+                        const avName = AVATARS[this.state.currentAvatar] ? AVATARS[this.state.currentAvatar].name : "Unknown";
+                        response = `You are a Level ${this.state.level} ${avName}.`;
+                    }
+                    else if (txt.includes("create app") || txt.includes("plugin")) {
+                        response = "Opening Development Environment. (Simulated Plugin Upload Successful)";
+                        ui.log("PLUGIN", "Auto Greeter installed (Python Sandbox Mock).");
+                        this.addXP(50);
+                    }
+                    else {
+                        // Fallback generic response based on Room
+                        response = this.generateAIResponse(txt);
+                    }
+
+                    ui.log("TERMAI", response);
+                    ui.speak(response);
+
+                }, 800);
+            }
+
+            triggerAction(type) {
+                if (type === "MUSIC") ui.openModal('musicModal');
+                if (type === "GAME") ui.openModal('gameModal');
+            }
+
+            handleSlashCommands(cmd) {
+                const parts = cmd.split(' ');
+                const command = parts[0];
+
+                switch(command) {
+                    case '/stats':
+                        ui.showStats(this.state);
+                        break;
+                    case '/share':
+                        ui.log("SYSTEM", "Shareable link copied to clipboard: termchat.lt/?r=" + Math.random().toString(36).substring(7));
+                        this.addXP(25);
+                        break;
+                    case '/voice':
+                        this.toggleVoice();
+                        break;
+                    case '/clear':
+                        document.getElementById('chatWindow').innerHTML = '';
+                        break;
+                    default:
+                        ui.log("SYSTEM", `Unknown command: ${command}`);
+                }
+            }
+
+            generateAIResponse(input) {
+                // Simulating different AI Personalities per room
+                const context = ROOMS[this.state.currentRoom];
                 
-                console.error(error);
-                addMessage('system', `NETWORK ERROR: ${error.message}. Ensure Proxy URL is correct in settings.`);
-            } finally {
-                elements.sendBtn.disabled = false;
-                elements.userInput.disabled = false;
-                elements.userInput.focus();
-                scrollToBottom();
+                if (this.state.currentRoom === 'LIBRARY') {
+                    return `According to the archives, "${input}" is a fascinating topic. Would you like a detailed summary?`;
+                } else if (this.state.currentRoom === 'WORKSHOP') {
+                    return `I can help you code that. Here is a snippet: \n\nfunction run() { console.log("Hello Multiverse"); }`;
+                } else if (this.state.currentRoom === 'THINKTANK') {
+                    return `Let's analyze the strategic implications of "${input}".`;
+                }
+                return `I am processing your request regarding "${input}" in the ${this.state.currentRoom}.`;
+            }
+
+            speak(text) {
+                if (this.synth) {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    // Try to pick a robotic voice
+                    const voices = this.synth.getVoices();
+                    const robotVoice = voices.find(v => v.name.includes('Google US English') || v.name.includes('Samantha'));
+                    if(robotVoice) utterance.voice = robotVoice;
+                    this.synth.speak(utterance);
+                }
             }
         }
 
-        // --- Event Listeners ---
+        /* --- UI MANAGER --- */
+        const ui = {
+            log: (sender, text) => {
+                const win = document.getElementById('chatWindow');
+                const msg = document.createElement('div');
+                msg.classList.add('message');
+                
+                if (sender === 'YOU') msg.classList.add('msg-user');
+                else if (sender === 'SYSTEM') msg.classList.add('msg-system');
+                else msg.classList.add('msg-ai');
 
-        elements.sendBtn.addEventListener('click', handleSend);
-        elements.userInput.addEventListener('keypress', e => { if (e.key === 'Enter') handleSend(); });
-        
-        elements.settingsBtn.addEventListener('click', openSettings);
-        
-        elements.closeSettings.addEventListener('click', () => {
-            elements.apiKeyInput.value = config.apiKey;
-            elements.apiModelInput.value = config.model;
-            elements.proxyUrlInput.value = config.proxyUrl;
-            closeSettings();
-        });
+                // Basic markdown-like formatting
+                let formatted = text.replace(/\n/g, '<br>');
+                
+                msg.innerHTML = formatted;
+                win.appendChild(msg);
+                win.scrollTop = win.scrollHeight;
+            },
+            
+            updateStats: () => {
+                document.getElementById('levelDisplay').innerText = `LVL: ${app.state.level}`;
+                
+                // Calculate XP percentage for bar
+                const nextLvlXp = app.state.level * 10;
+                const currentLvlBase = (app.state.level - 1) * 10;
+                const progress = ((app.state.xp - currentLvlBase) / (nextLvlXp - currentLvlBase)) * 100;
+                
+                document.getElementById('xpFill').style.width = `${Math.min(100, Math.max(0, progress))}%`;
+            },
 
-        elements.saveSettings.addEventListener('click', () => {
-            const key = elements.apiKeyInput.value.trim();
-            const model = elements.apiModelInput.value.trim();
-            const proxy = elements.proxyUrlInput.value.trim();
+            showStats: (state) => {
+                const currentAv = AVATARS[state.currentAvatar] || AVATARS[1];
+                document.getElementById('currentAvatarDisplay').innerText = currentAv.art;
+                document.getElementById('profileText').innerHTML = 
+                    `<strong>Rank:</strong> ${currentAv.name}<br>
+                     <strong>Level:</strong> ${state.level}<br>
+                     <strong>Total XP:</strong> ${state.xp}`;
+                
+                const list = document.getElementById('avatarList');
+                list.innerHTML = '';
+                
+                // Generate Avatar Grid
+                Object.keys(AVATARS).forEach(lvl => {
+                    const data = AVATARS[lvl];
+                    const isUnlocked = state.level >= lvl;
+                    const isSelected = state.currentAvatar == lvl;
+                    
+                    const div = document.createElement('div');
+                    div.className = isUnlocked ? 'unlocked' : 'locked';
+                    if(isSelected) div.style.borderColor = '#fff';
+                    
+                    div.innerHTML = `<span style="font-size:10px">${data.art}</span><br>Lvl ${lvl}: ${data.name}`;
+                    
+                    if (isUnlocked && !isSelected) {
+                        div.onclick = () => {
+                            state.currentAvatar = lvl;
+                            localStorage.setItem('termos_av', lvl);
+                            ui.showStats(state); // Refresh
+                        };
+                    }
+                    
+                    list.appendChild(div);
+                });
 
-            if (!key.startsWith('sk-')) {
-                showToast("Invalid Key Format");
-                return;
+                ui.openModal('statsModal');
+            },
+
+            openModal: (id) => {
+                document.getElementById(id).classList.add('active');
+                if(id === 'gameModal') ui.initMiniGame();
+            },
+            closeModal: (id) => {
+                document.getElementById(id).classList.remove('active');
+            },
+
+            speak: (text) => { app.speak(text); },
+
+            initMiniGame: () => {
+                const container = document.getElementById('miniGame');
+                if(container.children.length > 0) return; // Already init
+                
+                let progress = 0;
+                for(let i=0; i<9; i++) {
+                    const btn = document.createElement('button');
+                    btn.style.width = '50px';
+                    btn.style.height = '50px';
+                    btn.style.background = '#000';
+                    btn.style.color = 'var(--term-green)';
+                    btn.style.border = '1px solid var(--term-green)';
+                    btn.innerText = '[ ]';
+                    btn.onclick = () => {
+                        btn.innerText = '[X]';
+                        btn.style.background = 'var(--term-dim)';
+                        progress += 10;
+                        document.getElementById('hackProgress').innerText = progress;
+                        if(progress >= 100) {
+                            setTimeout(() => {
+                                alert("SYSTEM HACKED! +30 XP");
+                                app.addXP(30);
+                                ui.closeModal('gameModal');
+                            }, 200);
+                        }
+                    };
+                    container.appendChild(btn);
+                }
             }
+        };
 
-            config.apiKey = key;
-            config.model = model || 'gpt-3.5-turbo';
-            config.proxyUrl = proxy;
-
-            localStorage.setItem('termchat_key', config.apiKey);
-            localStorage.setItem('termchat_model', config.model);
-            localStorage.setItem('termchat_proxy', config.proxyUrl);
-
-            conversationHistory = []; // Clear context on new config
-            addMessage('system', 'Configuration Saved. Context cleared.');
-            showToast("Saved");
-            closeSettings();
+        // --- INIT ---
+        const app = new App();
+        
+        // Event Listeners
+        document.getElementById('sendBtn').addEventListener('click', () => {
+            const input = document.getElementById('cmdInput');
+            app.processCommand(input.value);
+            input.value = '';
         });
 
-        elements.settingsModal.addEventListener('click', e => {
-            if (e.target === elements.settingsModal) elements.closeSettings.click();
+        document.getElementById('cmdInput').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') document.getElementById('sendBtn').click();
         });
 
-        // Start
-        init();
+        document.getElementById('voiceBtn').addEventListener('click', () => {
+            app.toggleVoice();
+        });
+
+        // Boot
+        window.onload = () => app.init();
 
     </script>
 </body>
