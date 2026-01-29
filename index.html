@@ -1,8 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TERMOS LT: MASTERPIECE</title>
+    <!-- STYLES -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* FALLBACK BACKGROUND TO PREVENT WHITE SCREEN */
+        body { background-color: #000; color: #0f0; font-family: 'Courier New', Courier, monospace; margin: 0; overflow: hidden; }
+
+        /* SCROLLBAR CUSTOMIZATION */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #065f46; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #059669; }
+
+        /* ANIMATIONS */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .blink-caret { animation: blink 1s step-end infinite; }
+        
+        /* CRT EFFECT OVERLAY */
+        .scanline-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.3) 51%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* UTILITIES */
+        .text-neon-green { color: #4ade80; text-shadow: 0 0 5px #4ade80; }
+        .text-neon-cyan { color: #22d3ee; text-shadow: 0 0 5px #22d3ee; }
+        .border-neon-green { border-color: #4ade80; box-shadow: 0 0 5px #4ade80; inset 0 0 5px #4ade80; }
+        
+        /* MODAL */
+        #api-modal { display: none; }
+        #api-modal.active { display: flex; }
+
+        /* GLITCH TEXT EFFECT */
+        .glitch { position: relative; }
+        .glitch::before, .glitch::after {
+            content: attr(data-text);
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+        .glitch::before { left: 2px; text-shadow: -1px 0 #ff00c1; clip: rect(44px, 450px, 56px, 0); animation: glitch-anim 5s infinite linear alternate-reverse; }
+        .glitch::after { left: -2px; text-shadow: -1px 0 #00fff9; clip: rect(44px, 450px, 56px, 0); animation: glitch-anim2 5s infinite linear alternate-reverse; }
+        @keyframes glitch-anim { 0% { clip: rect(12px, 9999px, 86px, 0); } 100% { clip: rect(65px, 9999px, 19px, 0); } }
+        @keyframes glitch-anim2 { 0% { clip: rect(89px, 9999px, 3px, 0); } 100% { clip: rect(2px, 9999px, 86px, 0); } }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col relative selection:bg-green-500 selection:text-black">
+
+    <!-- MATRIX CANVAS BACKGROUND -->
+    <canvas id="matrix-canvas" class="fixed top-0 left-0 w-full h-full z-0 opacity-30"></canvas>
+    
+    <!-- CRT SCANLINE OVERLAY -->
+    <div class="scanline-overlay"></div>
+
+    <!-- BOOT SCREEN (TERMINAL) -->
+    <div id="terminal-boot" class="fixed inset-0 flex flex-col items-center justify-center bg-black/95 z-40 p-4 transition-opacity duration-1000">
+        <div class="w-full max-w-2xl bg-black border border-green-800 rounded-lg shadow-[0_0_30px_rgba(74,222,128,0.2)] p-1 relative overflow-hidden">
+            <!-- DECORATIVE HEADER -->
+            <div class="bg-green-900/20 p-2 border-b border-green-800 flex justify-between items-center">
+                <span class="text-xs font-bold text-green-500">BOOT_LOADER.EXE</span>
+                <span class="text-xs text-gray-500">RAILWAY_ENV: TRUE</span>
+            </div>
+
+            <div class="p-6">
+                <h1 class="text-3xl font-bold mb-6 text-center tracking-widest text-neon-green glitch" data-text="TERMOS LT">TERMOS LT <span class="text-sm opacity-70">v2.0</span></h1>
+                
+                <!-- TERMINAL LOGS -->
+                <div id="terminal-content" class="font-mono text-sm text-green-300 mb-6 h-64 overflow-y-auto border-l-2 border-green-800 pl-4 bg-black/60 shadow-inner"></div>
+                
+                <div id="boot-status" class="text-center text-sm font-bold text-cyan-400 mb-6 hidden animate-pulse">SYSTEM READY. SELECT PROTOCOL.</div>
+
+                <!-- ACTION BUTTONS -->
+                <div id="boot-buttons" class="grid grid-cols-1 md:grid-cols-3 gap-4 opacity-0 transition-opacity duration-1000">
+                    <button id="btn-mode-1" onclick="enterApp('chat')" class="group relative p-4 border border-green-700 bg-green-900/10 hover:bg-green-800 text-green-400 font-bold rounded transition-all hover:scale-[1.02]">
+                        <div class="text-xl mb-1">MODE 1</div>
+                        <div class="text-xs text-gray-400 text-center">CHAT & MUSIC</div>
+                        <div class="absolute inset-0 border border-green-500 opacity-0 group-hover:opacity-100 rounded transition-opacity"></div>
+                    </button>
+                    
+                    <button id="btn-mode-2" onclick="enterApp('api')" class="group relative p-4 border border-cyan-700 bg-cyan-900/10 hover:bg-cyan-800 text-cyan-400 font-bold rounded transition-all hover:scale-[1.02]">
+                        <div class="text-xl mb-1">MODE 2</div>
+                        <div class="text-xs text-gray-400 text-center">REMOTE AI (GROQ)</div>
+                        <div class="absolute inset-0 border border-cyan-500 opacity-0 group-hover:opacity-100 rounded transition-opacity"></div>
+                    </button>
+                    
+                    <button id="btn-mode-3" onclick="enterApp('local')" class="group relative p-4 border border-purple-700 bg-purple-900/10 hover:bg-purple-800 text-purple-400 font-bold rounded transition-all hover:scale-[1.02]">
+                        <div class="text-xl mb-1">MODE 3</div>
+                        <div class="text-xs text-gray-400 text-center">LOCAL AI (OFFLINE)</div>
+                        <div class="absolute inset-0 border border-purple-500 opacity-0 group-hover:opacity-100 rounded transition-opacity"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP LAYOUT -->
+    <div id="main-layout" class="hidden flex flex-col h-full relative z-30 transition-opacity duration-500 opacity-0">
+        
+        <!-- HEADER -->
+        <header class="flex justify-between items-center p-3 bg-black/90 border-b border-green-900/50 backdrop-blur-md shadow-lg z-30">
+            <div class="flex items-center gap-4">
+                <div class="text-xl font-bold tracking-tighter text-neon-green">TERMOS LT</div>
+                <div id="mode-badge" class="text-[10px] border border-green-600 px-2 py-0.5 rounded text-green-400 bg-green-900/20">MODE: LOBBY</div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <!-- MUSIC VISUALIZER (SIMULATED) -->
+                <div id="music-visualizer" class="hidden flex items-end gap-[2px] h-4">
+                    <div class="w-1 bg-cyan-400 animate-[pulse_0.5s_infinite]"></div>
+                    <div class="w-1 bg-cyan-400 animate-[pulse_0.7s_infinite]"></div>
+                    <div class="w-1 bg-cyan-400 animate-[pulse_0.4s_infinite]"></div>
+                    <div class="w-1 bg-cyan-400 animate-[pulse_0.6s_infinite]"></div>
+                </div>
+                
+                <div class="text-xs font-mono text-gray-400 border border-gray-800 px-2 py-1 rounded bg-gray-900">SYS.ONLINE</div>
+                <div id="user-display" class="text-xs font-bold text-cyan-400 border border-cyan-900 px-2 py-1 rounded bg-cyan-900/10 shadow-[0_0_10px_rgba(34,211,238,0.2)]">@OPERATOR</div>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 relative overflow-hidden flex flex-col">
+            <!-- MESSAGES -->
+            <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-4 pb-24 scroll-smooth">
+                <!-- Messages will be injected here -->
+            </div>
+
+            <!-- INPUT AREA -->
+            <div class="absolute bottom-0 w-full p-4 bg-gradient-to-t from-black via-black/95 to-transparent border-t border-green-900/50">
+                <div class="max-w-4xl mx-auto">
+                    <div class="flex gap-2 items-center">
+                        <span class="text-green-500 font-bold animate-pulse">></span>
+                        <input type="text" id="chatInput" placeholder="Enter command or transmission..." autocomplete="off" 
+                            class="flex-1 bg-black/80 border border-green-800/50 text-green-400 p-3 rounded focus:outline-none focus:border-green-500 focus:shadow-[0_0_15px_rgba(74,222,128,0.3)] font-mono text-sm placeholder-gray-600 transition-all">
+                        <button onclick="handleSend()" class="bg-green-700 hover:bg-green-600 text-black font-bold px-6 py-3 rounded transition-all hover:shadow-[0_0_15px_rgba(34,197,94,0.5)] text-sm tracking-wider">
+                            SEND
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- FOOTER STATS -->
+        <footer class="bg-black/90 border-t border-gray-900 p-1 px-4 flex justify-between items-center text-[10px] text-gray-500 font-mono">
+            <div class="flex items-center gap-2">
+                <span id="lvl-text" class="text-cyan-500">LVL. 1 NEWBIE</span>
+                <div class="w-32 h-1.5 bg-gray-900 rounded-full overflow-hidden">
+                    <div id="xp-bar" class="h-full bg-gradient-to-r from-green-600 to-green-400 transition-all duration-500" style="width: 0%;"></div>
+                </div>
+                <span id="xp-text">XP: 0</span>
+            </div>
+            <div class="flex gap-4">
+                <span>MEM: 64TB</span>
+                <span class="text-green-700">NET: SECURE</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- API KEY MODAL (CUSTOM PROMPT REPLACEMENT) -->
+    <div id="api-modal" class="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="max-w-md w-full bg-gray-900 border border-cyan-500/50 p-8 rounded shadow-[0_0_50px_rgba(6,182,212,0.3)] relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-cyan-500 animate-pulse"></div>
+            
+            <h3 class="text-2xl text-cyan-400 font-bold mb-2 tracking-wider">AUTHORIZATION</h3>
+            <p class="text-sm text-gray-400 mb-6 font-mono">Please enter your <span class="text-white">Groq API Key</span> to initialize the Neural Link.</p>
+            
+            <div class="space-y-4">
+                <input type="password" id="railway-key-input" placeholder="gsk_..." 
+                    class="w-full p-3 border border-cyan-900 bg-black text-cyan-400 rounded focus:outline-none focus:border-cyan-500 focus:shadow-[0_0_10px_rgba(6,182,212,0.3)] font-mono text-sm tracking-wide">
+                
+                <div class="flex justify-end gap-3 pt-2">
+                    <button onclick="closeModal()" class="px-4 py-2 border border-red-900 text-red-500 rounded hover:bg-red-900/20 transition-colors text-xs font-bold">CANCEL</button>
+                    <button onclick="saveApiKey()" class="px-6 py-2 bg-cyan-700 hover:bg-cyan-600 text-white font-bold rounded shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all text-xs tracking-wider">CONNECT</button>
+                </div>
+                <p id="api-error" class="text-red-500 text-xs hidden text-center">Invalid key format.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- HIDDEN BOOT CONTENT (Script Source) -->
+    <div id="hidden-boot-content" style="display:none;">
+        <div>Initializing BIOS... OK</div>
+        <div>Loading Kernel Modules... OK</div>
+        <div>Checking Neural Net... STABLE</div>
+        <div>Connecting to Railway Proxy... HANDSHAKE</div>
+        <div>Decrypting Assets... OK</div>
+        <div>System Ready.</div>
+        <div class="text-cyan-500">>>> MODULE 1: Multiverse Chat (MQTT)</div>
+        <div class="text-cyan-500">>>> MODULE 2: Gamification Engine</div>
+        <div class="text-cyan-500">>>> MODULE 3: Synthwave Music Player</div>
+        <div class="text-purple-400">>>> MODULE 4: AI Assistant (GROQ/LLAMA)</div>
+    </div>
+
     <!-- MAIN JAVASCRIPT LOGIC -->
     <script>
         // --- STATE MANAGEMENT ---
         const state = {
-            mode: null, // 'chat', 'api', 'local'
+            mode: null,
             apiKey: localStorage.getItem('termos_api_key') || '',
             user: {
                 xp: 0,
@@ -294,7 +495,7 @@
             });
         }
 
-        // --- MODE 3: LOCAL (IMPROVED/FIXED LOGIC) ---
+        // --- MODE 3: LOCAL (FIXED LOGIC) ---
         function handleLocalMode(text) {
             const cleanText = text.trim().toLowerCase();
             console.log(`[DEBUG] Local Input: "${cleanText}"`);
@@ -302,7 +503,6 @@
             setTimeout(() => {
                 let reply = "Command not recognized by local heuristic engine. Type 'help' for list.";
 
-                // Using Regex for smarter matching
                 if (/\b(hi|hello|hey|greetings)\b/.test(cleanText)) {
                     reply = "Greetings, Operator. Systems are nominal.";
                 }
@@ -320,7 +520,7 @@
                 }
                 else if (/\b(clear|cls|wipe)\b/.test(cleanText)) {
                     els.chatContainer.innerHTML = '';
-                    return; // Exit so we don't print empty message
+                    return; 
                 }
                 else if (/\b(matrix)\b/.test(cleanText)) {
                     reply = "The Matrix has you...";
@@ -377,3 +577,5 @@
             }
         }
     </script>
+</body>
+</html>
