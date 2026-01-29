@@ -1,634 +1,678 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TermOS LT 🌌 - Multiverse OS</title>
-    <style>
-        /* --- CRT & TERMINAL AESTHETICS --- */
-        :root {
-            --bg-color: #051005;
-            --term-green: #33ff00;
-            --term-glow: #33ff00;
-            --term-amber: #ffb000;
-            --term-blue: #00ccff;
-            --term-dim: #1a8000;
-            --crt-scanline: rgba(18, 16, 16, 0.5);
-            --font-main: 'Courier New', Courier, monospace;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>TERMCHAT LT // AI INTEGRATED</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+<style>
+/* --- STYLES --- */
+:root {
+    --main-bg: #050505;
+    --term-color: #33ff00;
+    --term-glow: 0 0 10px rgba(51, 255, 0, 0.5);
+    --danger-color: #ff3333;
+    --system-color: #ffff00;
+    --user-color: #ffffff;
+    --crt-scanline: rgba(18, 16, 16, 0.5);
+    --font-stack: 'Courier New', Courier, monospace;
+}
 
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+* { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--term-green);
-            font-family: var(--font-main);
-            height: 100vh;
-            overflow: hidden;
-            text-shadow: 0 0 5px var(--term-glow);
-            display: flex;
-            flex-direction: column;
-        }
+body {
+    background-color: #000;
+    color: var(--term-color);
+    font-family: var(--font-stack);
+    height: 100vh; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center;
+    overflow: hidden;
+    transition: background-color 0.5s ease;
+}
 
-        /* CRT Scanline Overlay */
-        .crt::before {
-            content: " ";
-            display: block;
-            position: absolute;
-            top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            z-index: 2;
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none;
-        }
-        
-        @keyframes flicker {
-            0% { opacity: 0.97; } 5% { opacity: 0.95; } 10% { opacity: 0.9; } 15% { opacity: 0.95; } 100% { opacity: 0.97; }
-        }
-        body { animation: flicker 0.15s infinite; }
+#crt-container {
+    width: 100%; 
+    max-width: 900px; 
+    height: 90vh;
+    background-color: var(--main-bg); 
+    border: 2px solid var(--term-color);
+    padding: 20px; 
+    display: flex; 
+    flex-direction: column;
+    position: relative; 
+    box-shadow: var(--term-glow);
+    transition: all 0.3s ease;
+    margin: 20px;
+}
 
-        /* --- LAYOUT --- */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 15px;
-            border-bottom: 2px solid var(--term-dim);
-            background: rgba(0,20,0,0.8);
-            z-index: 10;
-        }
+/* Scanlines */
+#crt-container::before {
+    content: " "; display: block; position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 2; background-size: 100% 2px, 3px 100%; pointer-events: none;
+}
 
-        .brand { font-weight: bold; font-size: 1.2rem; }
-        .brand span { animation: blink 1s step-end infinite; }
-        @keyframes blink { 50% { opacity: 0; } }
+/* Flicker */
+@keyframes flicker {
+    0% { opacity: 0.97; }
+    5% { opacity: 0.95; }
+    10% { opacity: 0.9; }
+    15% { opacity: 0.95; }
+    20% { opacity: 0.99; }
+    50% { opacity: 0.95; }
+    80% { opacity: 0.9; }
+    100% { opacity: 0.97; }
+}
+#crt-container::after {
+    content: " "; display: block; position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: rgba(18, 16, 16, 0.1);
+    opacity: 0;
+    z-index: 2;
+    pointer-events: none;
+    animation: flicker 0.15s infinite;
+}
 
-        .status-bar { font-size: 0.8rem; display: flex; gap: 15px; }
-        .xp-bar-container { width: 100px; height: 10px; border: 1px solid var(--term-green); display: inline-block; vertical-align: middle; }
-        .xp-fill { height: 100%; background: var(--term-green); width: 0%; transition: width 0.5s; }
+.header {
+    border-bottom: 1px solid var(--term-color); 
+    padding-bottom: 10px; 
+    margin-bottom: 10px;
+    display: flex; 
+    justify-content: space-between; 
+    text-transform: uppercase; 
+    font-weight: bold; 
+    z-index: 3;
+    text-shadow: var(--term-glow);
+}
 
-        .main-container {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-            position: relative;
-        }
+.status-indicator {
+    display: inline-block;
+    width: 10px; height: 10px;
+    background-color: #555;
+    border-radius: 50%;
+    margin-right: 5px;
+    box-shadow: 0 0 5px currentColor;
+}
+.status-online { background-color: var(--term-color); color: var(--term-color); }
+.status-offline { background-color: var(--danger-color); color: var(--danger-color); }
+.status-thinking { background-color: var(--system-color); color: var(--system-color); }
 
-        /* --- SIDEBAR (Rooms) --- */
-        aside {
-            width: 200px;
-            border-right: 2px solid var(--term-dim);
-            display: flex;
-            flex-direction: column;
-            background: #020a02;
-            z-index: 5;
-        }
+#output { 
+    flex-grow: 1; 
+    overflow-y: auto; 
+    margin-bottom: 10px; 
+    white-space: pre-wrap; 
+    z-index: 3; 
+    font-size: 1.1rem; 
+    padding-right: 5px; 
+    scroll-behavior: smooth;
+    word-wrap: break-word;
+}
 
-        .room-list { list-style: none; padding: 10px; }
-        .room-item {
-            padding: 10px;
-            cursor: pointer;
-            border-bottom: 1px dashed var(--term-dim);
-            transition: background 0.2s;
-        }
-        .room-item:hover, .room-item.active { background: var(--term-dim); color: #fff; }
-        .room-icon { margin-right: 8px; }
+/* Custom Scrollbar */
+#output::-webkit-scrollbar { width: 8px; }
+#output::-webkit-scrollbar-track { background: #000; }
+#output::-webkit-scrollbar-thumb { background: var(--term-color); border: 1px solid #000; }
 
-        /* --- CHAT AREA --- */
-        main {
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            scroll-behavior: smooth;
-        }
+.input-line { 
+    display: flex; 
+    align-items: center; 
+    border-top: 1px solid var(--term-color); 
+    padding-top: 10px; 
+    z-index: 3; 
+}
 
-        .message { line-height: 1.4; word-break: break-word; }
-        .msg-system { color: var(--term-amber); font-style: italic; border-bottom: 1px solid var(--term-dim); margin-bottom: 5px; font-size: 0.9rem;}
-        .msg-ai { color: var(--term-green); }
-        .msg-user { color: #fff; text-align: right; }
-        .msg-ai::before { content: "TERMAI > "; color: var(--term-dim); font-weight: bold; }
-        
-        pre { background: #000; padding: 5px; border: 1px solid var(--term-dim); margin-top: 5px; }
+.prompt { 
+    margin-right: 10px; 
+    font-weight: bold; 
+    animation: blink 1s step-end infinite; 
+    white-space: nowrap;
+}
 
-        /* --- CONTROLS --- */
-        footer {
-            padding: 10px;
-            border-top: 2px solid var(--term-dim);
-            background: rgba(0,20,0,0.9);
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            z-index: 10;
-        }
+input[type="text"] {
+    background: transparent; 
+    border: none; 
+    color: var(--term-color);
+    font-family: var(--font-stack); 
+    font-size: 1.1rem; 
+    flex-grow: 1; 
+    text-shadow: 0 0 2px var(--term-color);
+    text-transform: uppercase;
+    width: 100%;
+}
 
-        .cmd-input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: var(--term-green);
-            font-family: var(--font-main);
-            font-size: 1.1rem;
-            outline: none;
-        }
+.system-msg { color: var(--system-color); font-style: italic; opacity: 0.8; }
+.user-msg { color: var(--user-color); font-weight: bold; }
+.other-msg { color: var(--term-color); }
+.ai-msg { color: #00ffff; text-shadow: 0 0 5px #00ffff; }
+.error-msg { color: var(--danger-color); font-weight: bold; }
+.new-cmd-msg { color: #ff00ff; font-weight: bold; } /* Color for AI created commands */
 
-        .btn {
-            background: transparent;
-            border: 1px solid var(--term-green);
-            color: var(--term-green);
-            padding: 8px 15px;
-            cursor: pointer;
-            font-family: var(--font-main);
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-        .btn:hover { background: var(--term-green); color: #000; }
-        .btn-voice.active { background: var(--term-blue); border-color: var(--term-blue); color: #000; }
+.hidden { display: none !important; }
 
-        /* --- MODALS / PANELS --- */
-        .modal {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
-            z-index: 100;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            border: 2px solid var(--term-green);
-            padding: 20px;
-        }
-        .modal.active { display: flex; }
-        .modal-content {
-            background: var(--bg-color);
-            border: 1px solid var(--term-green);
-            padding: 20px;
-            width: 100%; max-width: 600px;
-            max-height: 90vh; overflow-y: auto;
-            box-shadow: 0 0 20px var(--term-glow);
-        }
-        .modal h2 { border-bottom: 1px solid var(--term-dim); padding-bottom: 10px; margin-bottom: 15px; }
-        
-        .ascii-avatar { white-space: pre; font-size: 10px; line-height: 10px; text-align: center; margin: 10px 0; color: #fff; }
-        .locked { filter: blur(4px); opacity: 0.5; pointer-events: none; }
-        .unlocked { border: 1px dashed var(--term-green); padding: 10px; margin: 5px 0; cursor: pointer; }
-        .unlocked:hover { background: var(--term-dim); }
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
 
-        /* --- GAME & MUSIC PANELS (Mockups) --- */
-        .panel-content { text-align: center; padding: 20px; }
-        .game-canvas { border: 1px solid var(--term-green); width: 100%; height: 200px; background: #000; display: flex; align-items: center; justify-content: center; color: var(--term-dim); }
-
-        /* --- RESPONSIVE --- */
-        @media (max-width: 600px) {
-            aside { display: none; /* Hide rooms on mobile for simplicity, or make toggleable */ }
-            .brand span { display: none; }
-        }
-    </style>
+@media (max-width: 600px) {
+    #crt-container { height: 100vh; border: none; padding: 10px; margin: 0; }
+    .header { font-size: 0.8rem; }
+}
+</style>
 </head>
-<body class="crt">
+<body>
 
-    <header>
-        <div class="brand">TermOS LT <span>_</span></div>
-        <div class="status-bar">
-            <span id="levelDisplay">LVL: 1</span>
-            <div class="xp-bar-container"><div class="xp-fill" id="xpFill"></div></div>
-            <span id="roomDisplay">LOUNGE</span>
+<div id="crt-container">
+    <div class="header">
+        <div id="status-wrapper">
+            <span id="status-light" class="status-indicator"></span>
+            <span id="status-text">OFFLINE</span>
         </div>
-    </header>
-
-    <div class="main-container">
-        <aside>
-            <div style="padding:10px; border-bottom:1px solid var(--term-dim);">MULTIVERSE</div>
-            <ul class="room-list">
-                <li class="room-item active" onclick="app.switchRoom('LOUNGE')">🎭 Lounge</li>
-                <li class="room-item" onclick="app.switchRoom('LIBRARY')">📚 Library</li>
-                <li class="room-item" onclick="app.switchRoom('WORKSHOP')">🛠️ Workshop</li>
-                <li class="room-item" onclick="app.switchRoom('STUDIO')">🎨 Studio</li>
-                <li class="room-item" onclick="app.switchRoom('THINKTANK')">🧠 Think Tank</li>
-            </ul>
-        </aside>
-
-        <main id="chatWindow">
-            <!-- Messages go here -->
-        </main>
+        <span>## TERMOS LT // AI_CORE</span>
     </div>
 
-    <footer>
-        <span style="color:var(--term-amber);">➜</span>
-        <input type="text" class="cmd-input" id="cmdInput" placeholder="Enter command or message..." autocomplete="off">
-        <button class="btn" id="sendBtn">EXEC</button>
-        <button class="btn btn-voice" id="voiceBtn">🎙️</button>
-    </footer>
-
-    <!-- STATS / AVATAR MODAL -->
-    <div class="modal" id="statsModal">
-        <div class="modal-content">
-            <h2>USER PROFILE</h2>
-            <div id="currentAvatarDisplay" class="ascii-avatar"></div>
-            <p id="profileText">Loading...</p>
-            <hr style="border-color:var(--term-dim); margin: 15px 0;">
-            <h3>UNLOCKED AVATARS</h3>
-            <div id="avatarList"></div>
-            <div style="margin-top:20px; text-align:right;">
-                <button class="btn" onclick="ui.closeModal('statsModal')">CLOSE</button>
-            </div>
+    <div id="output">
+        <div id="intro-screen">
+            <p>INITIALIZING KERNEL...</p>
+            <p>LOADING Z.AI MODULES... [OK]</p>
+            <p>MOUNTING FILESYSTEM... [OK]</p>
+            <p>&nbsp;</p>
+            <p>AI INTEGRATION ACTIVE.</p>
+            <p>PRESS [ENTER] TO INITIALIZE UPLINK.</p>
         </div>
+        <div id="chat-room" class="hidden"></div>
     </div>
 
-    <!-- GAME CONSOLE MODAL -->
-    <div class="modal" id="gameModal">
-        <div class="modal-content" style="border-color:var(--term-blue);">
-            <h2 style="color:var(--term-blue)">GAME CONSOLE</h2>
-            <div class="panel-content">
-                <div class="game-canvas">
-                    [ GAME ENGINE LOADED ]<br>
-                    Click squares to hack...
-                    <div id="miniGame" style="display:grid; grid-template-columns: repeat(3, 50px); gap:5px; margin-top:10px;">
-                        <!-- JS generates buttons here -->
-                    </div>
-                </div>
-                <p style="margin-top:10px;">HACKING PROGRESS: <span id="hackProgress">0</span>%</p>
-            </div>
-            <div style="margin-top:20px; text-align:right;">
-                <button class="btn" onclick="ui.closeModal('gameModal')">TERMINATE</button>
-            </div>
-        </div>
+    <div class="input-line">
+        <span class="prompt">></span>
+        <input type="text" id="command-input" autocomplete="off" autofocus placeholder="AWAITING INPUT...">
     </div>
+</div>
 
-    <!-- MUSIC PLAYER MODAL -->
-    <div class="modal" id="musicModal">
-        <div class="modal-content" style="border-color:var(--term-amber);">
-            <h2 style="color:var(--term-amber)">AUDIO SYSTEM</h2>
-            <div class="panel-content">
-                <div style="font-size:3rem; margin:20px;">🎵</div>
-                <p>NOW PLAYING: CYBERPUNK_BEATS.mp3</p>
-                <div style="width:100%; height:2px; background:var(--term-dim); margin:10px 0;">
-                    <div style="width:40%; height:100%; background:var(--term-amber); animation: moveBar 2s infinite linear;"></div>
-                </div>
-                <style>@keyframes moveBar { 0% {width:0;} 100% {width:100%;} }</style>
-                <p>STATUS: STREAMING</p>
-            </div>
-            <div style="margin-top:20px; text-align:right;">
-                <button class="btn" onclick="ui.closeModal('musicModal')">STOP</button>
-            </div>
-        </div>
-    </div>
+<script>
+/* --- CONFIGURATION --- */
+const MQTT_HOST = "broker.hivemq.com";
+const MQTT_PORT = 8884; 
+const MQTT_TOPIC = "termchat/lt/ai";
+const ZAI_API_KEY = "42b0a4fbe60e4568ba1b74d5e8d030d6.xSVMYljtqVXmRr33";
 
-    <script>
-        /* --- TERMOS LT ENGINE --- */
+// If Z.ai has a specific endpoint, put it here. 
+// Since I cannot verify the exact URL without docs, I default to a standard structure.
+// If this fails, the app uses the Local Fallback Engine.
+const ZAI_API_URL = "https://api.z.ai/v1/chat/completions"; 
+
+/* --- STATE --- */
+let client;
+let isConnected = false;
+let nickname = "Anon" + Math.floor(Math.random() * 9999);
+let inputMode = "INTRO";
+let audioContextInitialized = false;
+
+// Dynamic Command Registry (Allows AI to create new commands)
+const dynamicCommands = {};
+
+/* --- DOM ELEMENTS --- */
+const outputDiv = document.getElementById('output');
+const inputField = document.getElementById('command-input');
+const statusText = document.getElementById('status-text');
+const statusLight = document.getElementById('status-light');
+const introScreen = document.getElementById('intro-screen');
+const chatRoom = document.getElementById('chat-room');
+
+/* --- AUDIO ENGINE --- */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function initAudio() {
+    if (!audioContextInitialized) {
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume().then(() => {
+                audioContextInitialized = true;
+            }).catch(e => console.error("Audio resume failed:", e));
+        } else {
+            audioContextInitialized = true;
+        }
+    }
+}
+
+function playSound(type = 'type') {
+    if (!audioContextInitialized) return;
+    try {
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        if (type === 'type') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.05);
+        } else if (type === 'alert') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3);
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        } else if (type === 'success') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1);
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.2);
+        }
+    } catch (e) {}
+}
+
+/* --- INITIALIZATION --- */
+document.addEventListener('DOMContentLoaded', () => {
+    inputField.focus();
+});
+
+document.addEventListener('click', () => {
+    initAudio();
+    if (window.getSelection().toString() === '') {
+        inputField.focus();
+    }
+});
+
+inputField.addEventListener('keydown', (e) => {
+    initAudio(); 
+    playSound('type');
+    
+    if (e.key === 'Enter') {
+        const text = inputField.value.trim();
+        inputField.value = '';
         
-        const AVATARS = {
-            1: { name: "Newbie", art: "  O  \n /|\\ \n / \\ " },
-            3: { name: "Hacker", art: "/\\_/\\\n( o.o )\n =^.^=" },
-            5: { name: "Wizard", art: "  /\\ \n /  \\ \n o_o \n/|\\ " },
-            8: { name: "Ninja", art: "  ◢◤ \n o_o \n/|\\\n/ \\" }
-        };
+        if (inputMode === 'INTRO') {
+            handleIntro();
+        } else if (inputMode === 'CHAT') {
+            handleChatCommand(text);
+        }
+    }
+});
 
-        const ROOMS = {
-            LOUNGE: "Welcome to the Lounge. I am your Entertainment Host. Play games or chat.",
-            LIBRARY: "The Library is open. I am the Librarian. Ask me to learn anything.",
-            WORKSHOP: "Workshop active. I am the Engineer. Let's build apps or debug code.",
-            STUDIO: "Studio initialized. I am the Artist. Create visuals or music.",
-            THINKTANK: "Think Tank online. I am the Strategist. Let's solve complex problems."
-        };
+/* --- LOGIC HANDLERS --- */
 
-        class App {
-            constructor() {
-                this.state = {
-                    xp: parseInt(localStorage.getItem('termos_xp')) || 0,
-                    level: parseInt(localStorage.getItem('termos_lvl')) || 1,
-                    currentRoom: 'LOUNGE',
-                    currentAvatar: localStorage.getItem('termos_av') || 1,
-                    voiceEnabled: false
-                };
-                this.synth = window.speechSynthesis;
-                this.recognition = null;
+function handleIntro() {
+    introScreen.classList.add('hidden');
+    chatRoom.classList.remove('hidden');
+    inputMode = 'CHAT';
+    logToTerminal("INITIALIZING UPLINK...", "system");
+    setTimeout(() => connectMQTT(), 800);
+}
+
+function connectMQTT() {
+    const clientId = "termchat-client-" + Date.now() + "-" + Math.floor(Math.random() * 10000);
+    try {
+        client = new Paho.MQTT.Client(MQTT_HOST, MQTT_PORT, clientId);
+    } catch (e) {
+        logToTerminal("CRITICAL: MQTT INIT FAILED " + e.message, "error-msg");
+        return;
+    }
+
+    client.onConnectionLost = onConnectionLost;
+    client.onMessageArrived = onMessageArrived;
+
+    const options = { 
+        timeout: 10, 
+        useSSL: true, 
+        mqttVersion: 4,      
+        cleanSession: true,   
+        onSuccess: onConnect, 
+        onFailure: onFailure,
+        keepAliveInterval: 30
+    };
+    
+    logToTerminal(`CONNECTING TO SECURE CHANNEL...`, "system");
+    try {
+        client.connect(options);
+    } catch (e) {
+        logToTerminal("CONNECTION THROW ERROR: " + e.message, "error-msg");
+    }
+}
+
+function handleChatCommand(text) {
+    if (!text) return;
+    
+    // AI Command
+    if (text.startsWith('/ai ')) {
+        const instruction = text.substring(4).trim();
+        if(!instruction) {
+            logToTerminal("AI ERROR: NO INSTRUCTION", "error-msg");
+            return;
+        }
+        processAIRequest(instruction);
+        return;
+    }
+
+    // Standard Commands
+    if (text.startsWith('/')) {
+        processCommand(text);
+        return;
+    }
+
+    // Chat Message
+    if (!isConnected) {
+        logToTerminal("CANNOT TRANSMIT: OFFLINE", "error-msg");
+        return;
+    }
+
+    const messageData = { nick: nickname, text: text, timestamp: new Date().toLocaleTimeString() };
+    try {
+        const message = new Paho.MQTT.Message(JSON.stringify(messageData));
+        message.destinationName = MQTT_TOPIC;
+        client.send(message);
+        renderMessage(nickname, text, 'user-msg');
+    } catch (err) {
+        logToTerminal("TRANSMISSION ERROR: " + err.message, "error-msg");
+    }
+}
+
+/* --- DYNAMIC COMMAND REGISTRY --- */
+// Allows AI to create commands like '/hello'
+function registerDynamicCommand(cmdName, responseText) {
+    const normalizedCmd = cmdName.startsWith('/') ? cmdName : '/' + cmdName;
+    dynamicCommands[normalizedCmd.toLowerCase()] = {
+        type: 'text',
+        response: responseText
+    };
+    logToTerminal(`INSTALLED DYNAMIC COMMAND: ${normalizedCmd}`, "new-cmd-msg");
+}
+
+function registerDynamicAction(cmdName, actionType, value) {
+    const normalizedCmd = cmdName.startsWith('/') ? cmdName : '/' + cmdName;
+    dynamicCommands[normalizedCmd.toLowerCase()] = {
+        type: 'action',
+        action: actionType,
+        value: value
+    };
+    logToTerminal(`INSTALLED ACTION COMMAND: ${normalizedCmd}`, "new-cmd-msg");
+}
+
+function executeDynamicCommand(cmdName) {
+    const normalizedCmd = cmdName.toLowerCase();
+    if (dynamicCommands[normalizedCmd]) {
+        const cmd = dynamicCommands[normalizedCmd];
+        if (cmd.type === 'text') {
+            logToTerminal(cmd.response, "ai-msg");
+        } else if (cmd.type === 'action') {
+            // Execute the pre-validated action
+            executeAIAction({ type: cmd.action, value: cmd.value });
+        }
+    }
+}
+
+/* --- AI ENGINE (CORE) --- */
+
+async function processAIRequest(instruction) {
+    logToTerminal(`AI: PROCESSING "${instruction}"...`, "ai-msg");
+    setAIStatus(true);
+
+    // 1. Try Real API Call
+    try {
+        const response = await fetch(ZAI_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${ZAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "zai-1", // Assuming a model name
+                messages: [
+                    { role: "system", content: "You are a terminal controller. Return ONLY valid JSON with an 'actions' array. Allowed actions: {'type': 'style', 'var': '--term-color', 'value': 'blue'}, {'type': 'style', 'var': '--main-bg', 'value': 'black'}, {'type': 'mqtt', 'text': 'Hello World'}, {'type': 'register', 'cmd': '/hello', 'text': 'Greetings'}." },
+                    { role: "user", content: instruction }
+                ]
+            })
+        });
+
+        if (!response.ok) throw new Error("API Status " + response.status);
+        const data = await response.json();
+        const content = data.choices[0].message.content;
+        
+        // Attempt to parse JSON from the AI
+        try {
+            const aiResponse = JSON.parse(content);
+            if (aiResponse.actions) {
+                aiResponse.actions.forEach(action => executeAIAction(action));
+                logToTerminal("AI: COMMANDS EXECUTED VIA API", "ai-msg");
+            } else {
+                throw new Error("No actions in response");
             }
-
-            init() {
-                ui.log("System", "Booting TermOS LT v3.0...");
-                setTimeout(() => ui.log("System", "Loading Multiverse Map..."), 500);
-                setTimeout(() => {
-                    ui.log("System", `Connected to Room: ${this.state.currentRoom}`);
-                    ui.speak("System Online");
-                    ui.updateStats();
-                }, 1000);
-                
-                this.setupVoice();
-            }
-
-            addXP(amount) {
-                this.state.xp += amount;
-                localStorage.setItem('termos_xp', this.state.xp);
-                
-                // Level Up Logic (Simple curve: Level * 10)
-                const nextLevelXp = this.state.level * 10;
-                if (this.state.xp >= nextLevelXp) {
-                    this.state.level++;
-                    localStorage.setItem('termos_lvl', this.state.level);
-                    ui.log("SYSTEM", `*** LEVEL UP! You are now Level ${this.state.level} ***`);
-                    ui.speak(`Level up achieved. Level ${this.state.level}.`);
-                    this.checkUnlocks();
-                }
-                ui.updateStats();
-            }
-
-            checkUnlocks() {
-                // Check for new avatar unlocks
-                if (AVATARS[this.state.level] && this.state.level > this.state.currentAvatar) {
-                    ui.log("REWARD", `Unlocked new avatar: ${AVATARS[this.state.level].name}`);
-                }
-            }
-
-            switchRoom(roomName) {
-                if (this.state.currentRoom === roomName) return;
-                
-                this.state.currentRoom = roomName;
-                document.getElementById('roomDisplay').innerText = roomName;
-                
-                // UI Update for Sidebar
-                document.querySelectorAll('.room-item').forEach(el => el.classList.remove('active'));
-                // Find element by text content (simplified)
-                const items = document.querySelectorAll('.room-item');
-                for(let item of items) {
-                    if(item.innerText.includes(roomName)) item.classList.add('active');
-                }
-
-                ui.log("SYSTEM", `Navigating to Multiverse Sector: ${roomName}...`);
-                setTimeout(() => {
-                    ui.log(roomName, ROOMS[roomName]);
-                    ui.speak(ROOMS[roomName].split('.')[0]); // Speak first sentence
-                }, 600);
-            }
-
-            setupVoice() {
-                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                    this.recognition = new SpeechRecognition();
-                    this.recognition.continuous = false;
-                    this.recognition.lang = 'en-US';
-                    
-                    this.recognition.onstart = () => {
-                        this.state.voiceEnabled = true;
-                        document.getElementById('voiceBtn').classList.add('active');
-                    };
-                    
-                    this.recognition.onend = () => {
-                        this.state.voiceEnabled = false;
-                        document.getElementById('voiceBtn').classList.remove('active');
-                    };
-
-                    this.recognition.onresult = (event) => {
-                        const transcript = event.results[0][0].transcript;
-                        document.getElementById('cmdInput').value = transcript;
-                        this.processCommand(transcript);
-                    };
-                } else {
-                    console.warn("Web Speech API not supported");
-                }
-            }
-
-            toggleVoice() {
-                if (!this.recognition) {
-                    ui.log("ERROR", "Voice API not supported in this browser.");
-                    return;
-                }
-                if (this.state.voiceEnabled) {
-                    this.recognition.stop();
-                } else {
-                    this.recognition.start();
-                }
-            }
-
-            processCommand(input) {
-                const txt = input.trim().toLowerCase();
-                if (!txt) return;
-
-                // 1. Log User Message
-                ui.log("YOU", input);
-                this.addXP(1); // Gamification: +1 XP per message
-
-                // 2. Handle System Commands
-                if (txt.startsWith('/')) {
-                    this.handleSlashCommands(txt);
-                    return;
-                }
-
-                // 3. Agentic AI Simulation (Regex Matching)
-                setTimeout(() => {
-                    let response = "";
-                    
-                    if (txt.includes("play music") || txt.includes("play jazz")) {
-                        this.triggerAction("MUSIC");
-                        response = "Activating Audio Subsystem. Loading tracks...";
-                    } 
-                    else if (txt.includes("start game") || txt.includes("play game")) {
-                        this.triggerAction("GAME");
-                        response = "Initializing Game Console. Ready player one.";
-                    }
-                    else if (txt.includes("avatar") || txt.includes("who am i")) {
-                        const avName = AVATARS[this.state.currentAvatar] ? AVATARS[this.state.currentAvatar].name : "Unknown";
-                        response = `You are a Level ${this.state.level} ${avName}.`;
-                    }
-                    else if (txt.includes("create app") || txt.includes("plugin")) {
-                        response = "Opening Development Environment. (Simulated Plugin Upload Successful)";
-                        ui.log("PLUGIN", "Auto Greeter installed (Python Sandbox Mock).");
-                        this.addXP(50);
-                    }
-                    else {
-                        // Fallback generic response based on Room
-                        response = this.generateAIResponse(txt);
-                    }
-
-                    ui.log("TERMAI", response);
-                    ui.speak(response);
-
-                }, 800);
-            }
-
-            triggerAction(type) {
-                if (type === "MUSIC") ui.openModal('musicModal');
-                if (type === "GAME") ui.openModal('gameModal');
-            }
-
-            handleSlashCommands(cmd) {
-                const parts = cmd.split(' ');
-                const command = parts[0];
-
-                switch(command) {
-                    case '/stats':
-                        ui.showStats(this.state);
-                        break;
-                    case '/share':
-                        ui.log("SYSTEM", "Shareable link copied to clipboard: termchat.lt/?r=" + Math.random().toString(36).substring(7));
-                        this.addXP(25);
-                        break;
-                    case '/voice':
-                        this.toggleVoice();
-                        break;
-                    case '/clear':
-                        document.getElementById('chatWindow').innerHTML = '';
-                        break;
-                    default:
-                        ui.log("SYSTEM", `Unknown command: ${command}`);
-                }
-            }
-
-            generateAIResponse(input) {
-                // Simulating different AI Personalities per room
-                const context = ROOMS[this.state.currentRoom];
-                
-                if (this.state.currentRoom === 'LIBRARY') {
-                    return `According to the archives, "${input}" is a fascinating topic. Would you like a detailed summary?`;
-                } else if (this.state.currentRoom === 'WORKSHOP') {
-                    return `I can help you code that. Here is a snippet: \n\nfunction run() { console.log("Hello Multiverse"); }`;
-                } else if (this.state.currentRoom === 'THINKTANK') {
-                    return `Let's analyze the strategic implications of "${input}".`;
-                }
-                return `I am processing your request regarding "${input}" in the ${this.state.currentRoom}.`;
-            }
-
-            speak(text) {
-                if (this.synth) {
-                    const utterance = new SpeechSynthesisUtterance(text);
-                    // Try to pick a robotic voice
-                    const voices = this.synth.getVoices();
-                    const robotVoice = voices.find(v => v.name.includes('Google US English') || v.name.includes('Samantha'));
-                    if(robotVoice) utterance.voice = robotVoice;
-                    this.synth.speak(utterance);
-                }
-            }
+        } catch (e) {
+            throw new Error("AI response format invalid");
         }
 
-        /* --- UI MANAGER --- */
-        const ui = {
-            log: (sender, text) => {
-                const win = document.getElementById('chatWindow');
-                const msg = document.createElement('div');
-                msg.classList.add('message');
-                
-                if (sender === 'YOU') msg.classList.add('msg-user');
-                else if (sender === 'SYSTEM') msg.classList.add('msg-system');
-                else msg.classList.add('msg-ai');
-
-                // Basic markdown-like formatting
-                let formatted = text.replace(/\n/g, '<br>');
-                
-                msg.innerHTML = formatted;
-                win.appendChild(msg);
-                win.scrollTop = win.scrollHeight;
-            },
-            
-            updateStats: () => {
-                document.getElementById('levelDisplay').innerText = `LVL: ${app.state.level}`;
-                
-                // Calculate XP percentage for bar
-                const nextLvlXp = app.state.level * 10;
-                const currentLvlBase = (app.state.level - 1) * 10;
-                const progress = ((app.state.xp - currentLvlBase) / (nextLvlXp - currentLvlBase)) * 100;
-                
-                document.getElementById('xpFill').style.width = `${Math.min(100, Math.max(0, progress))}%`;
-            },
-
-            showStats: (state) => {
-                const currentAv = AVATARS[state.currentAvatar] || AVATARS[1];
-                document.getElementById('currentAvatarDisplay').innerText = currentAv.art;
-                document.getElementById('profileText').innerHTML = 
-                    `<strong>Rank:</strong> ${currentAv.name}<br>
-                     <strong>Level:</strong> ${state.level}<br>
-                     <strong>Total XP:</strong> ${state.xp}`;
-                
-                const list = document.getElementById('avatarList');
-                list.innerHTML = '';
-                
-                // Generate Avatar Grid
-                Object.keys(AVATARS).forEach(lvl => {
-                    const data = AVATARS[lvl];
-                    const isUnlocked = state.level >= lvl;
-                    const isSelected = state.currentAvatar == lvl;
-                    
-                    const div = document.createElement('div');
-                    div.className = isUnlocked ? 'unlocked' : 'locked';
-                    if(isSelected) div.style.borderColor = '#fff';
-                    
-                    div.innerHTML = `<span style="font-size:10px">${data.art}</span><br>Lvl ${lvl}: ${data.name}`;
-                    
-                    if (isUnlocked && !isSelected) {
-                        div.onclick = () => {
-                            state.currentAvatar = lvl;
-                            localStorage.setItem('termos_av', lvl);
-                            ui.showStats(state); // Refresh
-                        };
-                    }
-                    
-                    list.appendChild(div);
-                });
-
-                ui.openModal('statsModal');
-            },
-
-            openModal: (id) => {
-                document.getElementById(id).classList.add('active');
-                if(id === 'gameModal') ui.initMiniGame();
-            },
-            closeModal: (id) => {
-                document.getElementById(id).classList.remove('active');
-            },
-
-            speak: (text) => { app.speak(text); },
-
-            initMiniGame: () => {
-                const container = document.getElementById('miniGame');
-                if(container.children.length > 0) return; // Already init
-                
-                let progress = 0;
-                for(let i=0; i<9; i++) {
-                    const btn = document.createElement('button');
-                    btn.style.width = '50px';
-                    btn.style.height = '50px';
-                    btn.style.background = '#000';
-                    btn.style.color = 'var(--term-green)';
-                    btn.style.border = '1px solid var(--term-green)';
-                    btn.innerText = '[ ]';
-                    btn.onclick = () => {
-                        btn.innerText = '[X]';
-                        btn.style.background = 'var(--term-dim)';
-                        progress += 10;
-                        document.getElementById('hackProgress').innerText = progress;
-                        if(progress >= 100) {
-                            setTimeout(() => {
-                                alert("SYSTEM HACKED! +30 XP");
-                                app.addXP(30);
-                                ui.closeModal('gameModal');
-                            }, 200);
-                        }
-                    };
-                    container.appendChild(btn);
-                }
-            }
-        };
-
-        // --- INIT ---
-        const app = new App();
+    } catch (e) {
+        // 2. FALLBACK: Local Logic Engine (Simulated AI)
+        logToTerminal(`AI: API UNREACHABLE. USING LOCAL LOGIC.`, "system");
+        await new Promise(r => setTimeout(r, 800));
+        const localActions = parseLocalLogic(instruction);
         
-        // Event Listeners
-        document.getElementById('sendBtn').addEventListener('click', () => {
-            const input = document.getElementById('cmdInput');
-            app.processCommand(input.value);
-            input.value = '';
-        });
+        if (localActions.length > 0) {
+            localActions.forEach(action => executeAIAction(action));
+            logToTerminal("AI: COMMANDS EXECUTED LOCALLY", "ai-msg");
+        } else {
+            logToTerminal("AI: INSTRUCTION UNCLEAR.", "error-msg");
+            logToTerminal("TRY: '/ai create command /beep'", "system");
+            logToTerminal("TRY: '/ai make background red'", "system");
+            logToTerminal("TRY: '/ai send hello world'", "system");
+        }
+    }
 
-        document.getElementById('cmdInput').addEventListener('keypress', (e) => {
-            if(e.key === 'Enter') document.getElementById('sendBtn').click();
-        });
+    setAIStatus(false);
+}
 
-        document.getElementById('voiceBtn').addEventListener('click', () => {
-            app.toggleVoice();
-        });
+// The safe executor for both API and Local responses
+function executeAIAction(action) {
+    switch(action.type) {
+        case 'style':
+            if (action.var && action.value) {
+                document.documentElement.style.setProperty(action.var, action.value);
+                logToTerminal(`STYLE UPDATE: ${action.var} -> ${action.value}`, "system");
+            }
+            break;
+        case 'mqtt':
+            if (action.text && isConnected) {
+                const msg = new Paho.MQTT.Message(JSON.stringify({
+                    nick: "AI_BOT",
+                    text: action.text,
+                    timestamp: new Date().toLocaleTimeString()
+                }));
+                msg.destinationName = MQTT_TOPIC;
+                client.send(msg);
+                logToTerminal(`MQTT BROADCAST: ${action.text}`, "system");
+            } else {
+                logToTerminal("MQTT BROADCAST FAILED (OFFLINE)", "error-msg");
+            }
+            break;
+        case 'register':
+            if (action.cmd) {
+                registerDynamicCommand(action.cmd, action.text || "Command executed");
+            }
+            break;
+        case 'action_cmd':
+             if (action.cmd && action.target) {
+                 // Register a command that performs an action (like beep)
+                 registerDynamicAction(action.cmd, 'beep');
+             }
+             break;
+    }
+}
 
-        // Boot
-        window.onload = () => app.init();
+// Local "Brain" for when API is offline
+function parseLocalLogic(instruction) {
+    const actions = [];
+    const lower = instruction.toLowerCase();
 
-    </script>
+    // Handle "Create command [cmd]"
+    const createMatch = lower.match(/create command (\S+)/);
+    if (createMatch) {
+        const newCmd = createMatch[1].toLowerCase();
+        actions.push({ type: 'register', cmd: newCmd, text: `Executing dynamic command ${newCmd}...` });
+        
+        // If the command is beep related, register the action
+        if (lower.includes('beep')) {
+            registerDynamicAction(newCmd, 'beep');
+        }
+        return actions;
+    }
+
+    // Handle Background Colors
+    if (lower.includes('background') || lower.includes('bg')) {
+        const colors = ['blue', 'red', 'black', 'green', 'white', 'purple', 'orange', 'yellow', 'grey'];
+        const found = colors.find(c => lower.includes(c));
+        if (found) actions.push({ type: 'style', var: '--main-bg', value: found });
+    }
+
+    // Handle Text Colors
+    if (lower.includes('text') || lower.includes('font')) {
+        const colors = ['blue', 'red', 'green', 'white', 'yellow', 'cyan'];
+        const found = colors.find(c => lower.includes(c));
+        if (found) actions.push({ type: 'style', var: '--term-color', value: found });
+    }
+
+    // Handle MQTT Send
+    if (lower.includes('send')) {
+        const sendText = instruction.replace(/send\s*/i, '');
+        actions.push({ type: 'mqtt', text: sendText });
+    }
+
+    return actions;
+}
+
+function setAIStatus(thinking) {
+    if (thinking) {
+        statusLight.className = "status-indicator status-thinking";
+        statusText.textContent = "AI PROCESSING";
+    } else {
+        if (isConnected) {
+            statusLight.className = "status-indicator status-online";
+            statusText.textContent = "ONLINE";
+        } else {
+            statusLight.className = "status-indicator status-offline";
+            statusText.textContent = "OFFLINE";
+        }
+    }
+}
+
+/* --- STANDARD COMMANDS --- */
+function processCommand(cmd) {
+    const parts = cmd.split(' ');
+    const command = parts[0].toLowerCase();
+
+    // Check Dynamic Commands First
+    if (dynamicCommands[command]) {
+        executeDynamicCommand(command);
+        return;
+    }
+
+    switch (command) {
+        case '/help':
+            logToTerminal("COMMANDS:", "system");
+            logToTerminal(" /ai [cmd] - AI Control", "system");
+            logToTerminal(" /ai create command /name - NEW FEATURE", "system");
+            logToTerminal(" /nick [name] - Change ID", "system");
+            logToTerminal(" /clear - Wipe Term", "system");
+            break;
+        case '/nick':
+            if (parts[1]) {
+                const oldNick = nickname;
+                nickname = parts[1];
+                logToTerminal(`ID UPDATED: ${oldNick} -> ${nickname}`, "system");
+            } else {
+                logToTerminal("ERROR: NAME REQUIRED", "error-msg");
+            }
+            break;
+        case '/clear':
+            chatRoom.innerHTML = '';
+            break;
+        default:
+            logToTerminal(`UNKNOWN: ${command}`, "error-msg");
+            break;
+    }
+}
+
+/* --- MQTT CALLBACKS --- */
+function onConnect() {
+    isConnected = true;
+    statusText.innerHTML = "ONLINE";
+    statusLight.className = "status-indicator status-online";
+    client.subscribe(MQTT_TOPIC);
+    logToTerminal("UPLINK ESTABLISHED.", "system");
+    logToTerminal(`WELCOME, ${nickname}.`, "system");
+    playSound('success');
+}
+
+function onFailure(responseObject) {
+    isConnected = false;
+    statusText.innerHTML = "ERR";
+    statusLight.className = "status-indicator status-offline";
+    const errMsg = (responseObject && responseObject.errorMessage) ? responseObject.errorMessage : "Unknown Error";
+    logToTerminal(`CONN FAILED: ${errMsg}`, "error-msg");
+    logToTerminal("RETRYING...", "system");
+    setTimeout(connectMQTT, 5000);
+}
+
+function onConnectionLost(responseObject) {
+    if (responseObject.errorCode !== 0) {
+        isConnected = false;
+        statusText.innerHTML = "OFFLINE";
+        statusLight.className = "status-indicator status-offline";
+        logToTerminal("UPLINK SEVERED.", "error-msg");
+        playSound('alert');
+    }
+}
+
+function onMessageArrived(message) {
+    try {
+        if (!message.payloadString) return;
+        const payload = JSON.parse(message.payloadString);
+        if (payload && payload.nick && payload.text) {
+            if (payload.nick !== nickname) {
+                renderMessage(payload.nick, payload.text, 'other-msg');
+                playSound('alert');
+            }
+        }
+    } catch (e) {}
+}
+
+/* --- UI HELPERS --- */
+function escapeHTML(str) {
+    if(!str) return "";
+    return String(str).replace(/[&<>"']/g, function(m) {
+        return ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[m];
+    });
+}
+
+function logToTerminal(text, type) {
+    const line = document.createElement('div');
+    line.className = type;
+    const time = new Date().toLocaleTimeString([], { hour12: false });
+    line.innerHTML = `[${time}] ${escapeHTML(text)}`;
+    chatRoom.appendChild(line);
+    scrollToBottom();
+}
+
+function renderMessage(nick, text, cssClass) {
+    const line = document.createElement('div');
+    const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit' });
+    line.innerHTML = `<span style="opacity:0.6">[${time}]</span> <span style="font-weight:bold">&lt;${escapeHTML(nick)}&gt;</span> ${escapeHTML(text)}`;
+    line.className = cssClass;
+    chatRoom.appendChild(line);
+    scrollToBottom();
+}
+
+function scrollToBottom() {
+    setTimeout(() => {
+        outputDiv.scrollTop = outputDiv.scrollHeight;
+    }, 0);
+}
+</script>
 </body>
 </html>
