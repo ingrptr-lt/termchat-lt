@@ -1,4 +1,313 @@
 <script>
+    <script>
+    /**
+     * =========================================================================
+     *  TERMOS: CONTROLLER KERNEL (MATCHES "TOTAL REBUILD" HTML)
+     *  Purpose: Controls logic without breaking the UI structure.
+     * =========================================================================
+     */
+
+    // --- 0. CONFIGURATION ---
+    const CONFIG = {
+        mqttBroker: "broker.emqx.io",
+        mqttPort: 8084,
+        mqttTopic: "termos/v3/chat",
+        groqKey: localStorage.getItem('termos_groq_key') || "", 
+        username: "Anon_" + Math.floor(Math.random() * 1000)
+    };
+
+    const STATE = {
+        level: 1, xp: 0, room: "lobby", deferredPrompt: null,
+        audioContext: null, installedModules: []
+    };
+
+    // --- 1. SECURITY HELPER ---
+    function escapeHtml(unsafe) {
+        return unsafe
+             .replace(/&/g, "&amp;")
+             .replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;")
+             .replace(/"/g, "&quot;")
+             .replace(/'/g, "&#039;");
+    }
+
+    // --- 2. DOM HELPERS (Does NOT create elements, only finds them) ---
+    function getChatContainer() {
+        return document.getElementById('chat-container') || document.getElementById('main-app');
+    }
+
+    function addMessage(text, type = 'user', sender = 'SYS') {
+        const container = getChatContainer();
+        if (!container) return; // Fail silently if UI not ready
+
+        const div = document.createElement('div');
+        const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        if (type === 'system') {
+            div.className = "text-center text-xs text-gray-500 my-2 border-t border-b border-gray-800 py-1 uppercase tracking-widest";
+            div.innerText = text;
+        } else if (type === 'ai') {
+            div.className = "flex items-start gap-2 animate-[fadeIn_0.3s_ease-out]";
+            div.innerHTML = `<div class="w-8 h-8 rounded bg-black border border-cyan-500 flex items-center justify-center text-cyan-400 shrink-0 text-xs">AI</div><div class="msg-bubble ai-bubble bg-black/50 p-3 rounded-tr-lg rounded-br-lg rounded-bl-lg text-sm"><div class="text-[10px] text-cyan-600 mb-1">AI CORE // ${time}</div>${escapeHtml(text)}</div>`;
+        } else {
+            div.className = "flex items-start gap-2 flex-row-reverse animate-[fadeIn_0.3s_ease-out]";
+            div.innerHTML = `<div class="w-8 h-8 rounded bg-green-900 border border-green-500 flex items-center justify-center text-green-100 shrink-0 text-xs">ME</div><div class="msg-bubble bg-green-900/20 p-3 rounded-tl-lg rounded-bl-lg rounded-br-lg text-sm text-right"><div class="text-[10px] text-green-600 mb-1">${time} // ${escapeHtml(sender)}</div><div class="text-left">${escapeHtml(text)}</div></div>`;
+        }
+        
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    // --- 3. SYSTEM REBUILDER (Injects Visuals) ---
+    const SystemRebuilder = {
+        install: function(featureName) {
+            if (STATE.installedModules.includes(featureName)) {
+                addMessage(`Module [${featureName}] already active.`, 'system');
+                return;
+            }
+            console.log(`[KERNEL] Installing: ${featureName}`);
+            addMessage(`[KERNEL] Installing: ${featureName.toUpperCase()}...`, 'system');
+            
+            try {
+                switch(featureName) {
+                    case 'matrix': this.injectMatrix(); break;
+                    case 'crt': this.injectCRT(); break;
+                    case 'sound': this.injectSound(); break;
+                    case 'neon': this.injectNeon(); break;
+                    case 'god': this.injectGodMode(); break;
+                    default: throw new Error("Unknown Module");
+                }
+                STATE.installedModules.push(featureName);
+                addMessage(`[SUCCESS] ${featureName.toUpperCase()} INSTALLED.`, 'system');
+                if (STATE.audioContext) playSystemSound(880, 'sine', 0.1);
+            } catch (e) {
+                addMessage(`[ERROR] ${e.message}`, 'system');
+            }
+        },
+
+        injectMatrix: function() {
+            if (document.getElementById('matrix-overlay')) return;
+            const canvas = document.createElement('canvas');
+            canvas.id = 'matrix-overlay';
+            canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;opacity:0.3;pointer-events:none;';
+            document.body.prepend(canvas);
+            const ctx = canvas.getContext('2d');
+            const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+            window.addEventListener('resize', resize); resize();
+            const cols = Math.floor(canvas.width / 20);
+            const ypos = Array(cols).fill(0);
+            const draw = () => {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#0f0';
+                ctx.font = '15pt monospace';
+                ypos.forEach((y, i) => {
+                    const text = String.fromCharCode(Math.random() * 128);
+                    ctx.fillText(text, i * 20, y);
+                    if (y > 100 + Math.random() * 10000) ypos[i] = 0; else ypos[i] = y + 20;
+                });
+            };
+            setInterval(draw, 33);
+        },
+
+        injectCRT: function() {
+            const scanlines = document.getElementById('scanline-layer');
+            const flicker = document.getElementById('flicker-layer');
+            if(scanlines) scanlines.style.display = 'block';
+            if(flicker) flicker.style.display = 'block';
+        },
+
+        injectSound: function() {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!STATE.audioContext) STATE.audioContext = new AudioContext();
+            const originalAdd = addMessage;
+            window.addMessage = function(text, type, sender) {
+                if (type !== 'system' && STATE.audioContext) playSystemSound(600, 'square', 0.05);
+                originalAdd(text, type, sender);
+            };
+        },
+
+        injectNeon: function() {
+            if (document.getElementById('neon-styles')) return;
+            const style = document.createElement('style');
+            style.id = 'neon-styles';
+            style.innerHTML = `body { text-shadow: 0 0 8px var(--neon-green); } .msg-bubble { box-shadow: 0 0 15px rgba(0,255,65,0.2); }`;
+            document.head.appendChild(style);
+        },
+
+        injectGodMode: function() {
+            if (document.getElementById('god-btn')) return;
+            const btn = document.createElement('button');
+            btn.id = 'god-btn';
+            btn.innerText = "GOD_MODE";
+            btn.className = "fixed top-14 right-2 z-50 bg-red-900 text-red-100 text-[10px] border border-red-500 px-2 py-1 font-mono cursor-pointer hover:bg-red-700";
+            btn.onclick = () => {
+                const cmd = prompt("ROOT COMMAND:");
+                if(cmd) handleSend(cmd);
+            };
+            document.body.appendChild(btn);
+        }
+    };
+
+    function playSystemSound(freq, type, duration) {
+        if (!STATE.audioContext) return;
+        const osc = STATE.audioContext.createOscillator();
+        const gain = STATE.audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(STATE.audioContext.destination);
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.1, STATE.audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, STATE.audioContext.currentTime + duration);
+        osc.start();
+        osc.stop(STATE.audioContext.currentTime + duration);
+    }
+
+    // --- 4. BOOT SEQUENCE ---
+    async function runBoot() {
+        const boot = document.getElementById('boot-screen');
+        const bar = document.getElementById('boot-bar');
+        const main = document.getElementById('main-interface');
+        const txt = document.getElementById('boot-text');
+        
+        if(boot) boot.classList.remove('hidden');
+        
+        for(let i=0; i<=100; i+=4) {
+            if(bar) bar.style.width = i + '%';
+            if(txt) txt.innerText = ["LOADING KERNEL...", "MOUNTING SYSTEM...", "READY"][i/20] || "OK";
+            await new Promise(r => setTimeout(r, 20));
+        }
+        
+        if(boot) boot.classList.add('hidden');
+        if(main) {
+            main.classList.remove('opacity-0');
+            main.classList.remove('hidden');
+        }
+        
+        addMessage("SYSTEM ONLINE. TYPE /HELP FOR COMMANDS.", "system");
+        initMQTT();
+    }
+
+    // --- 5. INPUT HANDLING ---
+    function handleSend() {
+        const input = document.getElementById('user-input'); // Matches HTML ID
+        if (!input) return;
+        const text = input.value.trim();
+        if (!text) return;
+
+        if (text.startsWith('/sys install ')) {
+            const mod = text.split(' ')[2];
+            SystemRebuilder.install(mod);
+        } else if (text.startsWith('/setkey ')) {
+            CONFIG.groqKey = text.substring(8);
+            localStorage.setItem('termos_groq_key', CONFIG.groqKey);
+            addMessage("API KEY ENCRYPTED.", 'system');
+        } else if (text.startsWith('/ai ')) {
+            handleAI(text.substring(4));
+        } else if (text === '/clear') {
+            const container = getChatContainer();
+            if(container) container.innerHTML = '';
+        } else {
+            addMessage(text, 'user', CONFIG.username);
+            STATE.xp += 5;
+            if (STATE.xp > STATE.level * 100) {
+                STATE.level++; addMessage(`LEVEL UP: LVL ${STATE.level}`, 'system');
+            }
+            const lvlDisp = document.getElementById('lvl-disp');
+            if(lvlDisp) lvlDisp.innerText = STATE.level;
+            
+            if (window.mqttClient && window.mqttClient.isConnected()) {
+                const msg = new Paho.MQTT.Message(JSON.stringify({ sender: CONFIG.username, text: text }));
+                msg.destinationName = CONFIG.mqttTopic;
+                window.mqttClient.send(msg);
+            }
+        }
+        input.value = '';
+    }
+
+    // --- 6. AI LOGIC ---
+    async function handleAI(prompt) {
+        if (!CONFIG.groqKey) {
+            addMessage("ERROR: Missing Key. Type /setkey [key]", 'ai');
+            return;
+        }
+        addMessage("Processing...", 'ai');
+        try {
+            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${CONFIG.groqKey}`, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    messages: [
+                        { role: "system", content: "You are TermOS AI. You can install modules using SystemRebuilder.install('name'). Available: matrix, crt, sound, neon, god." },
+                        { role: "user", content: prompt }
+                    ],
+                    model: "llama3-8b-8192"
+                })
+            });
+            const data = await res.json();
+            const reply = data.choices[0].message.content;
+            
+            // Parse AI commands
+            const installRegex = /SystemRebuilder\.install\(['"](.*?)['"]\)/g;
+            let match;
+            let actionsTaken = false;
+            while ((match = installRegex.exec(reply)) !== null) {
+                SystemRebuilder.install(match[1]);
+                actionsTaken = true;
+            }
+
+            if (!actionsTaken) addMessage(reply, 'ai');
+            else addMessage("Modules updated by AI.", 'ai');
+
+        } catch (e) {
+            addMessage("AI CONNECTION FAILED.", 'ai');
+        }
+    }
+
+    // --- 7. MQTT LOGIC ---
+    function initMQTT() {
+        try {
+            const client = new Paho.MQTT.Client(CONFIG.mqttBroker, CONFIG.mqttPort, "termos_"+Math.random());
+            client.onConnectionLost = () => addMessage("MQTT LOST", "system");
+            client.onMessageArrived = (msg) => {
+                try {
+                    const d = JSON.parse(msg.payloadString);
+                    if(d.sender !== CONFIG.username) addMessage(d.text, 'user', d.sender);
+                } catch(e) {}
+            };
+            client.connect({ 
+                onSuccess: () => {
+                    client.subscribe(CONFIG.mqttTopic);
+                    addMessage("LINK ESTABLISHED.", "system");
+                }, 
+                useSSL: true 
+            });
+            window.mqttClient = client;
+        } catch(e) { console.error(e); }
+    }
+
+    // --- 8. INITIALIZATION & EVENTS ---
+    window.onload = runBoot;
+    
+    // Attach listeners safely
+    const sendBtn = document.getElementById('send-btn');
+    if(sendBtn) sendBtn.onclick = handleSend;
+    
+    const userInput = document.getElementById('user-input');
+    if(userInput) {
+        userInput.addEventListener('keypress', (e) => { if(e.key==='Enter') handleSend(); });
+    }
+
+    // Voice
+    if ('webkitSpeechRecognition' in window) {
+        const r = new webkitSpeechRecognition(); r.continuous = false;
+        const voiceBtn = document.getElementById('voice-btn');
+        if(voiceBtn) {
+            voiceBtn.onclick = () => { r.start(); };
+            r.onresult = (e) => { userInput.value = e.results[0][0].transcript; };
+        }
+    }
+</script>
     /**
      * =========================================================================
      *  TERMOS LT: SECURE & REPAIRED KERNEL
