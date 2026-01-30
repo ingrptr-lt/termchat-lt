@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch Streamlit App",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/venv/bin/streamlit", // Points to your venv streamlit
+            "args": [
+                "run",
+                "app.py",
+                "--logger.level", "debug"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "Run Python Script (Direct)",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}
