@@ -1,0 +1,63 @@
+name: Build and Test Linux
+
+on:
+  push:
+    branches: [ "main", "master"]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    strategy:
+      max-parallel: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.10'
+
+      - name: Add conda to system path
+        run: |
+          echo "Configuring Conda path..."
+          if [ -f "/usr/bin/conda" ]; then
+              echo "Conda found at /usr/bin/conda. Appending to GITHUB_PATH..."
+              echo 'export PATH="/usr/bin/conda:$PATH"' >> $GITHUB_PATH
+          else
+              echo "Standard Conda not found. Checking custom installation..."
+              if command -v conda &> /dev/null; then
+                  echo "Conda found at: $(which conda). Adding to PATH..."
+                  export PATH="$PATH:$(which conda):$PATH"
+              else
+                  echo "Conda not found. Build may fail."
+              fi
+          fi
+
+      - name: Install dependencies
+        run: |
+          conda env update --file environment.yml --name base
+
+      - name: Install flake8
+        run: |
+          conda install flake8
+
+      - name: Lint with flake8
+        run: |
+          conda run flake8 . --select=E9,E501,E502,W503 --ignore=E501,E502,W503 --max-line-length=127 --statistics --exit-zero
+
+      - name: Test with pytest
+        run:```
+
+### How to fix your FATAL ERROR:
+
+The error happens because the script expects `id="chat-container"`, but your file likely uses a different ID. **Do not rewrite your whole file.**
+
+1.  Open `index.html`.
+2.  Search for `function getBox()`.
+3.  **Paste the code block above over your existing `function getBox() { ... }`.
+4. Save and Refresh.
+
+**Why this works:** This function is a "Universal Adapter". It tries the new ID first. If it fails, it tries the old ID. If that fails, it forces a new container to be created on the screen. This fixes the crash immediately.
