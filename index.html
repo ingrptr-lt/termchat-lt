@@ -160,7 +160,7 @@
 </audio>
 
 <!-- =========================================================== -->
-<!--  MODERN OPTIMIZED SCRIPT -->
+<!--  FINAL OPTIMIZED SCRIPT (Visuals + Robust MQTT) -->
 <!-- =========================================================== -->
 <script>
     // --- 1. CONFIG ---
@@ -172,7 +172,7 @@
     
     // Enhanced Stats
     let userStats = { level: 1, xp: 0, avatar: '>_<', ascii: null };
-    const LEVELS = { 3: 'Cyber', 5: 'Ghost', 8: 'Oracle' }; // Modern Titles
+    const LEVELS = { 3: 'Cyber', 5: 'Ghost', 8: 'Oracle' }; 
     let installedModules = [];
 
     // --- 2. PERFORMANCE OPTIMIZED MATRIX (requestAnimationFrame) ---
@@ -247,7 +247,7 @@
         },
         addSound: function() {
             let ctx = new (window.AudioContext||window.webkitAudioContext)();
-            let old = window.addUserMessage; // Hook visual messages
+            let old = window.addUserMessage; 
             window.addUserMessage = function(t) {
                 const o = ctx.createOscillator(), g = ctx.createGain();
                 o.connect(g); g.connect(ctx.destination);
@@ -256,7 +256,7 @@
             };
         },
         addNeon: function() {
-            document.documentElement.style.setProperty('--msg-user-bg', '#ec4899'); // Pink neon
+            document.documentElement.style.setProperty('--msg-user-bg', '#ec4899'); 
             document.documentElement.style.setProperty('--accent-primary', '#ec4899');
         },
         playMusic: function() {
@@ -265,7 +265,7 @@
         }
     };
 
-    // --- 4. UI HELPERS (Modern Rendering) ---
+    // --- 4. UI HELPERS ---
     function getBox() { return document.getElementById('chat-container'); }
     
     function addSystemMessage(txt) {
@@ -296,7 +296,7 @@
         const d = document.createElement('div');
         d.className = "flex flex-row-reverse gap-3 my-4 items-end";
         
-        // Avatar Logic (Gradient or ASCII)
+        // Avatar Logic
         let avatarHTML = `<div class="w-8 h-8 rounded-full avatar-gradient-user shrink-0 flex items-center justify-center shadow-lg text-xs font-bold text-white">ME</div>`;
         
         if (userStats.ascii) {
@@ -323,11 +323,10 @@
         return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    // --- 5. AI LOGIC (Genie + Music) ---
+    // --- 5. AI LOGIC ---
     async function handleAI(prompt) {
         if(!GROQ_API_KEY) return addAIMessage("❌ API Key Missing. Type /setkey [key]");
         
-        // Add "Thinking" indicator
         const thinkingId = "think-" + Date.now();
         getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-gray-500 italic animate-pulse">AI is typing...</div>`);
         scrollDown();
@@ -346,11 +345,9 @@
             });
             const reply = (await r.json()).choices[0].message.content;
             
-            // Remove typing indicator
             const el = document.getElementById(thinkingId);
             if(el) el.remove();
 
-            // Process Logic
             let match = reply.match(/SystemRebuilder\.install\(['"](.*?)['"]\)/);
             if(match) { SystemRebuilder.install(match[1]); addAIMessage("✨ System updated."); }
             else if (reply.includes("CMD: PLAY_MUSIC")) {
@@ -362,7 +359,7 @@
         } catch(e) { addAIMessage("Connection failed."); }
     }
 
-    // --- 6. GAMIFICATION (Modern Titles) ---
+    // --- 6. GAMIFICATION ---
     function addXP(amount) {
         userStats.xp += amount;
         if(userStats.xp > (userStats.level * 100)) {
@@ -376,16 +373,34 @@
     }
 
     function updateAvatar(lvl) {
-        if(lvl === 3) {
-            userStats.ascii = "◢◤<br>o_o<br>/|\\"; // Cyber
-        } else if (lvl === 5) {
-            userStats.ascii = "🕯<br>  ☾<br>  ☽"; // Ghost
-        } else if (lvl === 8) {
-            userStats.ascii = "👁<br>· ·<br>__·__"; // Oracle
-        }
+        if(lvl === 3) userStats.ascii = "◢◤<br>o_o<br>/|\\"; 
+        else if (lvl === 5) userStats.ascii = "🕯<br>  ☾<br>  ☽"; 
+        else if (lvl === 8) userStats.ascii = "👁<br>· ·<br>__·__"; 
     }
 
-    // --- 7. INPUT HANDLER ---
+    // --- 7. ROBUST CONNECT FUNCTION (FIX FOR ONLINE CHAT) ---
+    function connectMQTT() {
+        const options = {
+            timeout: 10,
+            useSSL: true,
+            keepAliveInterval: 60,
+            onSuccess: () => {
+                console.log("[MQTT] Connected Successfully");
+                addSystemMessage("🟢 Neural Link Online.");
+                
+                // Subscribe with QoS 1 to ensure we get messages
+                mqttClient.subscribe("termos/v3/chat", { qos: 1 });
+            },
+            onFailure: (message) => {
+                console.log("[MQTT] Connection Failed: " + message.errorMessage);
+                addSystemMessage("🔴 Connection Failed. Retrying...");
+                setTimeout(connectMQTT, 5000);
+            }
+        };
+        mqttClient.connect(options);
+    }
+
+    // --- 8. INPUT HANDLER (WITH QoS 1 FIX) ---
     function handleInput() {
         let inp = document.getElementById('user-input');
         let txt = inp.value.trim();
@@ -405,12 +420,26 @@
         else {
             addUserMessage(txt);
             addXP(1);
-            if(mqttClient && mqttClient.isConnected()) mqttClient.publish("termos/v3/chat", JSON.stringify({user:username, text:txt}));
+            
+            // --- ROBUST SEND LOGIC ---
+            if(mqttClient && mqttClient.isConnected()) {
+                const message = new Paho.MQTT.Message(JSON.stringify({ user: username, text: txt }));
+                message.destinationName = "termos/v3/chat";
+                message.qos = 1; // CRITICAL: Ensures delivery on public internet
+                
+                try {
+                    mqttClient.send(message);
+                    console.log("[MQTT TX] Sent:", txt);
+                } catch (e) {
+                    console.error("[MQTT TX] Send Failed:", e);
+                    addSystemMessage("⚠️ Message failed to send.");
+                }
+            }
         }
         inp.value = '';
     }
 
-    // --- 8. INIT ---
+    // --- 9. INIT & EVENT LISTENERS ---
     window.onload = function() {
         // 1. Load Stats
         let saved = localStorage.getItem('termos_stats_modern');
@@ -419,27 +448,47 @@
         // 2. Start Background
         initMatrix();
 
-        // 3. Start MQTT
+        // 3. MQTT CONNECTION
         if(typeof Paho !== 'undefined') {
-            mqttClient = new Paho.MQTT.Client(MQTT_BROKER_URL, "client"+Math.random());
-            mqttClient.onConnectionLost = () => addSystemMessage("Reconnecting...");
-            mqttClient.onMessageArrived = (m) => {
-                try {
-                    let d = JSON.parse(m.payloadString);
-                    if(d.user !== username) addUserMessage(d.text);
-                }catch(e){}
+            // Unique ID prevents kicking other users
+            const clientId = "termos_client_" + Math.random().toString(16).substr(2, 8);
+            
+            mqttClient = new Paho.MQTT.Client(MQTT_BROKER_URL, clientId);
+            
+            mqttClient.onConnectionLost = (responseObject) => {
+                console.log("MQTT Connection Lost:", responseObject.errorMessage);
+                addSystemMessage("⚠️ Connection Lost. Attempting Reconnect...");
+                setTimeout(connectMQTT, 5000);
             };
-            mqttClient.connect({
-                onSuccess:()=>{ mqttClient.subscribe("termos/v3/chat"); addSystemMessage("System Online."); },
-                useSSL:true
-            });
+
+            mqttClient.onMessageArrived = (message) => {
+                try {
+                    const topic = message.destinationName;
+                    const payloadString = message.payloadString;
+                    
+                    // Debug: Check console to see incoming messages
+                    console.log(`[MQTT RX] Topic: ${topic}`);
+
+                    if (topic === "termos/v3/chat") {
+                        const data = JSON.parse(payloadString);
+                        // Don't show own messages
+                        if (data.user !== username) {
+                            addUserMessage(data.text);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error parsing MQTT message:", e);
+                }
+            };
+            
+            connectMQTT();
         }
 
         // 4. Listeners
         document.getElementById('send-btn').onclick = handleInput;
         document.getElementById('user-input').addEventListener('keypress',e=>{ if(e.key==='Enter') handleInput(); });
         
-        // Voice (Simple toggle)
+        // Voice
         if ('webkitSpeechRecognition' in window) {
             const r = new webkitSpeechRecognition();
             document.getElementById('voice-btn').onclick = () => { r.start(); };
