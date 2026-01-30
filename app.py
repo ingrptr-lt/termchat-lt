@@ -1,3 +1,59 @@
+import sys
+import os
+import subprocess
+
+# --- SMART BOOTSTRAPPER: CHECK FOR CRITICAL DEPENDENCIES ---
+try:
+    import streamlit as st
+except ImportError:
+    print("\n" + "="*50)
+    print(" CRITICAL SYSTEM ERROR: STREAMLIT NOT FOUND")
+    print("="*50)
+    print("The application requires libraries to run.")
+    print("\nPlease run the auto-installer:")
+    print("  Windows: Double-click 'install.bat'")
+    print("  Mac/Linux: Run './install.sh' in terminal")
+    print("\nOr install manually:")
+    print("  pip install -r requirements.txt")
+    print("="*50 + "\n")
+    sys.exit(1)
+
+# --- HELPER: AUTO-INSTALL FUNCTION ---
+def auto_repair_system():
+    """Installs requirements.txt directly from inside the app"""
+    st.info("🛠️ INITIATING SYSTEM REPAIR...")
+    st.code("pip install -r requirements.txt", language="bash")
+    
+    # Create a placeholder for the output
+    output_placeholder = st.empty()
+    
+    try:
+        # Run pip install
+        process = subprocess.Popen(
+            [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+        
+        # Stream output to the UI
+        with output_placeholder.container():
+            with st.spinner("Downloading and Installing Modules..."):
+                for line in process.stdout:
+                    st.text(line)
+        
+        process.wait()
+        
+        if process.returncode == 0:
+            st.success("✅ REPAIR COMPLETE. RESTARTING SYSTEM...")
+            st.balloons()
+            time.sleep(2)
+            st.rerun()
+        else:
+            st.error("❌ REPAIR FAILED. Check console logs.")
+            
+    except Exception as e:
+        st.error(f"CRITICAL ERROR DURING REPAIR: {e}")
 import streamlit as st
 import sys
 import os
