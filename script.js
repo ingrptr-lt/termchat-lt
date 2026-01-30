@@ -1,3 +1,208 @@
+/**
+ * =========================================================================
+ *  SYSTEM REBUILDER KERNEL
+ *  Allows dynamic installation of features via chat commands.
+ *  Usage: Type /sys install [feature_name]
+ * =========================================================================
+ */
+
+const SystemRebuilder = {
+    installedModules: [],
+
+    // The Main Installer Function
+    install: function(featureName) {
+        if (this.installedModules.includes(featureName)) {
+            log(`Module [${featureName}] already active.`, 'sys-msg');
+            return;
+        }
+
+        console.log(`[KERNEL] Installing module: ${featureName}`);
+        log(`INITIATING INSTALLATION: ${featureName.toUpperCase()}...`, 'sys-msg');
+
+        switch(featureName) {
+            case 'matrix':
+                this.installMatrix();
+                break;
+            case 'crt':
+                this.installCRT();
+                break;
+            case 'sound':
+                this.installSound();
+                break;
+            case 'neon-theme':
+                this.installNeonTheme();
+                break;
+            case 'god-mode':
+                this.installGodMode();
+                break;
+            default:
+                log(`ERROR: Unknown module '${featureName}'`, 'sys-msg');
+                log(`AVAILABLE: matrix, crt, sound, neon-theme, god-mode`, 'sys-msg');
+                return;
+        }
+
+        this.installedModules.push(featureName);
+        log(`INSTALLATION COMPLETE: ${featureName.toUpperCase()}`, 'sys-msg');
+    },
+
+    // --- MODULE 1: MATRIX RAIN ---
+    installMatrix: function() {
+        const canvas = document.createElement('canvas');
+        canvas.id = 'matrix-canvas';
+        canvas.style.position = 'fixed';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.zIndex = '-1'; // Behind everything
+        canvas.style.opacity = '0.2';
+        canvas.style.pointerEvents = 'none';
+        document.body.prepend(canvas);
+
+        const ctx = canvas.getContext('2d');
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+        const cols = Math.floor(width / 20);
+        const ypos = Array(cols).fill(0);
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        });
+
+        function draw() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, width, height);
+            ctx.fillStyle = '#0f0';
+            ctx.font = '15pt monospace';
+
+            ypos.forEach((y, ind) => {
+                const text = String.fromCharCode(Math.random() * 128);
+                const x = ind * 20;
+                ctx.fillText(text, x, y);
+                if (y > 100 + Math.random() * 10000) ypos[ind] = 0;
+                else ypos[ind] = y + 20;
+            });
+        }
+        setInterval(draw, 50);
+    },
+
+    // --- MODULE 2: CRT SCANLINES ---
+    installCRT: function() {
+        const overlay = document.createElement('div');
+        overlay.id = 'crt-overlay';
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.background = 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06))';
+        overlay.style.backgroundSize = '100% 2px, 3px 100%';
+        overlay.style.pointerEvents = 'none';
+        overlay.style.zIndex = '999';
+        overlay.style.animation = 'flicker 0.15s infinite';
+        document.body.appendChild(overlay);
+
+        // Inject keyframes if not exists
+        if (!document.getElementById('crt-styles')) {
+            const style = document.createElement('style');
+            style.id = 'crt-styles';
+            style.innerHTML = `
+                @keyframes flicker {
+                    0% { opacity: 0.95; }
+                    50% { opacity: 1; }
+                    100% { opacity: 0.98; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    },
+
+    // --- MODULE 3: SOUND EFFECTS ---
+    installSound: function() {
+        // Create a simple synth beep using Web Audio API
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Hook into existing log function
+        const originalLog = window.log; // Assuming your global log function is named 'log'
+        if (typeof originalLog === 'function') {
+            window.log = function(text, type) {
+                // Play beep on new messages (except system)
+                if (type !== 'system' && type !== 'sys-msg') {
+                    playBeep();
+                }
+                originalLog(text, type);
+            };
+        }
+
+        function playBeep() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'sine';
+            osc.frequency.value = 800;
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+    },
+
+    // --- MODULE 4: NEON THEME (CSS INJECTION) ---
+    installNeonTheme: function() {
+        const style = document.createElement('style');
+        style.id = 'neon-styles';
+        style.innerHTML = `
+            body { text-shadow: 0 0 5px var(--term-green), 0 0 10px var(--term-green); }
+            #screen { border: 1px solid var(--term-green); box-shadow: 0 0 15px var(--term-green); }
+            .user-msg { color: #e0ffe0; font-weight: bold; }
+        `;
+        document.head.appendChild(style);
+    },
+
+    // --- MODULE 5: GOD MODE (Admin UI) ---
+    installGodMode: function() {
+        const btn = document.createElement('button');
+        btn.innerText = "SYS_ADMIN";
+        btn.style.position = 'fixed';
+        btn.style.top = '10px';
+        btn.style.right = '10px';
+        btn.style.zIndex = '1000';
+        btn.style.background = 'red';
+        btn.style.color = 'white';
+        btn.style.border = 'none';
+        btn.style.padding = '5px 10px';
+        btn.style.fontFamily = 'monospace';
+        btn.onclick = () => {
+            const cmd = prompt("ENTER SYSTEM COMMAND:");
+            if(cmd) handleInput(cmd); // Assuming handleInput is your global function
+        };
+        document.body.appendChild(btn);
+    }
+};
+
+// --- HOOK INTO YOUR COMMAND PARSER ---
+// You need to update your handleInput function to catch "/sys install ..."
+// If you can't find handleInput, add this listener:
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        const input = document.getElementById('cmd-input'); // Ensure this matches your input ID
+        if (!input) return;
+        
+        const text = input.value.trim();
+        
+        // CHECK FOR SYSTEM COMMANDS
+        if (text.startsWith('/sys install ')) {
+            const module = text.split(' ')[2];
+            SystemRebuilder.install(module);
+            input.value = '';
+            e.preventDefault(); // Stop normal processing
+            e.stopPropagation();
+        }
+    }
+});
 // =========================================================================
 //         TERMOS LT: HYBRID FAILSAFE EDITION (COMPLETE)
 //         Logic: Checks for existence of DOM elements, creates them if missing. 
