@@ -1,5 +1,21 @@
 {
     "recommendations": [
-        "zyohra.zyohra-ai"
+        // --- CORE PYTHON ---
+        "ms-python.python",           // Essential Python support (IntelliSense, Debugging)
+        "ms-python.vscode-pylance",   // Fast static type checker
+        "ms-python.debugpy",          // Python Debugger
+        
+        // --- WEB / FRONTEND (HTML, JS, Tailwind) ---
+        "formulahendry.auto-rename-tag", // Auto rename paired HTML/XML tag
+        "bradlc.vscode-tailwindcss",    // IntelliSense for Tailwind CSS classes (Used in your HTML rebuild)
+        
+        // --- DEVOPS ---
+        "ms-azuretools.vscode-docker", // Docker support for your Python plugins
+        
+        // --- GIT ---
+        "eamodio.gitlens",            // Git superpowers (Blame, History)
+        
+        // --- AI / PRODUCTIVITY ---
+        "zyohra.zyohra-ai"           // Your existing AI extension (Retained)
     ]
 }
