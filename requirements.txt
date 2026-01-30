@@ -1,4 +1,15 @@
-paho-mqtt>=2.0.0
-openai
+# 1. The Core Framework (REQUIRED - was missing)
+streamlit
+
+# 2. AI Libraries
+# Pinned to >=1.0.0 to match the code syntax used in app.py
+openai>=1.0.0
+
+# Zhipu AI (Optional - only if you plan to use Chinese models later)
+# zhipuai
+
+# 3. Utilities
 python-dotenv
-zhipuai
+
+# 4. MQTT (Optional - only needed if Python acts as a Bot, not just a UI)
+# paho-mqtt>=2.0.0
