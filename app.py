@@ -5,7 +5,21 @@ import subprocess
 # --- SMART BOOTSTRAPPER: CHECK FOR CRITICAL DEPENDENCIES ---
 try:
     import streamlit as st
-except ImportError:
+# ... imports ...
+
+# --- TESTING: SIMULATE ERROR MODE ---
+# If you add "?simulate_error=1" to the URL, the app will pretend OpenAI is missing
+if "simulate_error" in st.query_params:
+    print("⚠️ TEST MODE: Simulating Missing Dependency")
+    # We manually delete it from loaded modules to force the error
+    if 'openai' in sys.modules:
+        del sys.modules['openai']
+    # Raise the error that the sidebar is designed to catch
+    raise ImportError("SIMULATED: Neural Link (OpenAI) Module Missing")
+
+# --- SMART BOOTSTRAPPER ---
+# ... rest of your code ...
+    except ImportError:
     print("\n" + "="*50)
     print(" CRITICAL SYSTEM ERROR: STREAMLIT NOT FOUND")
     print("="*50)
