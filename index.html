@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <!-- Multi-Device Viewport Fix (Handles iPhone Notch & Zoom) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TermOS: Evolution</title>
     
@@ -11,15 +12,16 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS (Modern Styling Engine) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Fonts -->
+    <!-- Fonts: 'Inter' (Clean UI) + 'Fira Code' (Code) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
 
     <!-- MQTT Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
 
+    <!-- Custom CSS for Modern Aesthetics & Performance -->
     <style>
         :root {
             --glass-bg: rgba(15, 23, 42, 0.6);
@@ -33,38 +35,36 @@
 
         body { background-color: #020617; color: #e2e8f0; font-family: 'Inter', sans-serif; overflow: hidden; }
 
-        /* Matrix */
+        /* --- BACKGROUND MATRIX (Optimized) --- */
         #matrix-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.15; pointer-events: none; }
 
-        /* Scrollbar */
+        /* --- SCROLLBAR --- */
         ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 
-        /* Glassmorphism */
+        /* --- GLASSMORPHISM --- */
         .glass-panel { background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--glass-border); }
 
-        /* Animations */
+        /* --- ANIMATIONS --- */
         .msg-bubble { max-width: 85%; animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); word-wrap: break-word; }
         @keyframes slideIn { from { opacity: 0; transform: translateY(10px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
         
         .ascii-art { font-family: 'Fira Code', monospace; line-height: 0.8; white-space: pre; font-size: 9px; text-shadow: 0 0 2px rgba(255,255,255,0.5); }
-        
         .avatar-gradient-user { background: linear-gradient(135deg, #3b82f6, #8b5cf6); }
         .avatar-gradient-ai { background: linear-gradient(135deg, #10b981, #059669); }
-        
         .input-glow:focus-within { box-shadow: 0 0 20px rgba(56, 189, 248, 0.3); border-color: rgba(56, 189, 248, 0.5); }
 
-        /* Admin Panel Styles */
-        .admin-hidden { display: none; }
+        /* --- ADMIN PANEL --- */
+        .admin-hidden { display: none; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
         .pulse-red { animation: pulse-red-2 2s infinite; }
         @keyframes pulse-red-2 { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col relative">
 
-    <!-- Background -->
+    <!-- 1. BACKGROUND: Subtle Matrix Rain -->
     <canvas id="matrix-canvas"></canvas>
 
-    <!-- Header -->
+    <!-- 2. HEADER: Floating Glass Bar -->
     <header class="fixed top-0 left-0 right-0 z-20 glass-panel border-b-0 border-b-white/5 h-16 flex items-center justify-between px-4 lg:px-8">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
@@ -73,7 +73,7 @@
             <div>
                 <h1 class="font-bold text-lg tracking-wide text-white">TERMOS <span class="text-blue-400">LT</span></h1>
                 <div class="flex items-center gap-2 text-xs text-gray-400">
-                    <div id="status-dot" class="w-2 h-2 rounded-full bg-green-500"></div>
+                    <div id="status-dot" class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                     <span id="room-display">GLOBAL LOBBY</span>
                 </div>
             </div>
@@ -87,17 +87,22 @@
         </div>
     </header>
 
-    <!-- Chat -->
-    <main id="chat-container" class="flex-1 overflow-y-auto pt-20 pb-32 px-4 z-10 scroll-smooth max-w-5xl mx-auto w-full"></main>
+    <!-- 3. CHAT AREA: Centered & Safe -->
+    <main id="chat-container" class="flex-1 overflow-y-auto pt-20 pb-32 px-4 z-10 scroll-smooth max-w-5xl mx-auto w-full">
+        <!-- Messages injected here -->
+    </main>
 
-    <!-- Input -->
+    <!-- 4. INPUT AREA: Floating Modern Pill -->
     <div class="fixed bottom-0 left-0 w-full z-30 glass-panel border-t border-white/5 safe-area-bottom">
         <div class="max-w-4xl mx-auto p-4 pb-6">
             <div class="flex items-end gap-2 bg-slate-900/80 rounded-2xl p-2 border border-white/5 shadow-2xl input-glow transition-all">
+                <!-- Voice Button -->
                 <button id="voice-btn" class="p-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8h4m-4 8H8"></path></svg>
                 </button>
+                <!-- Text Input -->
                 <input type="text" id="user-input" placeholder="Type a message..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light">
+                <!-- Send Button -->
                 <button id="send-btn" class="p-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all transform active:scale-95 shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
                 </button>
@@ -113,14 +118,50 @@
     <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112762.mp3" type="audio/mpeg">
 </audio>
 
+<!-- ADMIN CONSOLE UI (Hidden by default) -->
+<div id="admin-panel" class="admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border border-red-500/30 shadow-2xl shadow-red-500/10">
+    <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2">
+        <span class="animate-pulse">🔴</span> ADMIN CONSOLE
+    </h3>
+    <div class="space-y-3">
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">GitHub Token (Required for Evolution)</label>
+            <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Owner</label>
+                <input type="text" id="gh-owner" placeholder="username" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Repo</label>
+                <input type="text" id="gh-repo" placeholder="repo-name" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
+            </div>
+        </div>
+        <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors">
+            🧬 INITIATE EVOLUTION
+        </button>
+        <div class="text-[10px] text-gray-500 text-center mt-2">
+            Saves credentials to LocalStorage.
+        </div>
+    </div>
+</div>
+
+<!-- EXPOSED ADMIN BUTTON (Top Right) -->
+<div class="fixed top-4 right-4 z-50">
+    <button onclick="toggleAdminMode()" id="admin-toggle-text" class="bg-slate-900/50 hover:bg-red-900/50 border border-slate-700 hover:border-red-500 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-2">
+        <span>🔴</span> ADMIN
+    </button>
+</div>
+
 <!-- =========================================================== -->
 <!--  THE EVOLUTIONARY KERNEL (Self-Healing & Mutating) -->
 <!-- =========================================================== -->
 <script>
     // --- 1. CONFIG ---
     let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || "";
-    // WARNING: In a real secure app, never store GitHub Token in LocalStorage. 
-    // For this demo, we use LocalStorage so it persists on reload.
+    // WARNING: Storing GitHub Token in LocalStorage is for demo purposes only.
+    // In a production app, use a secure backend to hold secrets.
     let GITHUB_TOKEN = localStorage.getItem('termos_github_token') || "";
     let REPO_OWNER = localStorage.getItem('termos_repo_owner') || "your-username";
     let REPO_NAME = localStorage.getItem('termos_repo_name') || "termchat-lt";
@@ -135,44 +176,63 @@
     const LEVELS = { 3: 'Cyber', 5: 'Ghost', 8: 'Oracle' }; 
     let installedModules = [];
 
-    // --- 2. MATRIX (Performance Optimized) ---
+    // --- 2. MATRIX (Performance Optimized with Governor) ---
+    let isMatrixRunning = false;
+    let animationFrameId;
+
     function initMatrix() {
         const canvas = document.getElementById('matrix-canvas');
         if(!canvas) return;
+        
+        // Safety check to prevent double loops
+        if(isMatrixRunning) return; 
+        isMatrixRunning = true;
+
         const ctx = canvas.getContext('2d');
         let width = canvas.width = window.innerWidth;
         let height = canvas.height = window.innerHeight;
+        
+        // Dynamic Density: Lower font on mobile to save CPU
         const fontSize = window.innerWidth < 600 ? 10 : 14; 
         const columns = Math.floor(width / fontSize);
         const drops = Array(columns).fill(1);
         const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$#@%&';
-        let animationFrameId;
+        
         let lastTime = 0;
-        const fps = 30;
+        const fps = 30; // Cap FPS to save battery
         const interval = 1000 / fps;
 
         function draw(time) {
             requestAnimationFrame(draw);
             const delta = time - lastTime;
+            
+            // PERFORMANCE GOVERNOR: Skip frame if not enough time passed
             if (delta < interval) return;
             lastTime = time - (delta % interval);
 
-            ctx.fillStyle = 'rgba(2, 6, 23, 0.05)'; 
-            ctx.fillRect(0, 0, width, height);
-            
-            // Change color based on Admin Mode
-            ctx.fillStyle = adminMode ? '#ef4444' : '#1e40af'; 
-            
-            ctx.font = `${fontSize}px 'Fira Code', monospace`;
-            
-            for(let i=0; i<drops.length; i++) {
-                const text = letters[Math.floor(Math.random()*letters.length)];
-                ctx.fillText(text, i*fontSize, drops[i]*fontSize);
-                if(drops[i]*fontSize > height && Math.random() > 0.975) drops[i] = 0;
-                drops[i]++;
+            try {
+                ctx.fillStyle = 'rgba(2, 6, 23, 0.05)'; 
+                ctx.fillRect(0, 0, width, height);
+                
+                // Dynamic Color: Red if Admin Mode, Blue if Normal
+                ctx.fillStyle = (typeof adminMode !== 'undefined' && adminMode) ? '#ef4444' : '#1e40af'; 
+                ctx.font = `${fontSize}px 'Fira Code', monospace`;
+                
+                for(let i=0; i<drops.length; i++) {
+                    const text = letters[Math.floor(Math.random()*letters.length)];
+                    ctx.fillText(text, i*fontSize, drops[i]*fontSize);
+                    if(drops[i]*fontSize > height && Math.random() > 0.975) drops[i] = 0;
+                    drops[i]++;
+                }
+            } catch (e) {
+                // If render crashes, stop the loop to prevent browser freeze
+                console.error("Matrix Render Error:", e);
+                isMatrixRunning = false;
             }
         }
+        
         requestAnimationFrame(draw);
+        
         window.addEventListener('resize', () => {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
@@ -300,53 +360,64 @@
         else if (lvl === 8) userStats.ascii = "👁<br>· ·<br>__·__"; 
     }
 
-    // --- 7. EVOLUTION ENGINE (The "Pain Sensor" & Self-Healing) ---
+    // --- 7. EVOLUTION ENGINE (Self-Healing & Mutating) ---
     let adminMode = false;
 
-    // A. Pain Sensor: Hook console.error
+    // A. Throttled Pain Sensor
+    let isPainActive = false;
     const originalError = console.error;
     console.error = function(...args) {
         originalError.apply(console, args);
-        const statusDot = document.getElementById('status-dot');
-        if (statusDot) {
-            statusDot.className = "w-2 h-2 rounded-full bg-red-500 pulse-red";
-            addSystemMessage("⚠️ SYSTEM PAIN DETECTED: CHECKING DIAGNOSTICS...");
-            
-            // Auto-Reboot Logic
-            setTimeout(() => {
-                statusDot.className = "w-2 h-2 rounded-full bg-green-500 animate-pulse";
-                // In a real scenario, we would trigger auto-healing here
-            }, 5000);
+        if (!isPainActive) {
+            isPainActive = true;
+            const statusDot = document.getElementById('status-dot');
+            if (statusDot) {
+                statusDot.className = "w-2 h-2 rounded-full bg-red-500 pulse-red";
+                addSystemMessage("⚠️ SYSTEM PAIN DETECTED. DIAGNOSTICS RUNNING...");
+                setTimeout(() => {
+                    if (statusDot) {
+                        statusDot.className = "w-2 h-2 rounded-full bg-green-500 animate-pulse";
+                    }
+                    isPainActive = false;
+                }, 5000);
+            }
         }
     };
 
-    // B. Admin Toggle
+    // B. Toggle Function
     function toggleAdminMode() {
         const panel = document.getElementById('admin-panel');
         if (panel.classList.contains('admin-hidden')) {
             panel.classList.remove('admin-hidden');
-            document.getElementById('admin-toggle-text').innerText = "Close Admin";
+            setTimeout(() => { panel.style.opacity = "1"; }, 10);
         } else {
-            panel.classList.add('admin-hidden');
-            document.getElementById('admin-toggle-text').innerText = "Admin Console";
+            panel.style.opacity = "0";
+            setTimeout(() => { panel.classList.add('admin-hidden'); }, 300);
         }
     }
 
-    // C. The Evolution Function
+    // C. The Evolution Function (With Network Timeouts)
     async function initiateEvolution() {
         if (!GITHUB_TOKEN) return alert("Please enter your GitHub Token first.");
         if (!REPO_OWNER || !REPO_NAME) return alert("Please enter Repo Owner and Name.");
         
-        const input = prompt("Enter your mutation request (e.g., 'Add a pulsating red heart'):");
+        const input = prompt("Enter your mutation request:");
         if (!input) return;
 
         addSystemMessage("🧬 INITIATING EVOLUTION SEQUENCE...");
         addSystemMessage("📡 READING DNA FROM GITHUB...");
         
+        // --- TIMEOUT CONTROLLER (30 Seconds) ---
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
         try {
             // 1. Read Current Code
             const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
-            const res = await fetch(url, { headers: { 'Authorization': `token ${GITHUB_TOKEN}` } });
+            const res = await fetch(url, { 
+                headers: { 'Authorization': `token ${GITHUB_TOKEN}` },
+                signal: controller.signal 
+            });
             
             if (!res.ok) throw new Error("Failed to read repo. Check Token/Permissions.");
             
@@ -354,30 +425,14 @@
             const repoData = { content: atob(data.content), sha: data.sha };
 
             // 2. Send to AI
-            const evolutionPrompt = `
-            You are the Architect of Multiverse OS.
-            The User (Mind) has requested: "${input}"
-            
-            CONTEXT:
-            - We are a Self-Healing OS.
-            - We support P2P, Video, and AI.
-            - We maintain a Terminal UI at the bottom.
-            
-            TASK:
-            1. Modify ${FILE_PATH} to fulfill the request.
-            2. Ensure the "Immune System" script is preserved.
-            3. Return ONLY the full code.
-            `;
-
+            const evolutionPrompt = `You are the Architect... (Context: Self-Healing OS) ... TASK: Modify ${FILE_PATH} to fulfill "${input}". Return ONLY the full code.`;
             const aiReq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
                 headers: { 'Authorization': `Bearer ${GROQ_API_KEY}` },
+                signal: controller.signal,
                 body: JSON.stringify({
                     model: "llama3-70b-8192",
-                    messages: [
-                        { role: "system", content: "You are a code generator. Return ONLY the raw HTML code, no markdown blocks." },
-                        { role: "user", content: evolutionPrompt + "\n\nCURRENT CODE:\n" + repoData.content }
-                    ]
+                    messages: [{ role: "system", content: "You are a code generator. Return ONLY raw HTML code." }, { role: "user", content: evolutionPrompt + "\n\nCODE:\n" + repoData.content }]
                 })
             });
 
@@ -397,20 +452,25 @@
             await fetch(putUrl, {
                 method: 'PUT',
                 headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Content-Type': 'application/json' },
+                signal: controller.signal,
                 body: JSON.stringify(putBody)
             });
 
             // 4. Reboot
+            clearTimeout(timeoutId);
             addSystemMessage("🎉 EVOLUTION SUCCESS. REBOOTING...");
             setTimeout(() => location.reload(), 2000);
 
         } catch (err) {
-            addSystemMessage("❌ EVOLUTION FAILED: " + err.message);
+            clearTimeout(timeoutId);
+            let errorMsg = err.message;
+            if (err.name === 'AbortError') errorMsg = "Connection Timed Out (30s). Try again.";
+            addSystemMessage("❌ EVOLUTION FAILED: " + errorMsg);
             console.error(err);
         }
     }
 
-    // --- 8. INPUT HANDLER (Updated for Admin Commands) ---
+    // --- 8. INPUT HANDLER ---
     function handleInput() {
         let inp = document.getElementById('user-input');
         let txt = inp.value.trim();
@@ -473,11 +533,10 @@
 
     // --- 10. INIT ---
     window.onload = function() {
-        // Load Stats
+        // Load Stats & Admin Creds
         let saved = localStorage.getItem('termos_stats_modern');
         if(saved) { userStats = JSON.parse(saved); if(userStats.ascii) updateAvatar(userStats.level); }
 
-        // Load Admin Creds
         const tkInput = document.getElementById('gh-token');
         if(GITHUB_TOKEN) tkInput.value = GITHUB_TOKEN;
         const ownerInput = document.getElementById('gh-owner');
@@ -512,40 +571,5 @@
         }
     };
 </script>
-
-<!-- ADMIN CONSOLE UI (Hidden by default) -->
-<div id="admin-panel" class="admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border border-red-500/30 shadow-2xl shadow-red-500/10">
-    <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2">
-        <span class="animate-pulse">🔴</span> ADMIN CONSOLE
-    </h3>
-    <div class="space-y-3">
-        <div>
-            <label class="block text-xs text-gray-500 mb-1">GitHub Token (Required for Evolution)</label>
-            <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none">
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-            <div>
-                <label class="block text-xs text-gray-500 mb-1">Owner</label>
-                <input type="text" id="gh-owner" placeholder="username" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
-            </div>
-            <div>
-                <label class="block text-xs text-gray-500 mb-1">Repo</label>
-                <input type="text" id="gh-repo" placeholder="repo-name" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
-            </div>
-        </div>
-        <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors">
-            🧬 INITIATE EVOLUTION
-        </button>
-        <div class="text-[10px] text-gray-500 text-center mt-2">
-            Saves credentials to LocalStorage.
-        </div>
-    </div>
-</div>
-
-<!-- EXTRA ADMIN BUTTON IN SIDEBAR AREA (We'll add it to the Input area for simplicity) -->
-<div class="fixed top-16 right-4 z-20">
-    <button onclick="toggleAdminMode()" id="admin-toggle-text" class="text-[10px] text-gray-500 hover:text-red-400 font-mono">ADMIN CONSOLE</button>
-</div>
-
 </body>
 </html>
