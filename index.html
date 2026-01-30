@@ -633,77 +633,69 @@ const SystemRebuilder = {
         addSystemMessage(`File saved: ${filename}`);
     }
 
-    // --- 11. INPUT HANDLING ---
-    function handleInput() {
-        const input = document.getElementById('user-input') || document.getElementById('cmd-input');
-        if (!input) return;
-        const text = input.value.trim();
-        if (!text) return;
+  // --- 11. INPUT HANDLING (UPDATED) ---
+function handleInput() {
+    const input = document.getElementById('user-input') || document.getElementById('cmd-input');
+    if (!input) return;
+    
+    let text = input.value.trim();
+    if (!text) return;
 
-        if (text.startsWith('/sys install ')) {
-            const mod = text.split(' ')[2];
-            SystemRebuilder.install(mod);
-        } else if (text.startsWith('/setkey ')) {
-            GROQ_API_KEY = text.substring(8);
-            localStorage.setItem('termos_groq_key', GROQ_API_KEY);
-            addSystemMessage("API KEY SAVED.");
-        } else if (text.startsWith('/ai ')) {
-            talkToClone(text.substring(4));
-        } else if (text === '/clear') {
-            const container = getChatContainer();
-            if(container) container.innerHTML = '';
-        } else {
-            addUserMessage(text);
-            addXP(1);
-            publishMessage(text);
-        }
+    // 1. HELP COMMAND
+    if (text === '/help') {
+        addSystemMessage("--- AVAILABLE COMMANDS ---");
+        addSystemMessage("/help : Show this list");
+        addSystemMessage("/setkey [key] : Save Groq API Key");
+        addSystemMessage("/ai [prompt] : Chat with AI");
+        addSystemMessage("/sys install [mod] : Install visual modules");
+        addSystemMessage("--- MODULES ---");
+        addSystemMessage("matrix, crt, sound, neon, god");
         input.value = '';
+        return;
     }
 
-    // Attach Global Listener
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            const input = document.getElementById('user-input') || document.getElementById('cmd-input');
-            if(input && document.activeElement === input) {
-                handleInput();
-            }
+    // 2. SYSTEM INSTALLER COMMAND
+    if (text.startsWith('/sys install ')) {
+        // Split by space and get the 3rd part (index 2)
+        // Handle potential extra spaces
+        const parts = text.split(' ');
+        let mod = parts[2] || ""; 
+        
+        // If user typed /sysvinstall (typo), try to recover
+        if (mod === "" && parts[0].startsWith('/sysvinstall')) {
+            mod = parts[1];
         }
-    });
 
-    // AI Logic
-    async function talkToClone(prompt) {
-        if (!GROQ_API_KEY) {
-            addAIMessage("Error: API Key missing. Type /setkey [key]", false);
-            return;
+        if (mod) {
+            SystemRebuilder.install(mod);
+        } else {
+            addSystemMessage("Usage: /sys install [module_name]");
         }
-        addAIMessage("Thinking...", false);
-        try {
-            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    messages: [{role: "system", content: "You are TermOS AI. You are a creator. Use SystemRebuilder.install('name') to install features."}, {role: "user", content: prompt}],
-                    model: "llama3-8b-8192"
-                })
-            });
-            const data = await res.json();
-            const reply = data.choices[0].message.content;
-            
-            // AI Module Installation Parser
-            const installRegex = /SystemRebuilder\.install\(['"](.*?)['"]\)/g;
-            let match;
-            let actionsTaken = false;
-            while ((match = installRegex.exec(reply)) !== null) {
-                SystemRebuilder.install(match[1]);
-                actionsTaken = true;
-            }
-            if (!actionsTaken) addAIMessage(reply, false);
-            else addAIMessage("Modules updated by AI.", false);
-        } catch (e) {
-            addAIMessage("Connection Failed.", false);
-        }
+    } 
+    // 3. API KEY
+    else if (text.startsWith('/setkey ')) {
+        GROQ_API_KEY = text.substring(8);
+        localStorage.setItem('termos_groq_key', GROQ_API_KEY);
+        addSystemMessage("API KEY SAVED.");
+    } 
+    // 4. AI COMMAND
+    else if (text.startsWith('/ai ')) {
+        talkToClone(text.substring(4));
+    } 
+    // 5. CLEAR CHAT
+    else if (text === '/clear') {
+        const container = getChatContainer();
+        if(container) container.innerHTML = '';
+    } 
+    // 6. DEFAULT CHAT
+    else {
+        addUserMessage(text);
+        addXP(1);
+        publishMessage(text);
     }
-
+    
+    input.value = '';
+}
     // --- 12. BOOT SEQUENCE LOGIC (New UI) ---
     async function runBoot() {
         const boot = document.getElementById('boot-screen');
