@@ -1,718 +1,121 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>TermOS LT HYBRID v3.1 (SECURE)</title>
-<meta name="theme-color" content="#050505">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-<!-- Paho MQTT Library (Required for Chat) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-
-<style>
-/* --- CORE VARIABLES --- */
-:root {
-    --main-bg: rgba(5, 5, 5, 0.92);
-    --term-color: #33ff00;
-    --term-glow: 0 0 8px rgba(51, 255, 0, 0.4);
-    --danger-color: #ff3333;
-    --system-color: #ffff00;
-    --user-color: #ffffff;
-    --xp-color: #00ffff;
-    --font-stack: 'Courier New', Courier, monospace;
-    --panel-bg: rgba(10, 10, 10, 0.95);
-}
-
-/* --- GLOBAL RESET --- */
-* { box-sizing: border-box; margin: 0; padding: 0; outline: none; user-select: text; }
-
-body {
-    background-color: #000;
-    color: var(--term-color);
-    font-family: var(--font-stack);
-    height: 100vh; 
-    display: flex; 
-    justify-content: center; 
-    align-items: center;
-    overflow: hidden;
-    font-size: 14px;
-}
-
-/* --- MATRIX BACKGROUND --- */
-#matrix-canvas {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    z-index: 0;
-    pointer-events: none; /* Allows clicking through the canvas */
-}
-
-/* --- OS CONTAINER --- */
-#os-container {
-    width: 100%; max-width: 1000px; height: 95vh;
-    background-color: var(--main-bg); 
-    border: 2px solid var(--term-color);
-    display: grid; 
-    grid-template-rows: auto 1fr auto;
-    position: relative; 
-    z-index: 10; 
-    box-shadow: var(--term-glow);
-    margin: 10px;
-    backdrop-filter: blur(4px);
-}
-
-/* CRT Scanline Overlay */
-#os-container::before {
-    content: " "; display: block; position: absolute;
-    top: 0; left: 0; bottom: 0; right: 0;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-    z-index: 50; pointer-events: none;
-    background-size: 100% 2px, 3px 100%; 
-}
-
-/* --- HEADER --- */
-header {
-    border-bottom: 1px solid var(--term-color); 
-    padding: 10px; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center;
-    z-index: 60; 
-    background: var(--panel-bg);
-}
-
-.header-left, .header-right {
-    display: flex; gap: 15px; align-items: center;
-}
-
-.xp-container {
-    width: 100px; display: flex; flex-direction: column; gap: 2px;
-}
-.xp-bar-bg { width: 100%; height: 6px; background: #333; border: 1px solid var(--term-color); }
-.xp-bar-fill { height: 100%; width: 0%; background: var(--xp-color); transition: width 0.5s ease; box-shadow: 0 0 5px var(--xp-color); }
-
-.avatar-display { font-size: 1.2rem; line-height: 1rem; filter: drop-shadow(0 0 5px var(--term-color)); }
-.room-badge { border: 1px solid var(--system-color); padding: 2px 8px; font-weight: bold; color: var(--system-color); text-shadow: 0 0 2px var(--system-color); }
-
-/* --- MAIN LAYOUT --- */
-main {
-    display: grid; grid-template-columns: 220px 1fr; overflow: hidden; z-index: 60;
-}
-
-.sidebar {
-    border-right: 1px solid var(--term-color);
-    padding: 15px; overflow-y: auto;
-    background: rgba(0,0,0,0.6);
-    display: flex; flex-direction: column; gap: 15px;
-}
-
-.app-card {
-    border: 1px dashed var(--term-color);
-    padding: 8px; cursor: pointer; font-size: 0.8rem;
-    transition: all 0.2s; text-align: center;
-}
-.app-card:hover { background: rgba(51, 255, 0, 0.15); border-style: solid; transform: translateX(5px); }
-
-#terminal-output {
-    padding: 20px; overflow-y: auto;
-    white-space: pre-wrap; scroll-behavior: smooth;
-    word-wrap: break-word; position: relative; height: 100%;
-}
-
-/* --- FOOTER --- */
-footer {
-    border-top: 1px solid var(--term-color);
-    padding: 10px; display: flex; align-items: center; gap: 10px;
-    background: var(--panel-bg); z-index: 60;
-}
-
-.prompt { font-weight: bold; animation: blink 1s step-end infinite; white-space: nowrap; }
-input[type="text"] {
-    background: transparent; border: none; color: var(--term-color);
-    font-family: var(--font-stack); font-size: 1.1rem; flex-grow: 1; text-transform: uppercase;
-}
-
-.btn-icon {
-    background: none; border: 1px solid var(--term-color);
-    color: var(--term-color); padding: 5px 10px; cursor: pointer;
-    font-family: var(--font-stack); transition: 0.2s;
-}
-.btn-icon:hover { background: var(--term-color); color: #000; }
-.btn-icon.active { background: var(--term-color); color: #000; animation: pulse 1.5s infinite; }
-
-/* --- VIRTUAL DESKTOP --- */
-.v-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 15px; padding: 20px; }
-.v-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; padding: 10px; border: 1px solid transparent; }
-.v-item:hover { background: rgba(0, 255, 255, 0.1); border: 1px solid var(--xp-color); }
-.v-icon { font-size: 2.5rem; margin-bottom: 8px; filter: drop-shadow(0 0 5px currentColor); }
-
-/* --- TEXT STYLES --- */
-.system-msg { color: var(--system-color); opacity: 0.9; font-weight: bold; }
-.user-msg { color: var(--user-color); font-weight: bold; }
-.other-msg { color: var(--term-color); }
-.ai-msg { color: #00ffff; text-shadow: 0 0 5px rgba(0, 255, 255, 0.4); }
-.error-msg { color: var(--danger-color); font-weight: bold; }
-.cmd-msg { color: #ff00ff; }
-
-/* --- UTILS & ANIMATIONS --- */
-.hidden { display: none !important; }
-@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
-@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-
-/* --- MOBILE RESPONSIVE --- */
-@media (max-width: 700px) {
-    #os-container { margin: 0; height: 100vh; border: none; }
-    main { grid-template-columns: 1fr; }
-    .sidebar { display: none; position: absolute; top: 50px; left: 0; width: 100%; height: 80%; background: #000; border-bottom: 1px solid var(--term-color); z-index: 100; }
-    .sidebar.show { display: flex; }
-    .header-left span { display: none; }
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TERMOS LT: MASTERPIECE EDITION</title>
+    <!-- STYLES: Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- LIBRARIES: MQTT -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; color: #0f0; font-family: monospace; }
+        /* Matrix Canvas */
+        #matrix-canvas { position: fixed; top: 0; left: 0; z-index: -1; }
+        /* Chat Container */
+        #chat-container { height: calc(100vh - 120px); overflow-y: auto; scroll-behavior: smooth; }
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .text-green-400 { color: #4ade80; }
+        .text-cyan-500 { color: #06b6d4; }
+        .text-gray-500 { color: #6b7280; }
+        .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
+    </style>
 </head>
-<body>
+<body class="h-screen w-screen flex flex-col">
 
-<!-- 1. Matrix Background Canvas -->
-<canvas id="matrix-canvas"></canvas>
+    <!-- 1. MATRIX BACKGROUND -->
+    <canvas id="matrix-canvas"></canvas>
 
-<!-- 2. Main OS Interface -->
-<div id="os-container">
-    <header>
-        <div class="header-left">
-            <div id="avatar-box" class="avatar-display">o_o</div>
-            <div class="xp-container">
-                <span style="font-size:0.7rem">LVL <span id="level-display">1</span></span>
-                <div class="xp-bar-bg"><div id="xp-fill" class="xp-bar-fill"></div></div>
-            </div>
-            <button class="btn-icon" onclick="toggleSidebar()">☰</button>
-        </div>
-        <div class="room-badge" id="current-room">LIBRARY</div>
-        <div class="header-right">
-            <span id="net-status">OFFLINE</span>
-        </div>
-    </header>
-
-    <main>
-        <div id="sidebar" class="sidebar">
-            <div style="color:var(--system-color)">SYSTEM APPS</div>
-            <div class="app-card" onclick="runSystemApp('desktop')">🖥️ DESKTOP</div>
-            <div class="app-card" onclick="runSystemApp('files')">📂 FILES</div>
-            <div class="app-card" onclick="runSystemApp('scan')">🌐 NET SCAN</div>
+    <!-- 2. BOOT SCREEN -->
+    <div id="terminal-boot" class="fixed inset-0 flex flex-col items-center justify-center bg-black/95 z-50 p-4">
+        <div class="w-full max-w-2xl bg-black border border-green-900 rounded-lg shadow-2xl p-6 relative overflow-hidden">
             
-            <div style="color:var(--system-color); margin-top:15px;">ROOMS</div>
-            <div class="app-card" onclick="executeSystemCommand('/room library')">📚 LIBRARY</div>
-            <div class="app-card" onclick="executeSystemCommand('/room workshop')">🔧 WORKSHOP</div>
-            <div class="app-card" onclick="executeSystemCommand('/room lounge')">🎮 LOUNGE</div>
+            <!-- Header -->
+            <h1 class="text-2xl font-bold mb-4 text-center tracking-widest text-green-400">TERMOS LT <span class="text-xs opacity-50">v2.0</span></h1>
+            
+            <!-- Terminal Output -->
+            <div id="terminal-content" class="font-mono text-sm text-green-300 mb-4 h-64 overflow-y-auto border-l-2 border-green-800 pl-2 bg-black/50"></div>
+            
+            <!-- Status -->
+            <div id="boot-status" class="text-center text-sm font-bold text-cyan-500 mb-2 animate-pulse">INITIALIZING...</div>
 
-            <div style="color:var(--system-color); margin-top:15px;">ACTIONS</div>
-            <div class="app-card" onclick="executeSystemCommand('/clear')">🧹 CLEAR</div>
-            <div class="app-card" onclick="executeSystemCommand('/help')">❓ HELP</div>
+            <!-- MODE SELECTION BUTTONS (Added for Safety) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <button id="btn-mode-1" onclick="enterApp('chat')" class="p-4 border border-green-700 bg-green-900/10 hover:bg-green-800 text-green-400 font-bold rounded transition-colors">
+                    <div class="text-green-300">MODE 1</div>
+                    <div class="text-xs text-gray-500 text-center">CHAT & MUSIC</div>
+                </button>
+                <button id="btn-mode-2" onclick="enterApp('api')" class="p-4 border border-cyan-700 bg-cyan-900/10 hover:bg-cyan-800 text-cyan-400 font-bold rounded transition-colors">
+                    <div class="text-cyan-300">MODE 2</div>
+                    <div class="text-xs text-gray-500 text-center">REMOTE AI</div>
+                </button>
+                <button id="btn-mode-3" onclick="enterApp('local')" class="p-4 border border-purple-700 bg-purple-900/10 hover:bg-purple-800 text-purple-400 font-bold rounded transition-colors">
+                    <div class="text-purple-300">MODE 3</div>
+                    <div class="text-xs text-gray-500 text-center">LOCAL AI</div>
+                </button>
+            </div>
         </div>
+    </div>
+
+    <!-- 3. MAIN APP LAYOUT (Hidden by default, shown via JS) -->
+    <div id="main-layout" class="hidden flex flex-col h-full relative z-10">
         
-        <div id="terminal-output">
-            <!-- Boot logs and chat history appear here -->
-        </div>
-    </main>
+        <!-- Header -->
+        <header class="flex justify-between items-center p-4 bg-black/90 border-b border-green-900 backdrop-blur-sm">
+            <div class="flex items-center gap-4">
+                <div class="text-xl font-bold tracking-tighter text-green-400">TERMOS LT</div>
+                <div class="text-xs text-gray-600">v2.0 <span class="text-cyan-500">MASTERPIECE</span></div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div id="room-title" class="text-xs font-mono text-gray-400 border border-gray-700 px-2 py-1 rounded bg-gray-900">LOBBY</div>
+                <div id="user-display" class="text-xs font-bold text-cyan-400 border border-cyan-900 px-2 py-1 rounded bg-cyan-900/10">@GUEST</div>
+            </div>
+            
+            <div class="flex items-center gap-2 text-xs text-gray-500">
+                <div id="lvl-text">LVL. 1 NEWBIE</div>
+                <div class="flex-1 h-2 bg-gray-900 rounded-full overflow-hidden">
+                    <div id="xp-bar" class="h-full bg-green-900/20 transition-all duration-500" style="width: 0%;"></div>
+                </div>
+                <div id="xp-text">XP: 0</div>
+            </div>
+        </header>
 
-    <footer>
-        <span class="prompt">></span>
-        <input type="text" id="command-input" autocomplete="off" autofocus placeholder="Enter command or chat...">
-        <button class="btn-icon" id="voice-btn" onclick="toggleVoice()">🎤</button>
-        <button class="btn-icon" onclick="sendMessage()">⚡</button>
-    </footer>
+        <!-- Main Content -->
+        <main class="flex-1 relative overflow-hidden flex-col">
+            
+            <!-- Chat Area -->
+            <div id="chat-container" class="space-y-3 p-4 pb-20"></div>
+
+            <!-- Input Area -->
+            <div class="p-4 bg-black/90 border-t border-green-900">
+                <div class="flex gap-2">
+                    <input type="text" id="chatInput" placeholder="Enter command or message..." autocomplete="off" class="flex-1 bg-black/80 border border-green-700 text-green-400 p-3 rounded focus:outline-none focus:ring-1 focus:ring-green-500/50 font-mono placeholder-gray-600">
+                    <button onclick="handleSend()" class="bg-green-600 hover:bg-green-500 text-black font-bold px-6 py-2 rounded transition-colors">SEND</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- HIDDEN BOOT CONTENT (Fallback) -->
+    <div id="hidden-boot-content" style="display:none;">
+        <div>Initializing BIOS...</div>
+        <div>Loading Kernel Modules...</div>
+        <div>Checking Neural Net...</div>
+        <div>System Ready.</div>
+        <div>>> DETECTED FEATURES:</div>
+        <div>>> [1] Multiverse Chat (MQTT)</div>
+        <div>>> [2] Gamification System</div>
+        <div>>> [3] AI Assistant (NEURAL)</div>
+    </div>
 </div>
 
-<!-- 3. Application Logic -->
+<!-- SCRIPT TAG (Place your latest script.js code here) -->
 <script>
-/* =========================================================================
-   TERMOS LT HYBRID v3.1 - SECURE STANDALONE EDITION
-   No Python/Node.js required. Runs entirely in Browser.
-   ========================================================================= */
-
-/* --- CONFIGURATION --- */
-const CONFIG = {
-    // Public MQTT Broker
-    mqtt: { host: "broker.hivemq.com", port: 8884, baseTopic: "termos/lt/v4" },
-    // AI Configuration (User must set key via /key command)
-    apiKey: localStorage.getItem('termos_groq_key') || "", 
-    // Fallback models for reliability
-    models: ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "gemma2-9b-it"],
-    rooms: {
-        library: { name: "LIBRARY", persona: "You are a helpful Librarian AI." },
-        workshop: { name: "WORKSHOP", persona: "You are a Coder AI. Write clean code." },
-        lounge: { name: "LOUNGE", persona: "You are a fun Gamer AI." }
-    }
-};
-
-/* --- STATE MANAGEMENT --- */
-const State = {
-    user: JSON.parse(localStorage.getItem('termos_user')) || { 
-        nick: "Anon" + Math.floor(Math.random()*1000), 
-        xp: 0, 
-        level: 1, 
-        room: 'library' 
-    },
-    client: null,
-    isConnected: false,
-    voiceEnabled: false,
-    recognition: null,
-    synthesis: window.speechSynthesis
-};
-
-/* --- INITIALIZATION --- */
-window.onload = () => {
-    initMatrix();
-    runTerminalBoot();
-    updateUI();
-    // Small delay to ensure DOM is ready for MQTT
-    setTimeout(connectMQTT, 1000);
-};
-
-/* --- 1. MATRIX EFFECT --- */
-function initMatrix() {
-    const c = document.getElementById('matrix-canvas');
-    const ctx = c.getContext('2d');
-
-    function resize() {
-        c.width = window.innerWidth; 
-        c.height = window.innerHeight;
-    }
-    window.addEventListener('resize', resize);
-    resize();
-
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*';
-    const fontSize = 14;
-    const columns = c.width / fontSize;
-    const drops = Array(Math.floor(columns)).fill(1);
-
-    function draw() {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-        ctx.fillRect(0, 0, c.width, c.height);
-        
-        ctx.fillStyle = '#0F0';
-        ctx.font = fontSize + 'px monospace';
-        
-        for(let i=0; i<drops.length; i++) {
-            const text = chars[Math.floor(Math.random()*chars.length)];
-            
-            // Occasional cyan highlight
-            if (Math.random() > 0.98) ctx.fillStyle = '#00f3ff';
-            else ctx.fillStyle = '#0F0';
-
-            ctx.fillText(text, i*fontSize, drops[i]*fontSize);
-            if(drops[i]*fontSize > c.height && Math.random() > 0.975) drops[i] = 0;
-            drops[i]++;
-        }
-    }
-    setInterval(draw, 33);
-}
-
-/* --- 2. BOOT SEQUENCE --- */
-function runTerminalBoot() {
-    const term = document.getElementById('terminal-output');
-    term.innerHTML = "";
-
-    const lines = [
-        "INITIALIZING BIOS...",
-        "LOADING KERNEL MODULES...",
-        "CHECKING INTEGRITY...",
-        "[OK] MATRIX DRIVER LOADED",
-        "[OK] AUDIO ENGINE READY",
-        "[OK] NEURAL LINK STANDBY",
-        "",
-        `WELCOME, OPERATOR.`,
-        `SYSTEM IS SECURE.`
-    ];
-
-    let i = 0;
-    function typeLine() {
-        if (i < lines.length) {
-            const div = document.createElement('div');
-            div.textContent = lines[i];
-            div.className = "system-msg";
-            term.appendChild(div);
-            scrollToBottom();
-            i++;
-            setTimeout(typeLine, Math.random() * 100 + 30);
-        } else {
-            addSystemMessage("TYPE /HELP TO BEGIN.");
-        }
-    }
-    typeLine();
-}
-
-/* --- 3. SECURITY UTILS --- */
-// XSS PREVENTION: Escapes HTML special characters
-function escapeHtml(text) {
-    if (!text) return "";
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
-}
-
-/* --- 4. UI HANDLERS --- */
-function updateUI() {
-    document.getElementById('level-display').innerText = State.user.level;
-    const totalForNext = State.user.level * 100;
-    const percentage = Math.min(100, (State.user.xp / totalForNext) * 100);
-    document.getElementById('xp-fill').style.width = `${percentage}%`;
-    
-    const avatars = ["o_o", "o.o", "(o.o)", "/\\_/\\", "🧙", "🤖", "🌌"];
-    document.getElementById('avatar-box').textContent = avatars[Math.min(State.user.level, avatars.length-1)];
-}
-
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('show');
-}
-
-function scrollToBottom() {
-    const el = document.getElementById('terminal-output');
-    el.scrollTop = el.scrollHeight;
-}
-
-/* --- 5. INPUT PROCESSING --- */
-const inputField = document.getElementById('command-input');
-inputField.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') processInput(inputField.value);
-});
-
-async function processInput(rawText) {
-    const text = rawText.trim();
-    if (!text) return;
-    
-    inputField.value = "";
-    // SECURITY: Escape user input before logging
-    logMessage(State.user.nick, text, "user-msg");
-    playSound('type');
-
-    // Command Parsing
-    if (text.startsWith('/')) {
-        executeSystemCommand(text);
-        return;
-    }
-
-    // Chat Logic
-    if (State.isConnected) {
-        const msg = new Paho.MQTT.Message(JSON.stringify({ nick: State.user.nick, text: text }));
-        msg.destinationName = `${CONFIG.mqtt.baseTopic}/${State.user.room}`;
-        State.client.send(msg);
-    }
-
-    // AI Trigger (Simple heuristics)
-    if (/^(AI|HELP|WHAT|HOW|WHY|CODE|MAKE|EXPLAIN)/i.test(text) || text.length > 25) {
-        queryAI(text);
-    } else {
-        addXP(1); 
-    }
-}
-
-/* --- 6. COMMAND SYSTEM --- */
-function executeSystemCommand(cmd) {
-    const parts = cmd.split(' ');
-    const command = parts[0].toLowerCase();
-
-    switch (command) {
-        case '/help':
-            addSystemMessage("COMMANDS: /ROOM [name], /NICK [name], /CLEAR, /AI [prompt], /KEY [api_key]");
-            break;
-        case '/room':
-            const r = parts[1]?.toLowerCase();
-            if (CONFIG.rooms[r]) joinRoom(r);
-            else addSystemMessage("INVALID ROOM. TRY LIBRARY, WORKSHOP.", "error-msg");
-            break;
-        case '/nick':
-            State.user.nick = parts[1] || "Anon";
-            saveState();
-            addSystemMessage(`IDENTITY SET: ${State.user.nick}`);
-            break;
-        case '/clear':
-            document.getElementById('terminal-output').innerHTML = "";
-            break;
-        case '/key':
-            const key = parts.slice(1).join(' ');
-            if (key.length > 10) {
-                CONFIG.apiKey = key;
-                localStorage.setItem('termos_groq_key', key);
-                addSystemMessage("API KEY SAVED.", "system-msg");
-            } else {
-                addSystemMessage("INVALID KEY FORMAT.", "error-msg");
-            }
-            break;
-        case '/ai':
-            const prompt = cmd.substring(4).trim();
-            if (prompt) queryAI(prompt);
-            else addSystemMessage("USAGE: /AI [prompt]", "error-msg");
-            break;
-        case '/voice':
-            toggleVoice();
-            break;
-        default:
-            addSystemMessage(`UNKNOWN: ${command}`, "error-msg");
-    }
-}
-
-/* --- 7. SYSTEM APPS --- */
-function runSystemApp(appName) {
-    const term = document.getElementById('terminal-output');
-    toggleSidebar();
-
-    if (appName === 'desktop') {
-        term.innerHTML = `
-            <div class="system-msg">VIRTUAL DESKTOP ENVIRONMENT</div>
-            <div class="v-grid">
-                <div class="v-item" onclick="runSystemApp('files')">
-                    <div class="v-icon" style="color:var(--xp-color)">📂</div>
-                    <div>FILES</div>
-                </div>
-                <div class="v-item" onclick="runSystemApp('scan')">
-                    <div class="v-icon" style="color:var(--system-color)">🌐</div>
-                    <div>NETWORK</div>
-                </div>
-                <div class="v-item" onclick="executeSystemCommand('/clear')">
-                    <div class="v-icon" style="color:var(--danger-color)">❌</div>
-                    <div>EXIT</div>
-                </div>
-            </div>
-        `;
-    } 
-    else if (appName === 'files') {
-        term.innerHTML = `
-            <div class="system-msg">ROOT DIRECTORY: /</div>
-            <div style="margin-top:10px; color:var(--term-color); line-height: 1.6">
-                <div>drwxr-xr-x  root  root  4096  SYSTEM_KERNEL</div>
-                <div>-rw-r--r--  user  user   520  user_data.json</div>
-                <div>-rw-r--r--  user  user  12MB  secret_logs.enc</div>
-                <div style="color:var(--xp-color)">-rwxr-xr-x  ai    core   ???  neural_net.bin</div>
-            </div>
-            <button class="btn-icon" style="margin-top:20px; width:100%" onclick="runSystemApp('desktop')">.. BACK</button>
-        `;
-    }
-    else if (appName === 'scan') {
-        addSystemMessage("INITIATING NETWORK SCAN...");
-        setTimeout(() => {
-            addSystemMessage("PING 192.168.0.1 ... TIMEOUT");
-            addSystemMessage("PING 10.0.0.5 ... ALIVE (LATENCY: 12ms)");
-            addSystemMessage("HOST DETECTED: GROQ-CLUSTER-01");
-        }, 1000);
-    }
-}
-
-/* --- 8. AI ENGINE --- */
-async function queryAI(prompt) {
-    if (!CONFIG.apiKey) {
-        addSystemMessage("API KEY MISSING. SET IT WITH /KEY [YOUR_KEY]", "error-msg");
-        return;
-    }
-
-    addSystemMessage("TERMAI THINKING...", "ai-msg");
-
-    let success = false;
-    let lastError = null;
-
-    for (const model of CONFIG.models) {
-        try {
-            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: "POST",
-                headers: { 
-                    "Content-Type": "application/json", 
-                    "Authorization": `Bearer ${CONFIG.apiKey}` 
-                },
-                body: JSON.stringify({
-                    model: model, 
-                    temperature: 0.7,
-                    messages: [
-                        { 
-                            role: "system", 
-                            content: CONFIG.rooms[State.user.room].persona + " Keep answers short, concise, and use uppercase headers for emphasis."
-                        }, 
-                        { role: "user", content: prompt }
-                    ]
-                })
-            });
-
-            if (!res.ok) throw new Error(res.statusText);
-            const json = await res.json();
-            const reply = json.choices[0].message.content;
-            
-            logMessage("AI", reply, "ai-msg");
-            speak(reply);
-            addXP(10);
-            success = true;
-            break; 
-        } catch (e) {
-            lastError = e;
-            continue; 
-        }
-    }
-
-    if (!success) {
-        addSystemMessage(`NEURAL LINK FAILED: ${lastError.message}`, "error-msg");
-    }
-}
-
-/* --- 9. MQTT ENGINE --- */
-function connectMQTT() {
-    const clientId = `termos-${State.user.nick}-${Date.now()}`;
-    State.client = new Paho.MQTT.Client(CONFIG.mqtt.host, CONFIG.mqtt.port, clientId);
-    
-    State.client.onConnectionLost = (e) => {
-        State.isConnected = false;
-        document.getElementById('net-status').textContent = "OFFLINE";
-        document.getElementById('net-status').style.color = "red";
-        setTimeout(connectMQTT, 5000);
-    };
-
-    State.client.onMessageArrived = (msg) => {
-        try {
-            const data = JSON.parse(msg.payloadString);
-            if (data.nick !== State.user.nick) {
-                logMessage(data.nick, data.text, "other-msg");
-                playSound('alert');
-            }
-        } catch (e) {}
-    };
-
-    const options = {
-        timeout: 10, useSSL: true, mqttVersion: 4, cleanSession: true,
-        onSuccess: () => {
-            State.isConnected = true;
-            document.getElementById('net-status').textContent = "ONLINE";
-            document.getElementById('net-status').style.color = "#33ff00";
-            joinRoom(State.user.room);
-            addSystemMessage("UPLINK ESTABLISHED.", "system");
-        },
-        onFailure: (e) => {
-            addSystemMessage("CONN FAILED: " + e.errorMessage, "error-msg");
-            setTimeout(connectMQTT, 5000);
-        }
-    };
-    State.client.connect(options);
-}
-
-function joinRoom(roomKey) {
-    if (!State.isConnected) return;
-    try { State.client.unsubscribe(`${CONFIG.mqtt.baseTopic}/${State.user.room}`); } catch(e){}
-    State.user.room = roomKey;
-    const newTopic = `${CONFIG.mqtt.baseTopic}/${roomKey}`;
-    State.client.subscribe(newTopic);
-    
-    document.getElementById('current-room').textContent = CONFIG.rooms[roomKey].name;
-    saveState();
-    addSystemMessage(`ENTERED: ${CONFIG.rooms[roomKey].name}`, "cmd-msg");
-}
-
-function sendMessage() {
-    processInput(document.getElementById('command-input').value);
-}
-
-/* --- 10. LOGGING --- */
-function logMessage(nick, text, type) {
-    const div = document.createElement('div');
-    div.className = type;
-    const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit' });
-    
-    // SECURITY: Escape HTML content before inserting
-    const safeNick = escapeHtml(nick);
-    const safeText = escapeHtml(text); 
-    
-    div.innerHTML = `<span style="opacity:0.5">[${time}]</span> <b>&lt;${safeNick}&gt;</b> ${safeText}`;
-    
-    document.getElementById('terminal-output').appendChild(div);
-    scrollToBottom();
-}
-
-function addSystemMessage(text) {
-    const div = document.createElement('div');
-    div.className = "system-msg";
-    // SECURITY: Escape system messages too if they ever contain dynamic data
-    div.innerHTML = `[SYS] ${escapeHtml(text)}`;
-    document.getElementById('terminal-output').appendChild(div);
-    scrollToBottom();
-}
-
-function saveState() {
-    localStorage.setItem('termos_user', JSON.stringify(State.user));
-}
-
-function addXP(amount) {
-    State.user.xp += amount;
-    const nextLevel = State.user.level * 100;
-    if (State.user.xp >= nextLevel) {
-        State.user.level++;
-        State.user.xp -= nextLevel;
-        addSystemMessage(`LEVEL UP! LVL ${State.user.level}`, "ai-msg");
-        playSound('success');
-    }
-    saveState();
-    updateUI();
-}
-
-/* --- 11. VOICE & AUDIO --- */
-function initVoice() {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    State.recognition = new SpeechRecognition();
-    State.recognition.continuous = false;
-    State.recognition.lang = 'en-US';
-    State.recognition.onresult = (e) => {
-        const text = e.results[0][0].transcript;
-        document.getElementById('command-input').value = text;
-        processInput(text);
-    };
-    State.recognition.onend = () => {
-        document.getElementById('voice-btn').classList.remove('active');
-        State.voiceEnabled = false;
-    };
-}
-
-function toggleVoice() {
-    if (!State.recognition) initVoice();
-    if (State.voiceEnabled) {
-        State.recognition.stop();
-    } else {
-        State.recognition.start();
-        document.getElementById('voice-btn').classList.add('active');
-        State.voiceEnabled = true;
-    }
-}
-
-function speak(text) {
-    if (State.synthesis.speaking) State.synthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.pitch = 0.8; 
-    utterance.rate = 1.2;
-    State.synthesis.speak(utterance);
-}
-
-const AudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-function playSound(type) {
-    if (AudioCtx.state === 'suspended') AudioCtx.resume();
-    const osc = AudioCtx.createOscillator();
-    const gain = AudioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(AudioCtx.destination);
-    
-    if (type === 'type') {
-        osc.frequency.value = 800;
-        gain.gain.value = 0.05;
-        osc.start(); osc.stop(AudioCtx.currentTime + 0.05);
-    } else if (type === 'alert') {
-        osc.frequency.setValueAtTime(150, AudioCtx.currentTime);
-        gain.gain.value = 0.1;
-        osc.start(); osc.stop(AudioCtx.currentTime + 0.2);
-    } else if (type === 'success') {
-        osc.frequency.setValueAtTime(440, AudioCtx.currentTime);
-        osc.frequency.setValueAtTime(880, AudioCtx.currentTime + 0.1);
-        gain.gain.value = 0.1;
-        osc.start(); osc.stop(AudioCtx.currentTime + 0.3);
-    }
-}
+    // Paste your latest script.js code exactly here inside these tags.
 </script>
 </body>
 </html>
