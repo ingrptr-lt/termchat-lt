@@ -1,3 +1,4 @@
+# Environment Variables
 .env
 venv/
 __pycache__/
@@ -5,3 +6,4 @@ __pycache__/
 .DS_Store
 termchat_logs.jsonl
 termAi.egg-info/
+# Environment Variables
