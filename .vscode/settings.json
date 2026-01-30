@@ -1,4 +1,28 @@
 {
-    "python-envs.defaultEnvManager": "ms-python.python:system",
-    "python-envs.pythonProjects": []
+    // --- EDITOR SETTINGS ---
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    
+    // --- PYTHON SETTINGS ---
+    "python.analysis.typeCheckingMode": "basic",
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
+    
+    // Use 'black' for Python formatting (Standard industry practice)
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true
+    },
+    
+    // --- ENVIRONMENT VARIABLES ---
+    // Treat .env files with syntax highlighting
+    "files.associations": {
+        "*.env": "dotenv"
+    },
+    // Security: Do not autocomplete secrets in .env files
+    "envFile.autocomplete": false,
+
+    // --- TERMINAL ---
+    // Use the same font as your app for the VS Code terminal
+    "terminal.integrated.fontFamily": " 'Courier New', monospace"
 }
