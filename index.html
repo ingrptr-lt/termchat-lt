@@ -147,120 +147,270 @@
     let mqttClient = null;
     let currentRoom = 'main'; 
     let userStats = { level: 1, xp: 0, avatar: '>_<', title: 'Newbie' };
-    const LEVELS = ['Newbie', 'Apprentice', 'Coder', 'Hacker', 'Architect', 'Wizard', 'Master', 'GOD MODE'];
+    const LEVELS = ['Newbie', 'Apprentice', 'Coder', 'Hacker', 'Architect', 'Wizard', 'Master', 'GOD // --- 2. SYSTEM REBUILDER (UPDATED WITH ALIASES) ---
+const SystemRebuilder = {
+    installedModules: [],
 
-    // --- 2. SYSTEM REBUILDER ---
-    const SystemRebuilder = {
-        installedModules: [],
+    install: function(featureName) {
+        // Clean input (lowercase, trim)
+        const mod = featureName.toLowerCase().trim();
 
-        install: function(featureName) {
-            if (this.installedModules.includes(featureName)) {
-                log(`Module [${featureName}] already active.`, 'sys-msg');
-                return;
-            }
-            console.log(`[KERNEL] Installing: ${featureName}`);
-            log(`INITIATING INSTALLATION: ${featureName.toUpperCase()}...`, 'sys-msg');
-
-            switch(featureName) {
-                case 'matrix': this.installMatrix(); break;
-                case 'crt': this.installCRT(); break;
-                case 'sound': this.installSound(); break;
-                case 'neon-theme': this.installNeonTheme(); break;
-                case 'god-mode': this.installGodMode(); break;
-                default: 
-                    log(`ERROR: Unknown module '${featureName}'`, 'sys-msg'); 
-                    return;
-            }
-            this.installedModules.push(featureName);
-            log(`INSTALLATION COMPLETE: ${featureName.toUpperCase()}`, 'sys-msg');
-        },
-
-        installMatrix: function() {
-            if (document.getElementById('matrix-canvas')) return;
-            const canvas = document.createElement('canvas');
-            canvas.id = 'matrix-canvas';
-            canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;opacity:0.2;pointer-events:none;';
-            document.body.prepend(canvas);
-            const ctx = canvas.getContext('2d');
-            const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
-            window.addEventListener('resize', resize); resize();
-            const cols = Math.floor(canvas.width / 20);
-            const ypos = Array(cols).fill(0);
-            const draw = () => {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#0f0';
-                ctx.font = '15pt monospace';
-                ypos.forEach((y, i) => {
-                    const text = String.fromCharCode(Math.random() * 128);
-                    ctx.fillText(text, i * 20, y);
-                    if (y > 100 + Math.random() * 10000) ypos[i] = 0; else ypos[i] = y + 20;
-                });
-            };
-            setInterval(draw, 50);
-        },
-
-        installCRT: function() {
-            // Try to use existing HTML layers, or create new ones
-            let overlay = document.getElementById('crt-overlay');
-            if(!overlay) {
-                 overlay = document.createElement('div');
-                 overlay.id = 'crt-overlay';
-                 overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.25) 50%), linear-gradient(90deg, rgba(255,0,0,0.06), rgba(0,255,0,0.02), rgba(0,0,255,0.06));background-size:100% 2px, 3px 100%;pointer-events:none;z-index:999;animation:flicker 0.15s infinite;';
-                 document.body.appendChild(overlay);
-            } else {
-                overlay.style.display = 'block';
-            }
-            
-            if (!document.getElementById('crt-styles')) {
-                const style = document.createElement('style');
-                style.id = 'crt-styles';
-                style.innerHTML = `@keyframes flicker { 0% { opacity: 0.95; } 50% { opacity: 1; } 100% { opacity: 0.98; } }`;
-                document.head.appendChild(style);
-            }
-        },
-
-        installSound: function() {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const originalLog = window.log;
-            if (typeof originalLog === 'function') {
-                window.log = function(text, type) {
-                    if (type !== 'system' && type !== 'sys-msg') {
-                        const osc = audioCtx.createOscillator();
-                        const gain = audioCtx.createGain();
-                        osc.connect(gain); gain.connect(audioCtx.destination);
-                        osc.type = 'sine'; osc.frequency.value = 800;
-                        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-                        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-                    }
-                    originalLog(text, type);
-                };
-            }
-        },
-
-        installNeonTheme: function() {
-            if (document.getElementById('neon-styles')) return;
-            const style = document.createElement('style');
-            style.id = 'neon-styles';
-            style.innerHTML = `body { text-shadow: 0 0 5px var(--neon-green), 0 0 10px var(--neon-green); } .msg-bubble { box-shadow: 0 0 15px rgba(0,255,65,0.2); }`;
-            document.head.appendChild(style);
-        },
-
-        installGodMode: function() {
-            if (document.getElementById('god-btn')) return;
-            const btn = document.createElement('button');
-            btn.id = 'god-btn';
-            btn.innerText = "SYS_ADMIN";
-            btn.style.cssText = "position:fixed;top:10px;right:10px;z-index:1000;background:red;color:white;border:none;padding:5px 10px;font-family:monospace;cursor:pointer;";
-            btn.onclick = () => {
-                const cmd = prompt("ENTER SYSTEM COMMAND:");
-                if(cmd) handleInput(cmd);
-            };
-            document.body.appendChild(btn);
+        if (this.installedModules.includes(mod)) {
+            log(`Module [${mod}] already active.`, 'sys-msg');
+            return;
         }
-    };
+        console.log(`[KERNEL] Installing module: ${mod}`);
+        log(`INITIATING INSTALLATION: ${mod.toUpperCase()}...`, 'sys-msg');
 
+        switch(mod) {
+            case 'matrix':
+                this.installMatrix();
+                break;
+            case 'crt':
+            case 'scanlines': // Added alias
+                this.installCRT();
+                break;
+            case 'sound':
+            case 'beep': // Added alias
+                this.installSound();
+                break;
+            case 'neon':
+            case 'neon-theme':
+            case 'glow': // Added alias
+                this.installNeonTheme();
+                break;
+            // FIXED: Now accepts 'god', 'admin', 'root', AND 'god-mode'
+            case 'god':
+            case 'admin':
+            case 'root':
+            case 'god-mode':
+                this.installGodMode();
+                break;
+            default:
+                log(`ERROR: Unknown module '${mod}'`, 'sys-msg');
+                log(`TRY: matrix, crt, sound, neon, god`, 'sys-msg');
+                return;
+        }
+
+        this.installedModules.push(mod);
+        log(`INSTALLATION COMPLETE: ${mod.toUpperCase()}`, 'sys-msg');
+    },
+
+    installMatrix: function() {
+        if (document.getElementById('matrix-canvas')) return;
+        const canvas = document.createElement('canvas');
+        canvas.id = 'matrix-canvas';
+        canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;opacity:0.2;pointer-events:none;';
+        document.body.prepend(canvas);
+        const ctx = canvas.getContext('2d');
+        const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+        window.addEventListener('resize', resize); resize();
+        const cols = Math.floor(canvas.width / 20);
+        const ypos = Array(cols).fill(0);
+        const draw = () => {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#0f0';
+            ctx.font = '15pt monospace';
+            ypos.forEach((y, i) => {
+                const text = String.fromCharCode(Math.random() * 128);
+                ctx.fillText(text, i * 20, y);
+                if (y > 100 + Math.random() * 10000) ypos[i] = 0; else ypos[i] = y + 20;
+            });
+        };
+        setInterval(draw, 50);
+    },
+
+    installCRT: function() {
+        let overlay = document.getElementById('crt-overlay');
+        if(!overlay) {
+             overlay = document.createElement('div');
+             overlay.id = 'crt-overlay';
+             overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.25) 50%), linear-gradient(90deg, rgba(255,0,0,0.06), rgba(0,255,0,0.02), rgba(0,0,255,0.06));background-size:100% 2px, 3px 100%;pointer-events:none;z-index:999;animation:flicker 0.15s infinite;';
+             document.body.appendChild(overlay);
+        } else {
+            overlay.style.display = 'block';
+        }
+        if (!document.getElementById('crt-styles')) {
+            const style = document.createElement('style');
+            style.id = 'crt-styles';
+            style.innerHTML = `@keyframes flicker { 0% { opacity: 0.95; } 50% { opacity: 1; } 100% { opacity: 0.98; } }`;
+            document.head.appendChild(style);
+        }
+    },
+
+    installSound: function() {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const originalLog = window.log;
+        if (typeof originalLog === 'function') {
+            window.log = function(text, type) {
+                if (type !== 'system' && type !== 'sys-msg') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.type = 'sine'; osc.frequency.value = 800;
+                    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+                }
+                originalLog(text, type);
+            };
+        }
+    },
+
+    installNeonTheme: function() {
+        if (document.getElementById('neon-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'neon-styles';
+        style.innerHTML = `body { text-shadow: 0 0 5px var(--neon-green), 0 0 10px var(--neon-green); } .msg-bubble { box-shadow: 0 0 15px rgba(0,255,65,0.2); }`;
+        document.head.appendChild(style);
+    },
+
+    installGodMode: function() {
+        if (document.getElementById('god-btn')) return;
+        const btn = document.createElement('button');
+        btn.id = 'god-btn';
+        btn.innerText = "GOD_MODE";
+        btn.style.cssText = "position:fixed;top:10px;right:10px;z-index:1000;background:red;color:white;border:none;padding:5px 10px;font-family:monospace;cursor:pointer;";
+        btn.onclick = () => {
+            const cmd = prompt("ENTER SYSTEM COMMAND:");
+            if(cmd) handleInput(cmd);
+        };
+        document.body.appendChild(btn);
+    }
+};
+   // --- 2. SYSTEM REBUILDER (UPDATED WITH ALIASES) ---
+const SystemRebuilder = {
+    installedModules: [],
+
+    install: function(featureName) {
+        // Clean input (lowercase, trim)
+        const mod = featureName.toLowerCase().trim();
+
+        if (this.installedModules.includes(mod)) {
+            log(`Module [${mod}] already active.`, 'sys-msg');
+            return;
+        }
+        console.log(`[KERNEL] Installing module: ${mod}`);
+        log(`INITIATING INSTALLATION: ${mod.toUpperCase()}...`, 'sys-msg');
+
+        switch(mod) {
+            case 'matrix':
+                this.installMatrix();
+                break;
+            case 'crt':
+            case 'scanlines': // Added alias
+                this.installCRT();
+                break;
+            case 'sound':
+            case 'beep': // Added alias
+                this.installSound();
+                break;
+            case 'neon':
+            case 'neon-theme':
+            case 'glow': // Added alias
+                this.installNeonTheme();
+                break;
+            // FIXED: Now accepts 'god', 'admin', 'root', AND 'god-mode'
+            case 'god':
+            case 'admin':
+            case 'root':
+            case 'god-mode':
+                this.installGodMode();
+                break;
+            default:
+                log(`ERROR: Unknown module '${mod}'`, 'sys-msg');
+                log(`TRY: matrix, crt, sound, neon, god`, 'sys-msg');
+                return;
+        }
+
+        this.installedModules.push(mod);
+        log(`INSTALLATION COMPLETE: ${mod.toUpperCase()}`, 'sys-msg');
+    },
+
+    installMatrix: function() {
+        if (document.getElementById('matrix-canvas')) return;
+        const canvas = document.createElement('canvas');
+        canvas.id = 'matrix-canvas';
+        canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;opacity:0.2;pointer-events:none;';
+        document.body.prepend(canvas);
+        const ctx = canvas.getContext('2d');
+        const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+        window.addEventListener('resize', resize); resize();
+        const cols = Math.floor(canvas.width / 20);
+        const ypos = Array(cols).fill(0);
+        const draw = () => {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#0f0';
+            ctx.font = '15pt monospace';
+            ypos.forEach((y, i) => {
+                const text = String.fromCharCode(Math.random() * 128);
+                ctx.fillText(text, i * 20, y);
+                if (y > 100 + Math.random() * 10000) ypos[i] = 0; else ypos[i] = y + 20;
+            });
+        };
+        setInterval(draw, 50);
+    },
+
+    installCRT: function() {
+        let overlay = document.getElementById('crt-overlay');
+        if(!overlay) {
+             overlay = document.createElement('div');
+             overlay.id = 'crt-overlay';
+             overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.25) 50%), linear-gradient(90deg, rgba(255,0,0,0.06), rgba(0,255,0,0.02), rgba(0,0,255,0.06));background-size:100% 2px, 3px 100%;pointer-events:none;z-index:999;animation:flicker 0.15s infinite;';
+             document.body.appendChild(overlay);
+        } else {
+            overlay.style.display = 'block';
+        }
+        if (!document.getElementById('crt-styles')) {
+            const style = document.createElement('style');
+            style.id = 'crt-styles';
+            style.innerHTML = `@keyframes flicker { 0% { opacity: 0.95; } 50% { opacity: 1; } 100% { opacity: 0.98; } }`;
+            document.head.appendChild(style);
+        }
+    },
+
+    installSound: function() {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const originalLog = window.log;
+        if (typeof originalLog === 'function') {
+            window.log = function(text, type) {
+                if (type !== 'system' && type !== 'sys-msg') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.type = 'sine'; osc.frequency.value = 800;
+                    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+                }
+                originalLog(text, type);
+            };
+        }
+    },
+
+    installNeonTheme: function() {
+        if (document.getElementById('neon-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'neon-styles';
+        style.innerHTML = `body { text-shadow: 0 0 5px var(--neon-green), 0 0 10px var(--neon-green); } .msg-bubble { box-shadow: 0 0 15px rgba(0,255,65,0.2); }`;
+        document.head.appendChild(style);
+    },
+
+    installGodMode: function() {
+        if (document.getElementById('god-btn')) return;
+        const btn = document.createElement('button');
+        btn.id = 'god-btn';
+        btn.innerText = "GOD_MODE";
+        btn.style.cssText = "position:fixed;top:10px;right:10px;z-index:1000;background:red;color:white;border:none;padding:5px 10px;font-family:monospace;cursor:pointer;";
+        btn.onclick = () => {
+            const cmd = prompt("ENTER SYSTEM COMMAND:");
+            if(cmd) handleInput(cmd);
+        };
+        document.body.appendChild(btn);
+    }
+};
     // --- 3. INITIALIZATION ---
     window.addEventListener('load', () => {
         console.log(">> SYSTEM INITIALIZING...");
