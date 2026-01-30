@@ -110,6 +110,60 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # 5. Sidebar
+import time # Ensure this is imported at the top
+
+# ... existing imports ...
+
+with st.sidebar:
+    st.title("🟢 TERMOS PY")
+    st.caption("System Status: ONLINE")
+    
+    # --- SYSTEM DIAGNOSTICS ---
+    with st.expander("🔧 SYSTEM DIAGNOSTICS", expanded=False):
+        # Check for OpenAI
+        try:
+            import openai
+            st.success("✅ Neural Link (OpenAI) Active")
+        except ImportError:
+            st.error("❌ Neural Link (Openai) MISSING")
+            st.warning("Click 'SYSTEM REPAIR' below to fix.")
+        
+        # Check for Dotenv
+        try:
+            from dotenv import load_dotenv
+            st.success("✅ Env Loader Active")
+        except ImportError:
+            st.error("❌ Env Loader MISSING")
+            
+    # --- AUTO REPAIR BUTTON ---
+    # If dependencies are missing, show a big red button
+    try:
+        import openai
+        from dotenv import load_dotenv
+    except ImportError:
+        st.markdown("---")
+        st.error("SYSTEM CORRUPTION DETECTED")
+        if st.button("🚀 SYSTEM REPAIR (AUTO-INSTALL)", type="primary"):
+            auto_repair_system()
+
+    st.markdown("---")
+    
+    # --- SETTINGS (Your existing settings) ---
+    # API Key Logic
+    api_key = st.secrets.get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    
+    if api_key and api_key.startswith("sk-"):
+        st.success("✅ API Key Connected")
+        use_api = st.checkbox("Smart Mode (API)", value=True)
+    else:
+        st.error("❌ No API Key - Check .env file")
+        use_api = False
+    
+    if st.button("Clear Chat"):
+        st.session_state.messages = []
+        st.rerun()
+    
+    st.caption(f"Messages: {len(st.session_state.messages)}")
 with st.sidebar:
     st.title("🟢 TERMCHAT LT")
     st.write("AI SETTINGS")
