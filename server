@@ -1,0 +1,234 @@
+import os
+import json
+import time
+import threading
+import random
+import string
+import requests
+from datetime import datetime
+import streamlit as st
+import paho.mqtt.client as mqtt
+from dotenv import load_dotenv
+
+# --- 1. CONFIG & SECRETS ---
+load_dotenv()
+
+# Load API Keys safely
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", ''.join(random.choices(string.ascii_uppercase + string.digits, k=8)))
+
+# DATABASE SETUP (Optional - Disabled by default to prevent crashes if Mongo isn't installed)
+MONGO_URI = os.getenv("MONGODB_URI")
+
+# --- 2. STREAMLIT SESSION STATE ---
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+if 'current_room' not in st.session_state:
+    st.session_state.current_room = "living_room"
+if 'connected' not in st.session_state:
+    st.session_state.connected = False
+
+# --- 3. AI CONFIG ---
+# We use the STABLE model to avoid the "decommissioned" error
+AI_MODEL = "llama3-8b-8192" 
+
+ROOM_PROMPTS = {
+    "living_room": "You are TermAi, AI assistant for TermOS LT. IMPORTANT: Respond in same language as user (Lithuanian, English, etc.).",
+    "library": "You are AI Librarian. IMPORTANT: Respond in same language as user.",
+    "studio": "You are AI Artist. If creating app, return ONLY JSON with 'type', 'title', 'content'.",
+    "workshop": "You are AI Engineer. IMPORTANT: Respond in same language as user.",
+    "lounge": "You are AI Entertainment host. For games return JSON.",
+    "think_tank": "You are AI Strategist. IMPORTANT: Respond in same language as user."
+}
+
+# --- 4. MQTT CLIENT SETUP ---
+def on_connect(client, userdata, flags, rc):
+    print(f"[MQTT] Connected: {rc}")
+    st.session_state.connected = True
+    client.subscribe("termchat/input")
+    client.subscribe("termchat/messages")
+    client.subscribe("termchat/admin")
+
+def on_disconnect(client, userdata, rc):
+    print(f"[MQTT] Disconnected: {rc}")
+    st.session_state.connected = False
+
+def on_message(client, userdata, msg):
+    topic = msg.topic
+    payload = msg.payload.decode()
+    
+    try:
+        data = json.loads(payload)
+        user_id = data.get("id", "system")
+        message_text = data.get("msg", payload)
+    except:
+        user_id = "system"
+        message_text = payload
+
+    print(f"[MQTT] {topic}: {user_id} -> {message_text[:30]}...")
+
+    # 1. Handle Admin Commands
+    if topic == "termchat/admin":
+        handle_admin_cmd(message_text)
+        return
+
+    # 2. Handle AI Triggers
+    # We process AI logic here in Python backend
+    text_lower = message_text.lower()
+    ai_triggers = ["ai", "termai", "?", "labas", "hello", "kas tu"]
+    
+    should_respond = any(trigger in text_lower for trigger in ai_triggers)
+    
+    if should_respond:
+        reply = ai_generate(st.session_state.current_room, [{"role": "user", "content": message_text}])
+        
+        # Publish AI Response
+        client.publish("termchat/output", json.dumps({
+            "type": "chat",
+            "id": "TERMAI",
+            "msg": reply
+        }))
+
+# Initialize MQTT
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+client.on_connect = on_connect
+client.on_message = on_message
+client.on_disconnect = on_disconnect
+
+# Run MQTT in background thread
+def mqtt_thread_func():
+    try:
+        client.connect("broker.emqx.io", 1883, 60)
+        client.loop_forever()
+    except Exception as e:
+        print(f"[MQTT] Error: {e}")
+
+mqtt_thread = threading.Thread(target=mqtt_thread_func, daemon=True)
+mqtt_thread.start()
+
+# --- 5. AI LOGIC (Groq) ---
+def ai_generate(room, history):
+    if not GROQ_API_KEY:
+        return get_fallback(history[-1]['content'] if history else "Hello")
+
+    try:
+        system_prompt = ROOM_PROMPTS.get(room, ROOM_PROMPTS["living_room"])
+        
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                # Using the STABLE model here to prevent crashes
+                "model": AI_MODEL, 
+                "messages": [{"role": "system", "content": system_prompt}] + history,
+                "temperature": 0.7,
+                "timeout": 10
+            }
+        )
+        
+        data = response.json()
+        if 'choices' in data and len(data['choices']) > 0:
+            return data['choices'][0]['message']['content']
+        
+        return "AI Error (Empty response)"
+        
+    except Exception as e:
+        print(f"[AI ERROR] {e}")
+        return get_fallback(history[-1]['content'] if history else "Hello")
+
+def get_fallback(last_msg):
+    msg = str(last_msg).lower()
+    lithuanian_words = ['labas', 'kas', 'tu', 'esi', 'kaip']
+    is_lt = any(w in msg for w in lithuanian_words)
+    
+    if 'labas' in msg or 'hello' in msg or 'hi' in msg:
+        return "Labas! Aš esu TERMAI." if is_lt else "Hello! I'm TERMAI."
+    elif 'kas tu esi' in msg or 'who are you' in msg:
+        return "Aš esu dirbtinio intelekto asistentas." if is_lt else "I am an AI assistant."
+    else:
+        return "Suprantu! Aš esu TERMAI." if is_lt else "I understand!"
+
+def handle_admin_cmd(payload):
+    try:
+        data = json.loads(payload)
+        if data.get('action') == 'status':
+            client.publish("termchat/output", json.dumps({
+                "type": "admin",
+                "msg": f"Status: Online. Room: {st.session_state.current_room}"
+            }))
+        return
+    except:
+        pass
+    
+    parts = payload.split()
+    if len(parts) < 2: return
+    
+    token = parts[0]
+    if token != ADMIN_TOKEN:
+        client.publish("termchat/output", json.dumps({"type": "admin", "msg": "INVALID TOKEN"}))
+        return
+    
+    cmd = parts[1]
+    if cmd == "status":
+        client.publish("termchat/output", json.dumps({"type": "admin", "msg": "System Operational"}))
+    elif cmd == "reset":
+        st.session_state.messages = []
+        client.publish("termchat/output", json.dumps({"type": "admin", "msg": "History Reset"}))
+    else:
+        client.publish("termchat/output", json.dumps({"type": "admin", "msg": "Unknown command"}))
+
+# --- 6. STREAMLIT UI ---
+st.set_page_config(page_title="TermOS Admin", page_icon="⚡", layout="wide")
+
+with st.sidebar:
+    st.header("🔴 TERMOS CONTROL")
+    
+    st.subheader("System Status")
+    st.write(f"📶 Room: **{st.session_state.current_room}**")
+    status_color = "🟢" if st.session_state.connected else "🔴"
+    st.write(f"{status_color} MQTT: {'Online' if st.session_state.connected else 'Offline'}")
+    
+    # Change Room
+    new_room = st.selectbox("Switch Room", list(ROOM_PROMPTS.keys()), index=list(ROOM_PROMPTS.keys()).index(st.session_state.current_room))
+    if new_room != st.session_state.current_room:
+        st.session_state.current_room = new_room
+        client.publish("termchat/output", json.dumps({
+            "type": "navigation",
+            "id": "SYSTEM",
+            "msg": f"Changed to: {new_room}",
+            "room": new_room
+        }))
+        st.rerun()
+
+    st.divider()
+    st.subheader("Admin Commands")
+    
+    user_token = st.text_input("Admin Token", type="password", placeholder="Enter Token")
+    command_input = st.text_input("Command (e.g. <token> status)")
+    
+    if st.button("Execute Admin"):
+        if user_token == ADMIN_TOKEN:
+            handle_admin_cmd(f"{user_token} {command_input}")
+            st.success("Command Sent")
+        else:
+            st.error("Invalid Token")
+
+    st.divider()
+    st.subheader("Configuration")
+    st.info("""
+    To configure this backend for AI:
+    1. Add `GROQ_API_KEY` to your `.env` file or Render Secrets.
+    2. Restart the app (or Render).
+    """)
+
+# --- 7. LOGS & MONITORING ---
+st.divider()
+st.header("📡 Neural Link Logs")
+
+if st.checkbox("Show System Logs"):
+    log_placeholder = st.empty()
+    with log_placeholder.container():
+        st.write("System is running correctly. Logs appear in the backend console (Render/Replit).")
