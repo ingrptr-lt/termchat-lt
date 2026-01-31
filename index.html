@@ -177,7 +177,7 @@
             <label class="block text-xs text-gray-500 mb-1">GitHub Token (Classic)</label>
             <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none">
         </div>
-        <div class="grid grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-2 gap-2">
             <div>
                 <label class="block text-xs text-gray-500 mb-1">Owner</label>
                 <input type="text" id="gh-owner" placeholder="username" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
@@ -203,7 +203,9 @@
     console.log(">> SYSTEM KERNEL STARTING...");
 
     // --- 1. CONFIG & STATE ---
+    // SECURITY FIX: Removed hardcoded key. User must set it manually via /setkey
     let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || "";
+    
     let GITHUB_TOKEN = localStorage.getItem('termos_github_token') || "";
     let REPO_OWNER = localStorage.getItem('termos_repo_owner') || "your-username";
     let REPO_NAME = localStorage.getItem('termos_repo_name') || "termchat-lt";
@@ -369,7 +371,7 @@
 
     // --- 6. AI LOGIC ---
     async function handleAI(prompt) {
-        if(!GROQ_API_KEY) return addAIMessage("❌ API Key Missing. Type /setkey [key]");
+        if(!GROQ_API_KEY) return addAIMessage("❌ API Key Missing. Type `/setkey your_key` in the chat.");
         
         const thinkingId = "think-" + Date.now();
         getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-gray-500 italic animate-pulse">AI is typing...</div>`);
@@ -387,9 +389,22 @@
                     },{role:"user",content:prompt}]
                 })
             });
-            const reply = (await r.json()).choices[0].message.content;
+            
+            const apiData = await r.json();
+
+            // FIX: Safe Parsing to prevent Render Crash
+            if (apiData.error) {
+                throw new Error("Groq API: " + apiData.error.message);
+            }
+            if (!apiData.choices || apiData.choices.length === 0) {
+                throw new Error("API returned no choices.");
+            }
+            
+            const reply = apiData.choices[0].message.content;
+            
             const el = document.getElementById(thinkingId);
             if(el) el.remove();
+            
             let match = reply.match(/SystemRebuilder\.install\(['"](.*?)['"]\)/);
             if(match) { 
                 try { SystemRebuilder.install(match[1]); } catch(e) {}
@@ -400,7 +415,11 @@
                 if(audio) { audio.play().catch(e => {}); addAIMessage("🎵 Stream active."); }
             }
             else { addAIMessage(reply); }
-        } catch (e) { addAIMessage("Connection failed."); }
+        } catch (e) { 
+            const el = document.getElementById(thinkingId);
+            if(el) el.remove();
+            addAIMessage("Connection failed: " + e.message); 
+        }
     }
 
     // --- 7. GAMIFICATION ---
@@ -428,7 +447,6 @@
     function toggleAdminMode() {
         try {
             let panel = document.getElementById('admin-panel');
-            // Dynamic creation if missing
             if(!panel) {
                 console.log("Creating Admin Panel dynamically...");
                 panel = document.createElement('div');
@@ -438,7 +456,7 @@
                 <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> ADMIN CONSOLE (DYNAMIC)</h3>
                 <div class="space-y-3">
                     <div><label class="block text-xs text-gray-500 mb-1">GitHub Token (Classic)</label><input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
-                    <div class="grid grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-2 gap-2">
                         <div><label class="text-xs text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" placeholder="username" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"></div>
                         <div><label class="text-xs text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" placeholder="repo-name" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"></div>
                     </div>
@@ -447,7 +465,6 @@
                 document.body.appendChild(panel);
             }
             
-            // Toggle visibility
             if (panel.classList.contains('admin-hidden')) {
                 panel.classList.remove('admin-hidden');
                 setTimeout(() => { panel.style.opacity = "1"; }, 10);
@@ -457,15 +474,11 @@
             }
         } catch (e) { console.error("Admin Toggle Error:", e); }
     }
+
     async function initiateEvolution() {
         try {
-            // 1. Validate Groq Key immediately
-            if (!GROQ_API_KEY) {
-                alert("CRITICAL: Missing Groq API Key.\nPlease type: /setkey your_groq_key_here");
-                return;
-            }
-
-            // 2. Get Inputs
+            if (!GROQ_API_KEY) return alert("Missing Groq API Key.");
+            
             const tkInput = document.getElementById('gh-token');
             const ownInput = document.getElementById('gh-owner');
             const repInput = document.getElementById('gh-repo');
@@ -479,22 +492,20 @@
             if (!token) return alert("Please enter your GitHub Token.");
             if (!owner || !repo) return alert("Please enter Repo Owner and Name.");
             
-            // Save credentials
             localStorage.setItem('termos_github_token', token);
             localStorage.setItem('termos_repo_owner', owner);
             localStorage.setItem('termos_repo_name', repo);
 
-            const input = prompt("Enter your mutation request (e.g., 'Change the Matrix color to red'):");
+            const input = prompt("Enter your mutation request (e.g., 'Change Matrix color to red'):");
             if (!input) return;
 
             addSystemMessage("🧬 INITIATING EVOLUTION SEQUENCE...");
             addSystemMessage("📡 READING DNA FROM GITHUB...");
             
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s Timeout
+            const timeoutId = setTimeout(() => controller.abort(), 30000); 
 
             try {
-                // STEP A: Read Current Code from GitHub
                 const url = `https://api.github.com/repos/${owner}/${repo}/contents/${FILE_PATH}`;
                 const res = await fetch(url, { 
                     headers: { 'Authorization': `token ${token}` }, signal: controller.signal 
@@ -502,7 +513,7 @@
                 
                 if (!res.ok) {
                     const errText = await res.text();
-                    throw new Error(`GitHub Read Failed: ${res.status} - ${errText}`);
+                    throw new Error(`GitHub Read Failed: ${res.status}`);
                 }
 
                 const data = await res.json();
@@ -510,18 +521,14 @@
 
                 addSystemMessage("🧬 ANALYZING DNA & MUTATING...");
 
-                // STEP B: Send to AI (Groq)
-                // Note: If the file is very large, this might hit context limits. 
-                // Try to keep your HTML file under 6000 tokens.
-                const evolutionPrompt = `You are an expert web developer. TASK: Modify the existing HTML code to fulfill "${input}". 
-                Return ONLY the full modified HTML code. Do NOT include markdown code blocks (like \`\`\`html) in your response. Just the raw code.`;
+                const evolutionPrompt = `You are an expert web developer. TASK: Modify existing HTML code to fulfill "${input}". 
+                Return ONLY full modified HTML code. Do NOT include markdown code blocks (like \`\`\`html) in your response. Just the raw code.`;
 
                 const aiReq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                     signal: controller.signal,
                     body: JSON.stringify({
-                        // Using 70b for better coding ability. If it fails, try 'llama3-8b-8192'
                         model: "llama3-70b-8192", 
                         messages: [
                             { role: "system", content: "You are a code generator. Return ONLY raw HTML code." }, 
@@ -533,35 +540,22 @@
                 
                 const aiData = await aiReq.json();
 
-                // --- ERROR HANDLING FIX STARTS HERE ---
-                
-                // Check if Groq returned an error object instead of choices
                 if (aiData.error) {
-                    throw new Error(`Groq API Error: ${aiData.error.message} (Code: ${aiData.error.code})`);
+                    throw new Error(`Groq API: ${aiData.error.message} (${aiData.error.code})`);
                 }
-
-                // Check if data structure is valid
                 if (!aiData.choices || aiData.choices.length === 0) {
-                    throw new Error("Groq API returned no data (Empty choices). The model might be overloaded.");
+                    throw new Error("Groq returned no data. Model may be overloaded.");
                 }
-                
-                // Check if message content exists
                 if (!aiData.choices[0].message || !aiData.choices[0].message.content) {
-                    throw new Error("Groq API returned no content.");
+                    throw new Error("Groq returned empty content.");
                 }
 
                 let newCode = aiData.choices[0].message.content;
-                
-                // Clean up markdown artifacts just in case AI ignores instructions
                 newCode = newCode.replace(/```html/g, "").replace(/```/g, "").trim();
 
-                // --- ERROR HANDLING FIX ENDS HERE ---
-
-                // STEP C: Write Back to GitHub
                 addSystemMessage("🧬 UPLOADING MUTATED DNA...");
                 const putUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${FILE_PATH}`;
                 
-                // Encode properly for UTF-8 characters
                 const encodedContent = btoa(unescape(encodeURIComponent(newCode)));
 
                 const putBody = {
@@ -583,7 +577,6 @@
                     throw new Error(`GitHub Write Failed: ${putErr.message}`);
                 }
 
-                // Success
                 clearTimeout(timeoutId);
                 addSystemMessage("🎉 EVOLUTION SUCCESS. REBOOTING...");
                 setTimeout(() => location.reload(), 2000);
@@ -596,25 +589,25 @@
                 console.error("Evolution Stack:", err);
             }
         } catch (err) {
-            console.error("General Error:", err);
+            console.error(err);
             addSystemMessage("❌ CRITICAL ERROR: " + err.message);
         }
-    }  
+    }
+
     // --- 9. INPUT HANDLER ---
     function handleInput() {
         try {
             let inp = document.getElementById('user-input');
             if(!inp) return; 
-            let txt = inp.value.trim(); // Fixed: Was using undefined 'input'
+            let txt = inp.value.trim(); 
             if(!txt) return;
 
-            // ADMIN COMMANDS
             if(txt.startsWith('/admin ')) {
                 const cmd = txt.split(' ')[1];
                 if (cmd === 'enable') {
                     adminMode = true;
                     toggleAdminMode();
-                    addSystemMessage("🔴 ADMIN MODE ENABLED. MATRIX CRITICAL.");
+                    addSystemMessage("🔴 ADMIN MODE ENABLED.");
                 } else if (cmd === 'disable') {
                     adminMode = false;
                     toggleAdminMode(); 
@@ -624,14 +617,13 @@
                 return;
             }
 
-            // STANDARD COMMANDS
             if(txt.startsWith('/sys install ')) {
                 if(SystemRebuilder) SystemRebuilder.install(txt.split(' ')[2]);
             }
             else if(txt.startsWith('/setkey ')) {
                 GROQ_API_KEY = txt.substring(8);
                 localStorage.setItem('termos_groq_key', GROQ_API_KEY);
-                addSystemMessage("Key Encrypted.");
+                addSystemMessage("✅ API Key Updated.");
             }
             else if(txt.startsWith('/ai ')) {
                 handleAI(txt.substring(4));
@@ -652,9 +644,7 @@
                 }
             }
             inp.value = '';
-        } catch (e) {
-            console.error("Input Handler Error:", e);
-        }
+        } catch (e) { console.error("Input Handler Error:", e); }
     }
 
     // --- 10. ROBUST CONNECT ---
@@ -680,7 +670,6 @@
         console.log(">> DOM LOADED. INITIALIZING APP...");
         
         try {
-            // 1. Diagnostics
             if(!document.getElementById('chat-container')) {
                 console.warn("⚠️ 'chat-container' ID missing. Creating dynamically...");
                 const box = document.createElement('div');
@@ -689,14 +678,17 @@
                 document.body.appendChild(box);
             }
 
-            // 2. Load Data
             let saved = localStorage.getItem('termos_stats_modern');
             if(saved) { 
                 try { userStats = JSON.parse(saved); if(userStats.ascii) updateAvatar(userStats.level); } 
                 catch(e) { console.warn("Stats Corrupt."); }
             }
 
-            // 3. Load Admin Creds
+            // Check for API Key
+            if (!GROQ_API_KEY) {
+                addSystemMessage("🔒 NO API KEY DETECTED. TYPE `/setkey [your_groq_key]` TO UNLOCK AI.");
+            }
+
             const tkInput = document.getElementById('gh-token');
             const ownerInput = document.getElementById('gh-owner');
             const repoInput = document.getElementById('gh-repo');
@@ -705,11 +697,8 @@
             if(ownerInput && REPO_OWNER) ownerInput.value = REPO_OWNER;
             if(repoInput && REPO_NAME) repoInput.value = REPO_NAME;
 
-            // 4. Start Background
             initMatrix();
 
-            // 5. Start MQTT
-            // Fixed: Added missing quotes and undefined check
             if (typeof Paho !== 'undefined') {
                 console.log("Paho MQTT found. Connecting...");
                 const clientId = "termos_client_" + Math.random().toString(16).substr(2, 8);
@@ -731,7 +720,6 @@
                 addSystemMessage("⚠️ MQTT Library not loaded.");
             }
 
-            // 6. Attach Listeners
             const sendBtn = document.getElementById('send-btn');
             if(sendBtn) sendBtn.onclick = handleInput;
             
@@ -740,7 +728,6 @@
                 userInput.addEventListener('keypress',e=>{ if(e.key==='Enter') handleInput(); });
             }
 
-            // 7. Voice
             if ('webkitSpeechRecognition' in window) {
                 const r = new webkitSpeechRecognition();
                 const voiceBtn = document.getElementById('voice-btn');
@@ -750,7 +737,6 @@
                 }
             }
 
-            // 8. Install App Button Safety
             const installBtn = document.getElementById('install-btn');
             if(installBtn) installBtn.classList.remove('hidden');
 
