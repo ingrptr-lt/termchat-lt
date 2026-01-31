@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: Evolution FINAL</title>
+    <title>TermOS: Evolution DEBUG</title>
     
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -89,30 +89,34 @@
 <!-- ADMIN CONSOLE -->
 <div id="admin-panel" class="admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border border-red-500/30 shadow-2xl shadow-red-500/10">
     <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> ADMIN CONSOLE</h3>
-    <div class="space-y-3">
-        <div><label class="block text-xs text-gray-500 mb-1">GitHub Token</label><input type="password" id="gh-token" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
-        <div class="grid grid-cols-2 gap-2">
-            <div><label class="text-xs text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"></div>
-            <div><label class="text-xs text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"></div>
-        </div>
-        <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors shadow-lg shadow-red-600/20 active:scale-95">🧬 INITIATE EVOLUTION</button>
+    <div class="space-y-2">
+        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
+        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
+        
+        <!-- FIX: Added Branch Field -->
+        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Branch (usually 'main' or 'master')</label><input type="text" id="gh-branch" value="main" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
+        
+        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">GitHub Token (Needs 'repo' scope)</label><input type="password" id="gh-token" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
+        
+        <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors shadow-lg shadow-red-600/20 active:scale-95 mt-2">🧬 INITIATE EVOLUTION</button>
     </div>
 </div>
 
 <!-- =========================================================== -->
-<!--  KERNEL: FINAL MODEL FIX -->
+<!--  KERNEL: DEBUGGED WRITE LOGIC -->
 <!-- =========================================================== -->
 <script>
-    console.log(">> BOOTING TERMOS FINAL...");
+    console.log(">> BOOTING TERMOS DEBUG...");
 
     // --- 1. CONFIG ---
-    // MODEL FIX: Hardcoded directly to prevent deprecation errors.
     const API_MODEL = "llama-3.3-70b-versatile"; 
     
     let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || "";
     let GITHUB_TOKEN = localStorage.getItem('termos_github_token') || "";
     let REPO_OWNER = localStorage.getItem('termos_repo_owner') || "your-username";
     let REPO_NAME = localStorage.getItem('termos_repo_name') || "termchat-lt";
+    // FIX: Added Branch persistence
+    let REPO_BRANCH = localStorage.getItem('termos_repo_branch') || "main"; 
     const FILE_PATH = "index.html";
     
     const MQTT_BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
@@ -265,7 +269,7 @@
     function scrollDown() { const b=getBox(); if(b) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }); }
     function escapeHtml(text) { if(!text) return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
-    // --- 6. AI LOGIC (HARDCODED MODEL) ---
+    // --- 6. AI LOGIC ---
     async function handleAI(prompt) {
         if(!GROQ_API_KEY) return requestApiKey();
         const thinkingId = "think-" + Date.now();
@@ -273,12 +277,11 @@
         scrollDown();
 
         try {
-            // HARDCODED MODEL HERE
             let r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method:"POST",
                 headers:{"Authorization":"Bearer "+GROQ_API_KEY,"Content-Type":"application/json"},
                 body:JSON.stringify({
-                    model: API_MODEL, // Using the constant defined at top
+                    model: API_MODEL,
                     messages:[{
                         role:"system",
                         content:"You are TermOS AI. User commands: visual changes -> SystemRebuilder.install('name'). music -> CMD: PLAY_MUSIC. Otherwise answer briefly."
@@ -288,7 +291,6 @@
             
             const apiData = await r.json();
 
-            // KEY ERROR CHECK
             if (apiData.error) {
                 const errMsg = apiData.error.message;
                 if (errMsg.includes("Invalid API Key") || errMsg.includes("401")) {
@@ -336,14 +338,15 @@
         else if (lvl === 8) userStats.ascii = "👁<br>· ·<br>__·__"; 
     }
 
-    // --- 8. EVOLUTION ENGINE (HARDCODED MODEL) ---
+    // --- 8. EVOLUTION ENGINE (DETAILED ERROR LOGIC) ---
     function toggleAdminMode() {
         let panel = document.getElementById('admin-panel');
         if(!panel) {
             panel = document.createElement('div');
             panel.id = 'admin-panel';
             panel.className = "admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border border-red-500/30 shadow-2xl shadow-red-500/10";
-            panel.innerHTML = `<h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> ADMIN CONSOLE</h3><div class="space-y-3"><div><label class="block text-xs text-gray-500 mb-1">GitHub Token</label><input type="password" id="gh-token" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div class="grid grid-cols-2 gap-2"><div><label class="text-xs text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"></div><div><label class="text-xs text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"></div></div><button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors">🧬 INITIATE EVOLUTION</button></div>`;
+            // Dynamic HTML with Branch field
+            panel.innerHTML = `<h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> ADMIN CONSOLE</h3><div class="space-y-2"><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Branch</label><input type="text" id="gh-branch" value="main" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Token</label><input type="password" id="gh-token" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors shadow-lg shadow-red-600/20 active:scale-95 mt-2">🧬 INITIATE EVOLUTION</button></div>`;
             document.body.appendChild(panel);
         }
         
@@ -358,15 +361,25 @@
 
     async function initiateEvolution() {
         if(!GROQ_API_KEY) return requestApiKey();
+        
+        // Get inputs from DOM
         const tkInput = document.getElementById('gh-token');
         const ownInput = document.getElementById('gh-owner');
         const repInput = document.getElementById('gh-repo');
+        const branchInput = document.getElementById('gh-branch');
 
-        if(!tkInput || !ownInput || !repInput) return alert("Admin UI Missing.");
+        if(!tkInput || !ownInput || !repInput || !branchInput) return alert("Admin UI Missing.");
         
         const token = tkInput.value.trim();
         const owner = ownInput.value.trim();
         const repo = repInput.value.trim();
+        const branch = branchInput.value.trim() || "main"; // Default to main
+
+        // Save Settings
+        localStorage.setItem('termos_github_token', token);
+        localStorage.setItem('termos_repo_owner', owner);
+        localStorage.setItem('termos_repo_name', repo);
+        localStorage.setItem('termos_repo_branch', branch);
 
         if (!token) return addSystemMessage("❌ GitHub Token needed.");
         if (!owner || !repo) return addSystemMessage("❌ Repo Owner/Name needed.");
@@ -380,23 +393,31 @@
         const timeoutId = setTimeout(() => controller.abort(), 40000); 
 
         try {
-            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${FILE_PATH}`;
+            // 1. READ FROM SPECIFIED BRANCH
+            // Adding ?ref=${branch} is crucial for reading specific branches
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${FILE_PATH}?ref=${branch}`;
             const res = await fetch(url, { headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }, signal: controller.signal });
-            if (!res.ok) throw new Error(`GitHub Read Failed (${res.status}). Check permissions.`);
+            
+            if (!res.ok) {
+                const errText = await res.json();
+                throw new Error(`GitHub Read Failed (${res.status}): ${errText.message || "Check Branch Name/Permissions"}`);
+            }
+            
             const data = await res.json();
+            if(!data.content) throw new Error("File not found in repo.");
             const currentContent = atob(data.content);
 
             addSystemMessage("🧬 MUTATING DNA...");
 
             const evolutionPrompt = `Modify HTML/JS to: "${input}". Return ONLY raw code. No markdown.`;
             
-            // HARDCODED MODEL HERE
+            // 2. GENERATE NEW CODE
             const aiReq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
                 headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                 signal: controller.signal,
                 body: JSON.stringify({
-                    model: API_MODEL, // Using constant
+                    model: API_MODEL,
                     messages: [
                         { role: "system", content: "Return ONLY raw code." }, 
                         { role: "user", content: evolutionPrompt + "\n\nCODE:\n" + currentContent }
@@ -412,21 +433,29 @@
             let newCode = aiData.choices[0].message.content.replace(/```html/g, "").replace(/```/g, "").trim();
             
             addSystemMessage("🧬 UPLOADING...");
+            
+            // 3. WRITE TO SPECIFIED BRANCH
             const putUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${FILE_PATH}`;
             const encodedContent = btoa(unescape(encodeURIComponent(newCode)));
+            
             const putRes = await fetch(putUrl, {
                 method: 'PUT',
                 headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: "Evolution: " + input,
                     content: encodedContent,
-                    sha: data.sha,
-                    branch: "main"
+                    sha: data.sha, // Must include the SHA from the GET request
+                    branch: branch // Explicitly set branch
                 }),
                 signal: controller.signal
             });
 
-            if (!putRes.ok) throw new Error("GitHub Write Failed.");
+            if (!putRes.ok) {
+                // DETAILED ERROR REPORTING FIX
+                const putErr = await putRes.json();
+                const msg = putErr.message || JSON.stringify(putErr);
+                throw new Error(`GitHub Write (${putRes.status}): ${msg}`);
+            }
             
             clearTimeout(timeoutId);
             addSystemMessage("🎉 SUCCESS. REBOOTING...");
@@ -435,7 +464,9 @@
         } catch (err) {
             clearTimeout(timeoutId);
             addSystemMessage("❌ FAIL: " + err.message);
-            if(err.message.includes("Invalid")) requestApiKey();
+            if(err.message.includes("401") || err.message.includes("403")) {
+                addSystemMessage("💡 Hint: Check GitHub Token permissions.");
+            }
         }
     }
 
@@ -485,14 +516,18 @@
     }
 
     window.onload = function() {
-        console.log(">> SYSTEM LOADED FINAL");
+        console.log(">> SYSTEM LOADED DEBUG");
         updateStatusDot(!!GROQ_API_KEY);
         if(!document.getElementById('chat-container')) {
             document.body.innerHTML += `<div id="chat-container" class="flex flex-col h-full w-full p-4 overflow-y-auto z-10"></div>`;
         }
+        
+        // Restore Inputs
         document.getElementById('gh-token').value = GITHUB_TOKEN;
         document.getElementById('gh-owner').value = REPO_OWNER;
         document.getElementById('gh-repo').value = REPO_NAME;
+        document.getElementById('gh-branch').value = REPO_BRANCH;
+
         initMatrix();
 
         if (typeof Paho !== 'undefined') {
