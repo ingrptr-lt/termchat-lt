@@ -23,66 +23,19 @@
             --msg-user-bg: #3b82f6;
             --msg-ai-bg: #1e293b;
         }
-
-        body {
-            background-color: #020617;
-            color: #e2e8f0;
-            font-family: 'Inter', sans-serif;
-            overflow: hidden;
-        }
-
-        #matrix-canvas {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 0;
-            opacity: 0.15;
-            pointer-events: none;
-        }
-
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-        }
-
-        .msg-bubble {
-            max-width: 85%;
-            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            word-wrap: break-word;
-        }
-        
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(10px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        .ascii-art {
-            font-family: 'Fira Code', monospace;
-            line-height: 0.8;
-            white-space: pre;
-            font-size: 9px;
-            text-shadow: 0 0 2px rgba(255,255,255,0.5);
-        }
-
+        body { background-color: #020617; color: #e2e8f0; font-family: 'Inter', sans-serif; overflow: hidden; }
+        #matrix-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.15; pointer-events: none; }
+        ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .glass-panel { background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--glass-border); }
+        .msg-bubble { max-width: 85%; animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); word-wrap: break-word; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .ascii-art { font-family: 'Fira Code', monospace; line-height: 0.8; white-space: pre; font-size: 9px; text-shadow: 0 0 2px rgba(255,255,255,0.5); }
         .avatar-gradient-user { background: linear-gradient(135deg, #3b82f6, #8b5cf6); }
         .avatar-gradient-ai { background: linear-gradient(135deg, #10b981, #059669); }
-
-        .input-glow:focus-within {
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
-            border-color: rgba(56, 189, 248, 0.5);
-        }
-        
+        .input-glow:focus-within { box-shadow: 0 0 20px rgba(56, 189, 248, 0.3); border-color: rgba(56, 189, 248, 0.5); }
         .admin-hidden { display: none; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
         .pulse-red { animation: pulse-red-2 2s infinite; }
-        @keyframes pulse-red-2 { 
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } 
-        }
+        @keyframes pulse-red-2 { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col relative">
@@ -110,21 +63,17 @@
         </div>
     </header>
 
-    <!-- 3. CHAT AREA -->
-    <main id="chat-container" class="flex-1 overflow-y-auto pt-20 pb-32 px-4 z-10 scroll-smooth max-w-5xl mx-auto w-full">
-        <!-- Messages injected here -->
-    </main>
+    <main id="chat-container" class="flex-1 overflow-y-auto pt-20 pb-32 px-4 z-10 scroll-smooth max-w-5xl mx-auto w-full"></main>
 
-    <!-- 4. INPUT AREA -->
     <div class="fixed bottom-0 left-0 w-full z-30 glass-panel border-t border-white/5 safe-area-bottom">
         <div class="max-w-4xl mx-auto p-4 pb-6">
             <div class="flex items-end gap-2 bg-slate-900/80 rounded-2xl p-2 border border-white/5 shadow-2xl input-glow transition-all">
                 <button id="voice-btn" class="p-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7 7m7 7v4m0 0H8m4 0h4m 4 0h4m-4 8h4m-4 8H8"></path></svg>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8h4m-4 8H8"></path></svg>
                 </button>
                 <input type="text" id="user-input" placeholder="Type a message..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light">
                 <button id="send-btn" class="p-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all transform active:scale-95 shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7"></path></svg>
                 </button>
             </div>
             <div class="text-center mt-2">
@@ -133,23 +82,16 @@
         </div>
     </div>
 
-<!-- HIDDEN AUDIO -->
 <audio id="bg-music" loop>
     <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112762.mp3" type="audio/mpeg">
 </audio>
 
-<!-- EXPOSED ADMIN BUTTON -->
 <div class="fixed top-4 right-4 z-50">
-    <button onclick="toggleAdminMode()" id="admin-toggle-text" class="bg-slate-900/50 hover:bg-red-900/50 border border-slate-700 hover:border-red-500 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-2">
-        <span>🔴</span> ADMIN
-    </button>
+    <button onclick="toggleAdminMode()" id="admin-toggle-text" class="bg-slate-900/50 hover:bg-red-900/50 border border-slate-700 hover:border-red-500 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-2"><span>🔴</span> ADMIN</button>
 </div>
 
-<!-- ADMIN CONSOLE UI (Hidden by default) -->
 <div id="admin-panel" class="admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border border-red-500/30 shadow-2xl shadow-red-500/10">
-    <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2">
-        <span class="animate-pulse">🔴</span> ADMIN CONSOLE
-    </h3>
+    <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> ADMIN CONSOLE</h3>
     <div class="space-y-3">
         <div>
             <label class="block text-xs text-gray-500 mb-1">GitHub Token (Classic)</label>
@@ -158,54 +100,41 @@
         <div class="grid grid-cols-2 gap-2">
             <div>
                 <label class="block text-xs text-gray-500 mb-1">Owner</label>
-                <input type="text" id="owner-input" placeholder="username" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
+                <input type="text" id="gh-owner" placeholder="username" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
             </div>
             <div>
                 <label class="block text-xs text-gray-500 mb-1">Repo</label>
-                <input type="text" id="repo-input" placeholder="repo-name" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
+                <input type="text" id="gh-repo" placeholder="repo-name" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
             </div>
         </div>
-        <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors">🧬 INITIATE EVOLUTION
-        </button>
-        <div class="text-[10px] text-gray-500 text-center mt-2">
-            Modifies index.html on Main branch.
-        </div>
+        <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors">🧬 INITIATE EVOLUTION</button>
+        <div class="text-[10px] text-gray-500 text-center mt-2">Modifies index.html on Main branch.</div>
     </div>
 </div>
 
-<!-- =========================================================== -->
-<!--  THE EVOLUTIONARY KERNEL -->
-<!-- =========================================================== -->
 <script>
     console.log(">> SYSTEM KERNEL STARTING...");
 
     // --- 1. CONFIG & STATE ---
-    // SECURITY KEY: Hardcoded here to ensure it always works
     const HARD_KEY = "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";
-    
-    // Priority: Use LocalStorage first, else use Hard Key
     let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || HARD_KEY;
-    
     let GITHUB_TOKEN = localStorage.getItem('termos_github_token') || "";
     let REPO_OWNER = localStorage.getItem('termos_repo_owner') || "your-username";
     let REPO_NAME = localStorage.getItem('termos_repo_name') || "termchat-lt";
-    const FILE_PATH = "termchat-lt/index.html"; // Added folder name just in case you are deploying in a subdirectory on Render
-
+    const FILE_PATH = "index.html";
     const MQTT_BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
     let username = 'User_' + Math.floor(Math.random() * 1000);
     let mqttClient = null;
     let currentRoom = 'global';
-    
     let userStats = { level: 1, xp: 0, avatar: '>_<', ascii: null };
     const LEVELS = { 3: 'Cyber', 5: 'Ghost', 8: 'Oracle' }; 
     let installedModules = [];
     let adminMode = false;
 
-    // --- 2. UNIVERSAL UI DETECTOR ---
     function getBox() {
-        let el = document.getElementById('termchat-lt/index.html');
+        let el = document.getElementById('chat-container');
         if (!el) {
-            console.warn("⚠️ No chat-container found. Forcing creation...");
+            console.warn("⚠️ No chat container found. Forcing creation...");
             el = document.createElement('div');
             el.id = 'chat-container';
             el.className = "flex flex-col h-full w-full p-4 overflow-y-auto z-10";
@@ -214,7 +143,6 @@
         return el;
     }
 
-    // --- 3. SYSTEM REBUILDER ---
     const SystemRebuilder = {
         install: function(name) {
             name = name.toLowerCase().trim();
@@ -253,7 +181,6 @@
         }
     };
 
-    // --- 4. MATRIX ---
     let isMatrixRunning = false;
 
     function initMatrix() {
@@ -306,7 +233,6 @@
         });
     }
 
-    // --- 5. UI HELPERS ---
     function addSystemMessage(txt) {
         try {
             const box = getBox();
@@ -322,7 +248,7 @@
         try {
             const d = document.createElement('div');
             d.className = "flex gap-3 my-4";
-            d.innerHTML = `<div class="w-8 h-8 rounded-full avatar-gradient-ai shrink-0 flex items-center justify-center shadow-lg ring-2 ring-slate-800"><span class="text-xs font-bold text-white">AI</span></div><div class="flex-1"><div class="bg-slate-800/80 backdrop-blur-md rounded-2xl rounded-tl-none p-4 border border-white/5 shadow-lg text-gray-200 text-sm leading-relaxed">${escapeHtml(txt)}</div></div>`;
+            d.innerHTML = `<div class="w-8 h-8 rounded-full avatar-gradient-ai shrink-0 flex items-center justify-center shadow-lg ring-2 ring-slate-800"><span class="text-xs font-bold text-white">AI</span></div><div class="flex-1"><div class="bg-slate-800/80 backdrop-blur-md rounded-2xl rounded-tl-none p-4 border border-white/5 shadow-lg text-gray-200 text-sm leading-relaxed">${escapeHtml(txt)}</div></div></div>`;
             getBox().appendChild(d);
             scrollDown();
         } catch(e) {}
@@ -349,19 +275,19 @@
 
     // --- 6. AI LOGIC (FIXED MODEL) ---
     async function handleAI(prompt) {
-        if(!GROQ_API_KEY) return addAIMessage("❌ API Key Missing. Type /setkey your_groq_key_here");
+        if(!GROQ_API_KEY) return addAIMessage("❌ API Key Missing.");
         
         const thinkingId = "think-" + Date.now();
         getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-gray-500 italic animate-pulse">AI is typing...</div>`);
         scrollDown();
 
         try {
-            // Using STABLE MODEL (Fix for decommissioned error)
+            // EXPLICITLY USE STABLE MODEL
             let r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method:"POST",
                 headers:{"Authorization":"Bearer "+GROQ_API_KEY,"Content-Type":"application/json"},
                 body:JSON.stringify({
-                    model:"llama3-8b-8192", // Using stable model
+                    model:"llama3-8b-8192", // Stable model to prevent crash
                     messages:[{
                         role:"system",
                         content:"You are TermOS AI. If user asks for visual changes, return: SystemRebuilder.install('name'). If user asks for music, return: CMD: PLAY_MUSIC. Otherwise answer normally."
@@ -371,9 +297,13 @@
             
             const apiData = await r.json();
 
-            // FIX: Safe Parsing
+            // ROBUST PARSING & HANDLING SPECIFIC GROQ ERRORS
             if (apiData.error) {
-                throw new Error("Groq API: " + apiData.error.message);
+                let errMsg = apiData.error.message;
+                if (errMsg.includes("decommissioned") || errMsg.includes("is no longer supported")) {
+                    throw new Error("Model Update Required: The requested model is deprecated. Please try again.");
+                }
+                throw new Error("Groq API: " + errMsg);
             }
             if (!apiData.choices || apiData.choices.length === 0) {
                 throw new Error("API returned no choices.");
@@ -401,7 +331,6 @@
         }
     }
 
-    // --- 7. GAMIFICATION ---
     function addXP(amount) {
         userStats.xp += amount;
         if(userStats.xp > (userStats.level * 100)) {
@@ -422,7 +351,6 @@
         else if (lvl === 8) userStats.ascii = "👁<br>· ·<br>__·__"; 
     }
 
-    // --- 8. EVOLUTION ENGINE ---
     function toggleAdminMode() {
         try {
             let panel = document.getElementById('admin-panel');
@@ -432,27 +360,15 @@
                 panel.id = 'admin-panel';
                 panel.className = "admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border border-red-500/30 shadow-2xl shadow-red-500/10";
                 panel.innerHTML = `
-                <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> ADMIN CONSOLE</h3>
+                <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> ADMIN CONSOLE (DYNAMIC)</h3>
                 <div class="space-y-3">
-                    <div><label class="block text-xs text-gray-500 mb-1">GitHub Token (Classic)</label>
-                    <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none">
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-            <div>
-                <label class="block text-xs text-gray-500 mb-1">Owner</label>
-                <input type="text" id="owner-input" placeholder="username" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
-            </div>
-            <div>
-                <label class="block text-xs text-gray-500 mb-1">Repo</label>
-                <input type="text" id="repo-input" placeholder="repo-name" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
-            </div>
-        </div>
-        </div>
+                    <div><label class="block text-xs text-gray-500 mb-1">GitHub Token (Classic)</label><input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div><label class="text-xs text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" placeholder="username" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"></div>
+                        <div><label class="text-xs text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" placeholder="repo-name" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"></div>
+                    </div>
                     <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors">🧬 INITIATE EVOLUTION</button>
-                </div>
-        <div class="text-[10px] text-gray-500 text-center mt-2">
-            Modifies index.html on Main branch.
-        </div>`;
+                </div>`;
                 document.body.appendChild(panel);
             }
             
@@ -471,14 +387,14 @@
             if (!GROQ_API_KEY) return alert("Missing Groq API Key.");
             
             const tkInput = document.getElementById('gh-token');
-            const ownInput = document.getElementById('owner-input');
-            const repoInput = document.getElementById('repo-input');
+            const ownInput = document.getElementById('gh-owner');
+            const repInput = document.getElementById('gh-repo');
 
-            if(!tkInput || !ownInput || !repoInput) return alert("Admin Panel inputs missing.");
+            if(!tkInput || !ownInput || !repInput) return alert("Admin Panel inputs missing.");
             
             const token = tkInput.value.trim();
             const owner = ownInput.value.trim();
-            const repo = repoInput.value.trim();
+            const repo = repInput.value.trim();
 
             if (!token) return alert("Please enter your GitHub Token.");
             if (!owner || !repo) return alert("Please enter Repo Owner and Name.");
@@ -515,13 +431,13 @@
                 const evolutionPrompt = `You are an expert web developer. TASK: Modify existing HTML code to fulfill "${input}". 
                 Return ONLY full modified HTML code. Do NOT include markdown code blocks (like \`\`\`html) in your response. Just return raw code.`;
 
-                // Explicitly use STABLE MODEL
+                // Explicitly use Stable Model
                 const aiReq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                     signal: controller.signal,
                     body: JSON.stringify({
-                        model: "llama3-8b-8192", // STABLE MODEL
+                        model: "llama3-8b-8192", 
                         messages: [
                             { role: "system", content: "You are a code generator. Return ONLY raw HTML code." }, 
                             { role: "user", content: evolutionPrompt + "\n\nCODE:\n" + currentContent }
@@ -536,7 +452,7 @@
                     throw new Error(`Groq API: ${aiData.error.message} (${aiData.error.code})`);
                 }
                 if (!aiData.choices || aiData.choices.length === 0) {
-                    throw new Error("Groq returned no data.");
+                    throw new Error("Groq returned no data. Model may be overloaded.");
                 }
                 if (!aiData.choices[0].message || !aiData.choices[0].message.content) {
                     throw new Error("Groq returned empty content.");
@@ -586,7 +502,6 @@
         }
     }
 
-    // --- 9. INPUT HANDLER ---
     function handleInput() {
         try {
             let inp = document.getElementById('user-input');
@@ -615,7 +530,7 @@
             else if(txt.startsWith('/setkey ')) {
                 GROQ_API_KEY = txt.substring(8);
                 localStorage.setItem('termos_groq_key', GROQ_API_KEY);
-                updateStatusDot(true);
+                updateStatusDot(true); // Update visual status
                 addSystemMessage("✅ API Key Updated.");
             }
             else if(txt.startsWith('/ai ')) {
@@ -640,7 +555,6 @@
         } catch (e) { console.error("Input Handler Error:", e); }
     }
 
-    // --- 10. ROBUST CONNECT ---
     function connectMQTT() {
         try {
             const options = {
@@ -658,16 +572,14 @@
         }
     }
 
-    // --- 11. INITIALIZATION ---
     window.onload = function() {
         console.log(">> DOM LOADED. INITIALIZING APP...");
         
         try {
-            // Visual Status Check
             updateStatusDot(!!GROQ_API_KEY);
 
             if(!document.getElementById('chat-container')) {
-                console.warn("⚠️ No chat-container ID missing. Creating dynamically...");
+                console.warn("⚠️ 'chat-container' ID missing. Creating dynamically...");
                 const box = document.createElement('div');
                 box.id = 'chat-container';
                 box.className = "flex flex-col h-full w-full p-4 overflow-y-auto z-10";
