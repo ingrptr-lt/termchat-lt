@@ -8,33 +8,30 @@ import string
 import requests
 import sys
 
-# --- 1. CONFIGURATION ---
-# Try to load environment variables safely
+# --- 1. CONFIGURATION & LOGGING ---
+print(">> SERVER BOOTING UP...")
+
+# Try to load API Key (Using fallback if missing)
 try:
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
     ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", ''.join(random.choices(string.ascii_uppercase + string.digits, k=8)))
+    print(f"[CONFIG] API Key: {'Present' if GROQ_API_KEY else 'Missing'}")
+    print(f"[CONFIG] Admin Token: {ADMIN_TOKEN}")
 except Exception as e:
-    print(f"[CONFIG ERROR] Failed to load env vars: {e}")
-    print("[INFO] Using fallback configuration...")
-    GROQ_API_KEY = ""  # Fallback to empty to prevent None errors
-    ADMIN_TOKEN = "ADMIN123" # Fallback token
+    print(f"[ERROR] Config Failed: {e}")
 
-# Database setup (Disabled by default for stability)
+# Database setup (Disabled to prevent crashes if Mongo isn't installed)
 USE_DATABASE = False
-MONGO_URI = None
+MONGO_URI = os.getenv("MONGODB_URI")
 
-# --- 2. LOGGING ---
-def log_message(msg):
-    timestamp = time.strftime("%H:%M:%S")
-    print(f"[{timestamp}] {msg}")
-
-# --- 3. AI LOGIC (Using Stable Model) ---
+# --- 2. AI LOGIC (Stable Model) ---
 def get_ai_response(prompt):
-    if not GROQ_API_KEY:
-        return "❌ AI API Key Missing."
+    print(f"[AI] Generating response for: {prompt[:30]}...")
+    
+    # EXPLICITLY USE STABLE MODEL TO FIX DECOMMISSIONED ERROR
+    model = "llama3-8b-8192" # The stable model
     
     try:
-        system_prompt = "You are TermOS AI. Respond in the same language as the user."
         response = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={
@@ -42,10 +39,9 @@ def get_ai_response(prompt):
                 "Content-Type": "application/json"
             },
             json={
-                # USING STABLE MODEL TO FIX DECOMMISSIONED ERROR
-                "model": "llama3-8b-8192",
+                "model": model, # Using stable model here
                 "messages": [
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "content": "You are TermOS AI. Respond in the same language as the user."},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.7
@@ -53,73 +49,80 @@ def get_ai_response(prompt):
             timeout=15
         )
         
+        # ROBUST PARSING: Handle API errors explicitly
         if response.status_code != 200:
-            log_message(f"AI Request Failed: {response.status_code}")
+            print(f"[AI ERROR] Request failed: {response.status_code}")
             return "I'm sorry, I'm having trouble connecting to my brain right now."
-            
-        data = response.json()
         
-        # Check for API errors explicitly
-        if 'error' in data:
-            log_message(f"API Error: {data['error'].get('message', 'Unknown error')}")
-            return f"API Error: {data['error'].get('message', 'Unknown error')}"
-        
-        if 'choices' not in data or len(data['choices']) == 0:
-            log_message("API returned no choices")
-            return "My neural pathways are empty."
+        try:
+            data = response.json()
             
-        return data['choices'][0]['message']['content']
+            # SAFELY CHECK FOR ERROR KEYS
+            if 'error' in data:
+                print(f"[AI ERROR] Groq API: {data['error'].get('message', 'Unknown error')}")
+                return f"API Error: {data['error'].get('message', 'Unknown error')}"
+            
+            if 'choices' not in data or len(data['choices']) == 0:
+                print("[AI ERROR] No choices returned")
+                return "My neural pathways are empty."
+            
+            return data['choices'][0]['message']['content']
+            
+        except requests.exceptions.Timeout:
+            print("[AI ERROR] Connection timed out")
+            return "The signal is weak. Try again."
+        except Exception as e:
+            print(f"[AI CRITICAL] {e}")
+            return f"System Failure: {str(e)}"
 
-    except requests.exceptions.Timeout:
-        log_message("AI Connection Timed Out")
-        return "The signal is weak. Try again."
-    except Exception as e:
-        log_message(f"AI Critical Error: {e}")
-        return f"System Failure: {str(e)}"
-
-# --- 4. SIMPLE MQTT CLIENT (Robust Version) ---
-# Only imports MQTT if available, otherwise runs in "Offline Mode"
-mqtt_client = None
+# --- 3. SIMPLE MQTT CLIENT ---
+# Only import MQTT if available
 MQTT_ENABLED = False
+mqtt_client = None
 
 try:
     import paho.mqtt.client as mqtt
     MQTT_ENABLED = True
-    log_message("MQTT Library found. Neural Link initialized.")
+    print("[MQTT] Library found. Neural Link initialized.")
 except ImportError:
-    log_message("MQTT Library not found. Running in Offline Mode.")
+    print("[MQTT] Library not found. Running in Offline Mode.")
 
 def on_connect(client, userdata, flags, rc):
-    log_message(f"MQTT Connected: {rc}")
-    client.subscribe("termchat/input")
-    client.subscribe("termchat/messages")
+    print(f"[MQTT] Connected: {rc}")
+    if MQTT_ENABLED and mqtt_client:
+        # Subscribe to chat topics
+        client.subscribe("termchat/input")
+        client.subscribe("termchat/messages")
 
 def on_disconnect(client, userdata, rc):
-    log_message(f"MQTT Disconnected: {rc}")
-    # Simple reconnect logic could go here, but kept minimal for stability
+    print(f"[MQTT] Disconnected: {rc}")
 
 def on_message(client, userdata, msg):
     topic = msg.topic
+    payload_bytes = msg.payload
+    
+    # Decode payload (with error handling)
     try:
-        payload = msg.payload.decode()
-        data = json.loads(payload)
-        user_id = data.get("id", "system")
-        message_text = data.get("msg", payload)
+        payload_str = payload_bytes.decode()
+        data = json.loads(payload_str)
     except:
-        user_id = "system"
-        message_text = payload
+        print(f"[MQTT] Payload Decode Error: {payload_bytes}")
+        data = {"user": "system", "msg": "Raw Data"} # Fallback
+        payload_str = payload_bytes.decode() # Try again immediately? No, avoid re-assignment error
 
-    # Log message
-    print(f"[MQTT] {topic}: {user_id} -> {message_text[:30]}...")
+    print(f"[MQTT] {topic}: {data.get('id', 'unknown')} -> {data.get('msg', 'Raw Data')[:30]}...")
 
-    # 1. Handle AI Triggers
-    text_lower = message_text.lower()
+    # 1. HANDLE AI TRIGGERS
+    text_lower = data.get("msg", "Raw Data").lower()
     ai_triggers = ["ai", "termai", "?", "labas", "hello", "kas tu"]
     
-    if any(trigger in text_lower for trigger in ai_triggers):
-        reply = get_ai_response(message_text)
+    # Check if we should respond
+    should_respond = any(trigger in text_lower for trigger in ai_triggers)
+    
+    if should_respond:
+        reply = get_ai_response(data.get("msg", "Raw Data"))
         
-        # Publish AI Response
+        # Publish AI Response to MQTT
         if MQTT_ENABLED and mqtt_client:
             try:
                 mqtt_client.publish("termchat/output", json.dumps({
@@ -128,52 +131,34 @@ def on_message(client, userdata, msg):
                     "msg": reply
                 }))
             except Exception as e:
-                log_message(f"MQTT Send Error: {e}")
+                print(f"[MQTT] Send Error: {e}")
 
 # --- 5. MAIN SERVER LOOP ---
 def run_server():
-    # We simulate a server here. In a real deployment with Render, 
-    # you would just run this script. 
-    # For now, it keeps the MQTT connection alive.
+    print(f"[INFO] Server Ready. Listening for commands...")
     
-    print(">> SERVER STARTING...")
-    print(f"[CONFIG] API Key Present: {bool(GROQ_API_KEY)}")
-    print(f"[INFO] Mode: {'Online' if MQTT_ENABLED else 'Offline'}")
-
-    if MQTT_ENABLED:
+    # We simulate a server loop here to keep MQTT alive if configured
+    while True:
+        # Simple stdin loop (Good for testing locally without web socket)
         try:
-            # Initialize Client
-            # Note: Render might require port 10000
-            port = int(os.environ.get("PORT", 10000))
-            client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-            client.on_connect = on_connect
-            client.on_message = on_message
-            client.on_disconnect = on_disconnect
+            msg = input() # Gets command from console
+            if not msg: continue
             
-            print(f"[MQTT] Connecting to broker.emqx.io:{port}...")
-            client.connect("broker.emqx.io", port, 60)
+            if msg.lower() == "exit" or msg.lower() == "quit":
+                print("\nShutting down...")
+                break
             
-            # Blocking loop to keep script running
-            client.loop_forever()
+            # Simulate Processing
+            print(f"You: {msg}")
             
-        except Exception as e:
-            log_message(f"MQTT Critical Error: {e}")
-    else:
-        print("[INFO] Waiting for messages via stdin (Offline Mode)...")
-        # Simple stdin loop for testing without MQTT
-        try:
-            while True:
-                msg = input()
-                if msg.lower() in ["exit", "quit"]:
-                    print("Shutting down...")
-                    break
-                print(f"You: {msg}")
-                # Simulate processing
-                if "ai" in msg.lower() or "?" in msg.lower():
-                    reply = get_ai_response(msg)
-                    print(f"AI: {reply}")
+            # AI Logic
+            if "ai" in msg.lower() or "?" in msg.lower():
+                reply = get_ai_response(msg)
+                print(f"AI: {reply}")
+            
         except KeyboardInterrupt:
             print("\nShutdown received.")
-
-if __name__ == '__main__':
-    run_server()
+            break
+        except Exception as e:
+            print(f"Error: {e}")
+            time.sleep(1)
