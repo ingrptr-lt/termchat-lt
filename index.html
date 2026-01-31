@@ -203,8 +203,8 @@
     console.log(">> SYSTEM KERNEL STARTING...");
 
     // --- 1. CONFIG & STATE ---
-    // SECURITY FIX: Removed hardcoded key. User must set it manually via /setkey
-    let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || "";
+    // FIX: Key inserted here.
+    let GROQ_API_KEY = "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";
     
     let GITHUB_TOKEN = localStorage.getItem('termos_github_token') || "";
     let REPO_OWNER = localStorage.getItem('termos_repo_owner') || "your-username";
@@ -371,7 +371,7 @@
 
     // --- 6. AI LOGIC ---
     async function handleAI(prompt) {
-        if(!GROQ_API_KEY) return addAIMessage("❌ API Key Missing. Type `/setkey your_key` in the chat.");
+        if(!GROQ_API_KEY) return addAIMessage("❌ API Key Missing.");
         
         const thinkingId = "think-" + Date.now();
         getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-gray-500 italic animate-pulse">AI is typing...</div>`);
@@ -682,11 +682,6 @@
             if(saved) { 
                 try { userStats = JSON.parse(saved); if(userStats.ascii) updateAvatar(userStats.level); } 
                 catch(e) { console.warn("Stats Corrupt."); }
-            }
-
-            // Check for API Key
-            if (!GROQ_API_KEY) {
-                addSystemMessage("🔒 NO API KEY DETECTED. TYPE `/setkey [your_groq_key]` TO UNLOCK AI.");
             }
 
             const tkInput = document.getElementById('gh-token');
