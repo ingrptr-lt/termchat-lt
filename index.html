@@ -204,8 +204,7 @@
 
     // --- 1. CONFIG & STATE ---
     
-    // SECURITY KEY: Hardcoded here to ensure it always works, 
-    // falling back to LocalStorage if user types /setkey
+    // SECURITY KEY: Hardcoded here to ensure it always works
     const HARD_KEY = "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";
     
     // Priority: Use LocalStorage first, else use Hard Key
@@ -383,11 +382,12 @@
         scrollDown();
 
         try {
+            // Using STABLE MODEL to prevent decommission error
             let r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method:"POST",
                 headers:{"Authorization":"Bearer "+GROQ_API_KEY,"Content-Type":"application/json"},
                 body:JSON.stringify({
-                    model:"llama3-8b-8192",
+                    model:"llama3-8b-8192", // Stable model
                     messages:[{
                         role:"system",
                         content:"You are TermOS AI. If user asks for visual changes, return: SystemRebuilder.install('name'). If user asks for music, return: CMD: PLAY_MUSIC. Otherwise answer normally."
@@ -397,7 +397,7 @@
             
             const apiData = await r.json();
 
-            // FIX: Safe Parsing to prevent Render Crash
+            // FIX: Safe Parsing & Fallback
             if (apiData.error) {
                 throw new Error("Groq API: " + apiData.error.message);
             }
@@ -527,15 +527,14 @@
                 addSystemMessage("🧬 ANALYZING DNA & MUTATING...");
 
                 const evolutionPrompt = `You are an expert web developer. TASK: Modify existing HTML code to fulfill "${input}". 
-                Return ONLY full modified HTML code. Do NOT include markdown code blocks (like \`\`\`html) in your response. Just return the raw code.`;
+                Return ONLY full modified HTML code. Do NOT include markdown code blocks (like \`\`\`html) in your response. Just return raw code.`;
 
-                // FIX: USE STABLE MODEL
+                // Using STABLE MODEL
                 const aiReq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                     signal: controller.signal,
                     body: JSON.stringify({
-                        // CHANGED TO: llama3-8b-8192 (STABLE)
                         model: "llama3-8b-8192", 
                         messages: [
                             { role: "system", content: "You are a code generator. Return ONLY raw HTML code." }, 
