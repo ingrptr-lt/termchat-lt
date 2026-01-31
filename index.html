@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: Ultimate Debug</title>
+    <title>TermOS: Smart Evolution</title>
     
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -38,7 +38,7 @@
     <canvas id="matrix-canvas"></canvas>
 
     <!-- 2. HEADER -->
-    <header class="fixed top-0 left-0 right-0 z-20 glass-panel border-b-0 border-b-white/5 h-16 flex items-center justify-between px-4 lg:px-8">
+    <header id="app-header" class="fixed top-0 left-0 right-0 z-20 glass-panel border-b-0 border-b-white/5 h-16 flex items-center justify-between px-4 lg:px-8">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -70,39 +70,39 @@
                 <button id="voice-btn" class="p-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8h4m-4 8H8"></path></svg>
                 </button>
-                <input type="text" id="user-input" placeholder="Type a message..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light">
+                <input type="text" id="user-input" placeholder="Type a message... Try '/evolve change header color'" autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light">
                 <button id="send-btn" class="p-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all transform active:scale-95 shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
                 </button>
             </div>
             <div class="text-center mt-2">
-                <button onclick="requestApiKey()" class="text-[10px] text-gray-600 hover:text-blue-400 transition-colors">Missing API Key? Click Here</button>
+                <button onclick="resetEvolution()" class="text-[10px] text-red-500/50 hover:text-red-400 transition-colors">⚠️ Reset Mutations</button>
             </div>
         </div>
     </div>
 
 <!-- EXPOSED ADMIN BUTTON -->
 <div class="fixed top-4 right-4 z-50">
-    <button onclick="toggleAdminMode()" id="admin-toggle-text" class="bg-slate-900/50 hover:bg-red-900/50 border border-slate-700 hover:border-red-500 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-2"><span>🔴</span> ADMIN</button>
+    <button onclick="toggleAdminMode()" id="admin-toggle-text" class="bg-slate-900/50 hover:bg-red-900/50 border border-slate-700 hover:border-red-500 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-2"><span>🔴</span> GITHUB</button>
 </div>
 
 <!-- ADMIN CONSOLE -->
 <div id="admin-panel" class="admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border border-red-500/30 shadow-2xl shadow-red-500/10">
-    <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> ADMIN CONSOLE</h3>
+    <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> GITHUB CONSOLE</h3>
     <div class="space-y-2">
         <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
         <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
         <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Branch</label><input type="text" id="gh-branch" value="main" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
-        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">GitHub Token</label><input type="password" id="gh-token" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
-        <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors shadow-lg shadow-red-600/20 active:scale-95 mt-2">🧬 INITIATE EVOLUTION</button>
+        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Token</label><input type="password" id="gh-token" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
+        <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors shadow-lg shadow-red-600/20 active:scale-95 mt-2">🧬 COMMIT TO GITHUB</button>
     </div>
 </div>
 
 <!-- =========================================================== -->
-<!--  KERNEL: UNBREAKABLE ERROR HANDLING -->
+<!--  KERNEL: SMART LOCAL EVOLUTION -->
 <!-- =========================================================== -->
 <script>
-    console.log(">> BOOTING TERMOS ULTIMATE DEBUG...");
+    console.log(">> BOOTING TERMOS SMART EVO...");
 
     // --- 1. CONFIG ---
     const API_MODEL = "llama-3.3-70b-versatile"; 
@@ -122,15 +122,96 @@
     let installedModules = [];
     let adminMode = false;
 
-    // --- 2. API KEY HANDLER ---
+    // --- 2. SMART EVOLUTION (The Fix) ---
+    function resetEvolution() {
+        if(confirm("Reset all local mutations?")) {
+            localStorage.removeItem('termos_mutations');
+            location.reload();
+        }
+    }
+
+    async function handleLocalEvolution(prompt) {
+        if(!GROQ_API_KEY) return requestApiKey();
+        
+        addSystemMessage("🧬 Generating Local Mutation...");
+        const thinkingId = "think-" + Date.now();
+        getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-gray-500 italic animate-pulse pl-11">AI is coding...</div>`);
+        scrollDown();
+
+        try {
+            let r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method:"POST",
+                headers:{"Authorization":"Bearer "+GROQ_API_KEY,"Content-Type":"application/json"},
+                body:JSON.stringify({
+                    model: API_MODEL,
+                    messages:[{
+                        role:"system",
+                        content:`You are a front-end expert. TASK: Write JAVASCRIPT code to: "${prompt}". 
+                        CRITICAL RULES:
+                        1. Return ONLY the raw Javascript code. No markdown blocks, no explanation.
+                        2. Use standard DOM manipulation (document.querySelector, etc.).
+                        3. Target existing IDs like 'app-header', 'matrix-canvas', 'user-input'.
+                        4. DO NOT try to fetch external APIs. Just manipulate the DOM.
+                        5. Example: "Make header pink" -> document.getElementById('app-header').classList.add('bg-pink-500');`
+                    },{role:"user",content:prompt}]
+                })
+            });
+            
+            const apiData = await r.json();
+
+            if (apiData.error) throw new Error("Groq: " + apiData.error.message);
+            if (!apiData.choices || apiData.choices.length === 0) throw new Error("No choices returned.");
+            
+            let code = apiData.choices[0].message.content;
+            
+            // Cleanup
+            code = code.replace(/```javascript/g, "").replace(/```js/g, "").replace(/```/g, "").trim();
+            
+            const el = document.getElementById(thinkingId); if(el) el.remove();
+
+            // Execute
+            try {
+                // We use Function constructor for scope isolation (safer than global eval, but still eval)
+                const func = new Function(code);
+                func();
+                
+                addSystemMessage("✅ Mutation Applied.");
+                
+                // Save to history
+                let history = JSON.parse(localStorage.getItem('termos_mutations') || "[]");
+                history.push({ date: new Date().toISOString(), prompt: prompt, code: code });
+                localStorage.setItem('termos_mutations', JSON.stringify(history));
+
+            } catch (execErr) {
+                addSystemMessage("❌ Runtime Error: " + execErr.message);
+                addSystemMessage("Code: " + code.substring(0, 100) + "...");
+            }
+
+        } catch (e) { 
+            const el = document.getElementById(thinkingId); if(el) el.remove();
+            addSystemMessage("❌ AI Error: " + e.message); 
+        }
+    }
+
+    function loadMutations() {
+        let history = JSON.parse(localStorage.getItem('termos_mutations') || "[]");
+        if(history.length > 0) {
+            addSystemMessage(`📂 Loading ${history.length} stored mutations...`);
+            history.forEach((item, index) => {
+                try {
+                    const func = new Function(item.code);
+                    func();
+                } catch(e) {
+                    console.error("Failed to load mutation " + index, e);
+                }
+            });
+            addSystemMessage(`✅ System State Restored.`);
+        }
+    }
+
+    // --- 3. API KEY HANDLER ---
     function requestApiKey() {
-        const key = prompt(
-            "🔑 GROQ API KEY REQUIRED\n\n" +
-            "1. Go to console.groq.com\n" +
-            "2. Create a key (Free)\n" +
-            "3. Paste below.\n\n" +
-            "Status: " + (GROQ_API_KEY ? "Set" : "Empty")
-        );
+        const key = prompt("🔑 GROQ API KEY REQUIRED\n\nStatus: " + (GROQ_API_KEY ? "Set" : "Empty"));
         if (key !== null) {
             if (key.trim() !== "") {
                 GROQ_API_KEY = key.trim();
@@ -156,7 +237,7 @@
         return el;
     }
 
-    // --- 3. MODULES ---
+    // --- 4. MODULES ---
     const SystemRebuilder = {
         install: function(name) {
             name = name.toLowerCase().trim();
@@ -197,7 +278,7 @@
         }
     };
 
-    // --- 4. MATRIX ---
+    // --- 5. MATRIX ---
     let isMatrixRunning = false;
     function initMatrix() {
         const canvas = document.getElementById('matrix-canvas');
@@ -234,7 +315,7 @@
         window.addEventListener('resize', () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; });
     }
 
-    // --- 5. UI HELPERS ---
+    // --- 6. UI HELPERS ---
     function addSystemMessage(txt) {
         const box = getBox();
         const d = document.createElement('div');
@@ -264,7 +345,7 @@
     function scrollDown() { const b=getBox(); if(b) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }); }
     function escapeHtml(text) { if(!text) return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
-    // --- 6. AI LOGIC ---
+    // --- 7. AI LOGIC ---
     async function handleAI(prompt) {
         if(!GROQ_API_KEY) return requestApiKey();
         const thinkingId = "think-" + Date.now();
@@ -313,7 +394,7 @@
         }
     }
 
-    // --- 7. GAMIFICATION ---
+    // --- 8. GAMIFICATION ---
     function addXP(amount) {
         userStats.xp += amount;
         if(userStats.xp > (userStats.level * 100)) {
@@ -333,14 +414,14 @@
         else if (lvl === 8) userStats.ascii = "👁<br>· ·<br>__·__"; 
     }
 
-    // --- 8. EVOLUTION ENGINE (UNBREAKABLE) ---
+    // --- 9. GITHUB ENGINE (Kept for advanced users) ---
     function toggleAdminMode() {
         let panel = document.getElementById('admin-panel');
         if(!panel) {
             panel = document.createElement('div');
             panel.id = 'admin-panel';
             panel.className = "admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border border-red-500/30 shadow-2xl shadow-red-500/10";
-            panel.innerHTML = `<h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> ADMIN CONSOLE</h3><div class="space-y-2"><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Branch</label><input type="text" id="gh-branch" value="main" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Token</label><input type="password" id="gh-token" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors shadow-lg shadow-red-600/20 active:scale-95 mt-2">🧬 INITIATE EVOLUTION</button></div>`;
+            panel.innerHTML = `<h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> GITHUB CONSOLE</h3><div class="space-y-2"><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Branch</label><input type="text" id="gh-branch" value="main" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Token</label><input type="password" id="gh-token" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors shadow-lg shadow-red-600/20 active:scale-95 mt-2">🧬 COMMIT TO GITHUB</button></div>`;
             document.body.appendChild(panel);
         }
         
@@ -355,143 +436,101 @@
 
     async function initiateEvolution() {
         if(!GROQ_API_KEY) return requestApiKey();
-        
         const tkInput = document.getElementById('gh-token');
         const ownInput = document.getElementById('gh-owner');
         const repInput = document.getElementById('gh-repo');
         const branchInput = document.getElementById('gh-branch');
-
         if(!tkInput || !ownInput || !repInput || !branchInput) return alert("Admin UI Missing.");
-        
         const token = tkInput.value.trim();
         const owner = ownInput.value.trim();
         const repo = repInput.value.trim();
         const branch = branchInput.value.trim() || "main";
-
         localStorage.setItem('termos_github_token', token);
         localStorage.setItem('termos_repo_owner', owner);
         localStorage.setItem('termos_repo_name', repo);
         localStorage.setItem('termos_repo_branch', branch);
-
         if (!token) return addSystemMessage("❌ GitHub Token needed.");
         if (!owner || !repo) return addSystemMessage("❌ Repo Owner/Name needed.");
-        
         const input = prompt("Mutation request:");
         if (!input) return;
-
         addSystemMessage("🧬 CLONING SOURCE...");
-        console.log(`[DEBUG] Starting evolution on repo: ${owner}/${repo} branch: ${branch}`);
-        
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 40000); 
-
         try {
-            // 1. READ
             const url = `https://api.github.com/repos/${owner}/${repo}/contents/${FILE_PATH}?ref=${branch}`;
-            console.log(`[DEBUG] GET URL: ${url}`);
-            
             const res = await fetch(url, { headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }, signal: controller.signal });
-            
             if (!res.ok) {
                 const errText = await res.json();
                 throw new Error(`GitHub Read (${res.status}): ${errText.message || "Check Branch Name/Permissions"}`);
             }
-            
             const data = await res.json();
             if(!data.content) throw new Error("File not found in repo.");
             const currentContent = atob(data.content);
-            const currentSha = data.sha;
-            console.log(`[DEBUG] Read Success. SHA: ${currentSha.substring(0,7)}...`);
-
             addSystemMessage("🧬 MUTATING DNA...");
-
-            const evolutionPrompt = `Modify HTML/JS to: "${input}". Return ONLY raw code. No markdown. Do not change the SystemRebuilder variable or API logic unless asked.`;
-            
-            // 2. GENERATE
+            const evolutionPrompt = `Modify HTML/JS to: "${input}". Return ONLY raw code. No markdown.`;
             const aiReq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
                 headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                 signal: controller.signal,
                 body: JSON.stringify({
                     model: API_MODEL,
-                    messages: [
-                        { role: "system", content: "Return ONLY raw code." }, 
-                        { role: "user", content: evolutionPrompt + "\n\nCODE:\n" + currentContent }
-                    ],
+                    messages: [{ role: "system", content: "Return ONLY raw code." }, { role: "user", content: evolutionPrompt + "\n\nCODE:\n" + currentContent }],
                     temperature: 0.5, max_tokens: 8000
                 })
             });
-            
             const aiData = await aiReq.json();
             if (aiData.error) throw new Error(`AI Error: ${aiData.error.message}`);
             if (!aiData.choices || aiData.choices.length === 0) throw new Error("AI returned empty.");
-
             let newCode = aiData.choices[0].message.content;
-            
-            // FIX: BETTER MARKDOWN CLEANUP
-            // Remove the first occurrence of ```html and the last occurrence of ```
-            if (newCode.startsWith("```html")) {
-                newCode = newCode.substring(7);
-            } else if (newCode.startsWith("```")) {
-                newCode = newCode.substring(3);
-            }
-            if (newCode.endsWith("```")) {
-                newCode = newCode.substring(0, newCode.length - 3);
-            }
+            if (newCode.startsWith("```html")) newCode = newCode.substring(7);
+            else if (newCode.startsWith("```")) newCode = newCode.substring(3);
+            if (newCode.endsWith("```")) newCode = newCode.substring(0, newCode.length - 3);
             newCode = newCode.trim();
-            
             addSystemMessage("🧬 UPLOADING...");
-            
-            // 3. WRITE
             const putUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${FILE_PATH}`;
             const encodedContent = btoa(unescape(encodeURIComponent(newCode)));
-            
             const putRes = await fetch(putUrl, {
                 method: 'PUT',
                 headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: "Evolution: " + input,
                     content: encodedContent,
-                    sha: currentSha,
+                    sha: data.sha,
                     branch: branch
                 }),
                 signal: controller.signal
             });
-
             console.log(`[DEBUG] PUT Status: ${putRes.status}`);
             if (!putRes.ok) {
-                // ROBUST ERROR PARSING
                 let errorMsg = "Unknown";
-                try {
-                    const errorData = await putRes.json();
-                    errorMsg = errorData.message || JSON.stringify(errorData);
-                } catch (e) {
-                    errorMsg = await putRes.text(); 
-                }
+                try { const errorData = await putRes.json(); errorMsg = errorData.message || JSON.stringify(errorData); } catch (e) { errorMsg = await putRes.text(); }
                 throw new Error(`GitHub Write (${putRes.status}): ${errorMsg}`);
             }
-            
             clearTimeout(timeoutId);
             addSystemMessage("🎉 SUCCESS. REBOOTING...");
             setTimeout(() => location.reload(), 2000);
-
         } catch (err) {
             clearTimeout(timeoutId);
             console.error("[DEBUG] Evolution Error:", err);
             addSystemMessage("❌ FAIL: " + err.message);
-            if(err.message.includes("401") || err.message.includes("403")) {
-                addSystemMessage("💡 Hint: Check GitHub Token permissions.");
-            }
+            if(err.message.includes("401") || err.message.includes("403")) addSystemMessage("💡 Hint: Check GitHub Token permissions.");
         }
     }
 
-    // --- 9. INPUT ---
+    // --- 10. INPUT HANDLER ---
     function handleInput() {
         try {
             let inp = document.getElementById('user-input');
             if(!inp) return; 
             let txt = inp.value.trim(); 
             if(!txt) return;
+
+            // SMART FIX: Handle /evolve
+            if(txt.startsWith('/evolve ')) {
+                handleLocalEvolution(txt.substring(8));
+                inp.value = '';
+                return;
+            }
 
             if(txt.startsWith('/admin ')) {
                 const cmd = txt.split(' ')[1];
@@ -519,7 +558,7 @@
         } catch (e) { console.error(e); }
     }
 
-    // --- 10. INIT ---
+    // --- 11. INIT ---
     function connectMQTT() {
         try {
             mqttClient.connect({
@@ -531,7 +570,7 @@
     }
 
     window.onload = function() {
-        console.log(">> SYSTEM LOADED ULTIMATE");
+        console.log(">> SYSTEM LOADED SMART EVO");
         updateStatusDot(!!GROQ_API_KEY);
         if(!document.getElementById('chat-container')) {
             document.body.innerHTML += `<div id="chat-container" class="flex flex-col h-full w-full p-4 overflow-y-auto z-10"></div>`;
@@ -543,6 +582,9 @@
         document.getElementById('gh-branch').value = REPO_BRANCH;
 
         initMatrix();
+        
+        // LOAD SAVED MUTATIONS
+        loadMutations();
 
         if (typeof Paho !== 'undefined') {
             mqttClient = new Paho.MQTT.Client(MQTT_BROKER_URL, "termos_client_" + Math.random().toString(16).substr(2, 8));
