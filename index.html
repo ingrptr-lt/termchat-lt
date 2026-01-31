@@ -457,15 +457,20 @@
             }
         } catch (e) { console.error("Admin Toggle Error:", e); }
     }
-
     async function initiateEvolution() {
         try {
-            // Get current values
+            // 1. Validate Groq Key immediately
+            if (!GROQ_API_KEY) {
+                alert("CRITICAL: Missing Groq API Key.\nPlease type: /setkey your_groq_key_here");
+                return;
+            }
+
+            // 2. Get Inputs
             const tkInput = document.getElementById('gh-token');
             const ownInput = document.getElementById('gh-owner');
             const repInput = document.getElementById('gh-repo');
 
-            if(!tkInput || !ownInput || !repInput) return alert("Admin Panel missing inputs.");
+            if(!tkInput || !ownInput || !repInput) return alert("Admin Panel inputs missing.");
             
             const token = tkInput.value.trim();
             const owner = ownInput.value.trim();
@@ -479,51 +484,84 @@
             localStorage.setItem('termos_repo_owner', owner);
             localStorage.setItem('termos_repo_name', repo);
 
-            const input = prompt("Enter your mutation request (e.g., 'Change background color to red'):");
+            const input = prompt("Enter your mutation request (e.g., 'Change the Matrix color to red'):");
             if (!input) return;
 
             addSystemMessage("🧬 INITIATING EVOLUTION SEQUENCE...");
             addSystemMessage("📡 READING DNA FROM GITHUB...");
             
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000); 
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s Timeout
 
             try {
-                // 1. Read Code
+                // STEP A: Read Current Code from GitHub
                 const url = `https://api.github.com/repos/${owner}/${repo}/contents/${FILE_PATH}`;
                 const res = await fetch(url, { 
                     headers: { 'Authorization': `token ${token}` }, signal: controller.signal 
                 });
                 
-                if (!res.ok) throw new Error("Failed to read repo. Check Token/Permissions.");
+                if (!res.ok) {
+                    const errText = await res.text();
+                    throw new Error(`GitHub Read Failed: ${res.status} - ${errText}`);
+                }
+
                 const data = await res.json();
                 const currentContent = atob(data.content);
 
-                // 2. AI Mutation
-                const evolutionPrompt = `You are an expert web developer. TASK: Modify the existing HTML code to fulfill "${input}". Return ONLY the full modified code. Do not include explanations outside the code block.`
-                
+                addSystemMessage("🧬 ANALYZING DNA & MUTATING...");
+
+                // STEP B: Send to AI (Groq)
+                // Note: If the file is very large, this might hit context limits. 
+                // Try to keep your HTML file under 6000 tokens.
+                const evolutionPrompt = `You are an expert web developer. TASK: Modify the existing HTML code to fulfill "${input}". 
+                Return ONLY the full modified HTML code. Do NOT include markdown code blocks (like \`\`\`html) in your response. Just the raw code.`;
+
                 const aiReq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                     signal: controller.signal,
                     body: JSON.stringify({
+                        // Using 70b for better coding ability. If it fails, try 'llama3-8b-8192'
                         model: "llama3-70b-8192", 
                         messages: [
-                            { role: "system", content: "You are a code generator. Return ONLY raw HTML code wrapped in markdown blocks." }, 
-                            { role: "user", content: evolutionPrompt + "\n\nCODE:\n" + currentContent }]
+                            { role: "system", content: "You are a code generator. Return ONLY raw HTML code." }, 
+                            { role: "user", content: evolutionPrompt + "\n\nCODE:\n" + currentContent }
+                        ],
+                        temperature: 0.7
                     })
                 });
                 
                 const aiData = await aiReq.json();
+
+                // --- ERROR HANDLING FIX STARTS HERE ---
+                
+                // Check if Groq returned an error object instead of choices
+                if (aiData.error) {
+                    throw new Error(`Groq API Error: ${aiData.error.message} (Code: ${aiData.error.code})`);
+                }
+
+                // Check if data structure is valid
+                if (!aiData.choices || aiData.choices.length === 0) {
+                    throw new Error("Groq API returned no data (Empty choices). The model might be overloaded.");
+                }
+                
+                // Check if message content exists
+                if (!aiData.choices[0].message || !aiData.choices[0].message.content) {
+                    throw new Error("Groq API returned no content.");
+                }
+
                 let newCode = aiData.choices[0].message.content;
-                // Clean markdown artifacts
+                
+                // Clean up markdown artifacts just in case AI ignores instructions
                 newCode = newCode.replace(/```html/g, "").replace(/```/g, "").trim();
 
-                // 3. Write Back to GitHub
-                addSystemMessage("🧬 MUTATING CODEBASE...");
+                // --- ERROR HANDLING FIX ENDS HERE ---
+
+                // STEP C: Write Back to GitHub
+                addSystemMessage("🧬 UPLOADING MUTATED DNA...");
                 const putUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${FILE_PATH}`;
                 
-                // Encode for GitHub API
+                // Encode properly for UTF-8 characters
                 const encodedContent = btoa(unescape(encodeURIComponent(newCode)));
 
                 const putBody = {
@@ -533,14 +571,19 @@
                     branch: "main"
                 };
 
-                await fetch(putUrl, {
+                const putRes = await fetch(putUrl, {
                     method: 'PUT',
                     headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify(putBody),
                     signal: controller.signal
                 });
 
-                // Reboot
+                if (!putRes.ok) {
+                    const putErr = await putRes.json();
+                    throw new Error(`GitHub Write Failed: ${putErr.message}`);
+                }
+
+                // Success
                 clearTimeout(timeoutId);
                 addSystemMessage("🎉 EVOLUTION SUCCESS. REBOOTING...");
                 setTimeout(() => location.reload(), 2000);
@@ -548,16 +591,15 @@
             } catch (err) {
                 clearTimeout(timeoutId);
                 let errorMsg = err.message;
-                if (err.name === 'AbortError') errorMsg = "Connection Timed Out (30s). Try again.";
+                if (err.name === 'AbortError') errorMsg = "Connection Timed Out (30s). Try a smaller request.";
                 addSystemMessage("❌ EVOLUTION FAILED: " + errorMsg);
-                console.error(err);
+                console.error("Evolution Stack:", err);
             }
         } catch (err) {
-            console.error(err);
+            console.error("General Error:", err);
             addSystemMessage("❌ CRITICAL ERROR: " + err.message);
         }
-    }
-
+    }  
     // --- 9. INPUT HANDLER ---
     function handleInput() {
         try {
