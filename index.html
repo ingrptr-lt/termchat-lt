@@ -113,7 +113,8 @@
             <div>
                 <h1 class="font-bold text-lg tracking-wide text-white">TERMOS <span class="text-blue-400">LT</span></h1>
                 <div class="flex items-center gap-2 text-xs text-gray-400">
-                    <div id="status-dot" class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <!-- Dynamic Status Dot -->
+                    <div id="api-status-dot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
                     <span id="room-display">GLOBAL LOBBY</span>
                 </div>
             </div>
@@ -203,8 +204,13 @@
     console.log(">> SYSTEM KERNEL STARTING...");
 
     // --- 1. CONFIG & STATE ---
-    // FIX: Key inserted here.
-    let GROQ_API_KEY = "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";
+    
+    // SECURITY KEY: Hardcoded here to ensure it always works, 
+    // falling back to LocalStorage if user types /setkey
+    const HARD_KEY = "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";
+    
+    // Priority: Use LocalStorage first, else use Hard Key
+    let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || HARD_KEY;
     
     let GITHUB_TOKEN = localStorage.getItem('termos_github_token') || "";
     let REPO_OWNER = localStorage.getItem('termos_repo_owner') || "your-username";
@@ -392,7 +398,7 @@
             
             const apiData = await r.json();
 
-            // FIX: Safe Parsing to prevent Render Crash
+            // FIX: Safe Parsing
             if (apiData.error) {
                 throw new Error("Groq API: " + apiData.error.message);
             }
@@ -621,8 +627,10 @@
                 if(SystemRebuilder) SystemRebuilder.install(txt.split(' ')[2]);
             }
             else if(txt.startsWith('/setkey ')) {
+                // Save new key to localStorage and runtime variable
                 GROQ_API_KEY = txt.substring(8);
                 localStorage.setItem('termos_groq_key', GROQ_API_KEY);
+                updateStatusDot(true); // Update visual status
                 addSystemMessage("✅ API Key Updated.");
             }
             else if(txt.startsWith('/ai ')) {
@@ -670,6 +678,9 @@
         console.log(">> DOM LOADED. INITIALIZING APP...");
         
         try {
+            // Visual Status Check
+            updateStatusDot(!!GROQ_API_KEY);
+
             if(!document.getElementById('chat-container')) {
                 console.warn("⚠️ 'chat-container' ID missing. Creating dynamically...");
                 const box = document.createElement('div');
@@ -744,6 +755,20 @@
             document.body.appendChild(d);
         }
     };
+
+    // --- 12. UTILS ---
+    function updateStatusDot(active) {
+        const dot = document.getElementById('api-status-dot');
+        if(dot) {
+            if(active) {
+                dot.classList.remove('bg-red-500');
+                dot.classList.add('bg-green-500');
+            } else {
+                dot.classList.remove('bg-green-500');
+                dot.classList.add('bg-red-500');
+            }
+        }
+    }
 
     // Global Error Catcher
     window.onerror = function(message, source, lineno, colno, error) {
