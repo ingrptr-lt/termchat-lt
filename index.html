@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: Evolution</title>
+    <title>TermOS: Evolution v2</title>
     
-    <!-- PWA Manifest -->
+    <!-- PWA Manifest Placeholder -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,19 +22,21 @@
 
     <style>
         :root {
-            --glass-bg: rgba(15, 23, 42, 0.6);
+            --glass-bg: rgba(15, 23, 42, 0.75);
             --glass-border: rgba(255, 255, 255, 0.1);
-            --accent-primary: #38bdf8;
-            --accent-secondary: #818cf8;
-            --msg-user-bg: #3b82f6;
-            --msg-ai-bg: #1e293b;
+            --accent-primary: #38bdf8; /* Sky 400 */
+            --accent-secondary: #818cf8; /* Indigo 400 */
+            --msg-user-bg: #3b82f6; /* Blue 500 */
+            --msg-ai-bg: #1e293b; /* Slate 800 */
+            --danger-color: #ef4444;
         }
 
         body {
-            background-color: #020617;
-            color: #e2e8f0;
+            background-color: #020617; /* Slate 950 */
+            color: #e2e8f0; /* Slate 200 */
             font-family: 'Inter', sans-serif;
             overflow: hidden;
+            -webkit-font-smoothing: antialiased;
         }
 
         /* --- BACKGROUND MATRIX --- */
@@ -48,14 +50,16 @@
 
         /* --- SCROLLBAR --- */
         ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 
         /* --- GLASSMORPHISM --- */
         .glass-panel {
             background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--glass-border);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
         }
 
         /* --- ANIMATIONS --- */
@@ -73,9 +77,9 @@
         /* --- ASCII ART --- */
         .ascii-art {
             font-family: 'Fira Code', monospace;
-            line-height: 0.8;
+            line-height: 0.9;
             white-space: pre;
-            font-size: 9px;
+            font-size: 8px;
             text-shadow: 0 0 2px rgba(255,255,255,0.5);
         }
 
@@ -85,7 +89,7 @@
 
         /* --- INPUT GLOW --- */
         .input-glow:focus-within {
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.25);
             border-color: rgba(56, 189, 248, 0.5);
         }
         
@@ -175,40 +179,43 @@
     <div class="space-y-3">
         <div>
             <label class="block text-xs text-gray-500 mb-1">GitHub Token (Classic)</label>
-            <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none">
+            <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none transition-colors">
         </div>
         <div class="grid grid-cols-2 gap-2">
             <div>
                 <label class="block text-xs text-gray-500 mb-1">Owner</label>
-                <input type="text" id="gh-owner" placeholder="username" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
+                <input type="text" id="gh-owner" placeholder="username" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-blue-500 outline-none">
             </div>
             <div>
                 <label class="block text-xs text-gray-500 mb-1">Repo</label>
-                <input type="text" id="gh-repo" placeholder="repo-name" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
+                <input type="text" id="gh-repo" placeholder="repo-name" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-blue-500 outline-none">
             </div>
         </div>
-        <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors">
+        <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors shadow-lg shadow-red-600/20 active:scale-95">
             🧬 INITIATE EVOLUTION
         </button>
         <div class="text-[10px] text-gray-500 text-center mt-2">
-            Modifies index.html on Main branch.
+            WARNING: Writes directly to Main branch.
         </div>
     </div>
 </div>
 
 <!-- =========================================================== -->
-<!--  THE EVOLUTIONARY KERNEL -->
+<!--  THE EVOLUTIONARY KERNEL (v2 - FIXED) -->
 <!-- =========================================================== -->
 <script>
-    console.log(">> SYSTEM KERNEL STARTING...");
+    console.log(">> SYSTEM KERNEL STARTING v2...");
 
     // --- 1. CONFIG & STATE ---
     
-    // SECURITY KEY: Hardcoded here to ensure it always works, 
-    // falling back to LocalStorage if user types /setkey
+    // Using a robust model name constant to prevent future deprecation issues
+    const MODEL_NAME = "llama-3.3-70b-versatile"; 
+
+    // SECURITY KEY: Hardcoded here as fallback, user can override with /setkey
+    // Note: In a real app, never expose keys. Here it is for the "Self-Evolving" demo feature.
     const HARD_KEY = "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";
     
-    // Priority: Use LocalStorage first, else use Hard Key
+    // Priority: LocalStorage > Hard Key
     let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || HARD_KEY;
     
     let GITHUB_TOKEN = localStorage.getItem('termos_github_token') || "";
@@ -217,7 +224,7 @@
     const FILE_PATH = "index.html";
     
     const MQTT_BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
-    let username = 'User_' + Math.floor(Math.random() * 1000);
+    let username = 'User_' + Math.floor(Math.random() * 10000);
     let mqttClient = null;
     let currentRoom = 'global';
     
@@ -229,8 +236,6 @@
     // --- 2. UNIVERSAL UI DETECTOR ---
     function getBox() {
         let el = document.getElementById('chat-container');
-        if (!el) el = document.getElementById('main-app');
-        if (!el) el = document.getElementById('screen');
         if (!el) {
             console.warn("⚠️ No chat container found. Forcing creation...");
             el = document.createElement('div');
@@ -245,18 +250,21 @@
     const SystemRebuilder = {
         install: function(name) {
             name = name.toLowerCase().trim();
-            if (installedModules.includes(name)) return addSystemMessage(`Module ${name} active.`);
+            if (installedModules.includes(name)) return addSystemMessage(`Module ${name} already active.`);
             try {
                 switch(name) {
                     case 'matrix': initMatrix(); break;
                     case 'sound': case 'beep': this.addSound(); break;
                     case 'neon': this.addNeon(); break;
                     case 'music': this.playMusic(); break;
-                    default: return addSystemMessage("Unknown: " + name);
+                    default: return addSystemMessage("Error: Unknown module " + name);
                 }
                 installedModules.push(name);
-                addSystemMessage("Installed: " + name.toUpperCase());
-            } catch (e) { addSystemMessage("ERROR: " + e.message); }
+                addSystemMessage("✅ Installed: " + name.toUpperCase());
+            } catch (e) { 
+                console.error(e);
+                addSystemMessage("❌ Install Failed: " + e.message); 
+            }
         },
         addSound: function() {
             try {
@@ -265,22 +273,28 @@
                 window.addUserMessage = function(t) {
                     const o = ctx.createOscillator(), g = ctx.createGain();
                     o.connect(g); g.connect(ctx.destination);
-                    o.frequency.value = 600; o.start(); o.stop(ctx.currentTime+0.05);
+                    o.type = 'sine';
+                    o.frequency.setValueAtTime(800, ctx.currentTime);
+                    o.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.1);
+                    o.start(); o.stop(ctx.currentTime+0.1);
                     old(t);
                 };
-            } catch(e) { addSystemMessage("Audio init failed."); }
+                addSystemMessage("Audio synthesizer online.");
+            } catch(e) { addSystemMessage("Audio API denied."); }
         },
         addNeon: function() {
-            document.documentElement.style.setProperty('--msg-user-bg', '#ec4899'); 
-            document.documentElement.style.setProperty('--accent-primary', '#ec4899');
+            document.documentElement.style.setProperty('--msg-user-bg', '#d946ef'); 
+            document.documentElement.style.setProperty('--accent-primary', '#d946ef');
+            document.body.style.boxShadow = "inset 0 0 50px rgba(217, 70, 239, 0.1)";
         },
         playMusic: function() {
             const audio = document.getElementById('bg-music');
-            audio.play().then(() => addSystemMessage("🎵 Stream active.")).catch(e => addSystemMessage("Interaction required first"));
+            audio.volume = 0.3;
+            audio.play().then(() => addSystemMessage("🎵 Audio stream active.")).catch(e => addSystemMessage("User interaction required first"));
         }
     };
 
-    // --- 4. MATRIX ---
+    // --- 4. MATRIX BACKGROUND ---
     let isMatrixRunning = false;
 
     function initMatrix() {
@@ -288,7 +302,7 @@
         if(!canvas) {
             canvas = document.createElement('canvas');
             canvas.id = 'matrix-canvas';
-            canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;opacity:0.15;pointer-events:none;';
+            canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;opacity:0.2;pointer-events:none;';
             document.body.prepend(canvas);
         }
         if(isMatrixRunning) return; 
@@ -313,9 +327,9 @@
             lastTime = time - (delta % interval);
 
             try {
-                ctx.fillStyle = 'rgba(2, 6, 23, 0.05)'; 
+                ctx.fillStyle = 'rgba(2, 6, 23, 0.05)'; // Fade effect
                 ctx.fillRect(0, 0, width, height);
-                ctx.fillStyle = (adminMode) ? '#ef4444' : '#1e40af'; 
+                ctx.fillStyle = (adminMode) ? '#ef4444' : '#38bdf8'; // Red if admin mode
                 ctx.font = `${fontSize}px 'Fira Code', monospace`;
                 
                 for(let i=0; i<drops.length; i++) {
@@ -335,51 +349,55 @@
 
     // --- 5. UI HELPERS ---
     function addSystemMessage(txt) {
-        try {
-            const box = getBox();
-            const d = document.createElement('div');
-            d.className = "flex justify-center my-4";
-            d.innerHTML = `<span class="px-4 py-1.5 rounded-full text-xs font-semibold tracking-wider text-gray-400 bg-slate-800/50 border border-white/5 shadow-inner">${txt}</span>`;
-            box.appendChild(d);
-            scrollDown();
-        } catch (e) { console.error("Log Error:", e); }
+        const box = getBox();
+        const d = document.createElement('div');
+        d.className = "flex justify-center my-4 z-10";
+        d.innerHTML = `<span class="px-4 py-1.5 rounded-full text-xs font-semibold tracking-wider text-gray-400 bg-slate-800/50 border border-white/5 shadow-inner">${txt}</span>`;
+        box.appendChild(d);
+        scrollDown();
     }
 
     function addAIMessage(txt) {
-        try {
-            const d = document.createElement('div');
-            d.className = "flex gap-3 my-4";
-            d.innerHTML = `<div class="w-8 h-8 rounded-full avatar-gradient-ai shrink-0 flex items-center justify-center shadow-lg ring-2 ring-slate-800"><span class="text-xs font-bold text-white">AI</span></div><div class="flex-1"><div class="bg-slate-800/80 backdrop-blur-md rounded-2xl rounded-tl-none p-4 border border-white/5 shadow-lg text-gray-200 text-sm leading-relaxed">${escapeHtml(txt)}</div></div>`;
-            getBox().appendChild(d);
-            scrollDown();
-        } catch(e) {}
+        const d = document.createElement('div');
+        d.className = "flex gap-3 my-4 z-10";
+        d.innerHTML = `<div class="w-8 h-8 rounded-full avatar-gradient-ai shrink-0 flex items-center justify-center shadow-lg ring-2 ring-slate-800"><span class="text-xs font-bold text-white">AI</span></div><div class="flex-1"><div class="bg-slate-800/80 backdrop-blur-md rounded-2xl rounded-tl-none p-4 border border-white/5 shadow-lg text-gray-200 text-sm leading-relaxed">${escapeHtml(txt)}</div></div>`;
+        getBox().appendChild(d);
+        scrollDown();
     }
 
     function addUserMessage(txt) {
-        try {
-            const d = document.createElement('div');
-            d.className = "flex flex-row-reverse gap-3 my-4 items-end";
-            let avatarHTML = `<div class="w-8 h-8 rounded-full avatar-gradient-user shrink-0 flex items-center justify-center shadow-lg text-xs font-bold text-white">ME</div>`;
-            if (userStats.ascii) {
-                avatarHTML = `<div class="w-10 h-10 rounded-lg bg-slate-900 border border-blue-500/50 flex items-center justify-center shrink-0 overflow-hidden p-1 shadow-lg shadow-blue-500/20">
-                    <div class="ascii-art text-center w-full">${userStats.ascii}</div>
-                </div>`;
-            }
-            d.innerHTML = `${avatarHTML}<div class="flex-1 max-w-[80%]"><div class="bg-blue-600 rounded-2xl rounded-tr-none p-4 shadow-lg shadow-blue-600/20 text-white text-sm leading-relaxed">${escapeHtml(txt)}</div><div class="text-[10px] text-gray-500 text-right mt-1 mr-1 font-mono">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div></div>`;
-            getBox().appendChild(d);
-            scrollDown();
-        } catch (e) { console.error("User Msg Error:", e); }
+        const d = document.createElement('div');
+        d.className = "flex flex-row-reverse gap-3 my-4 items-end z-10";
+        let avatarHTML = `<div class="w-8 h-8 rounded-full avatar-gradient-user shrink-0 flex items-center justify-center shadow-lg text-xs font-bold text-white">ME</div>`;
+        if (userStats.ascii) {
+            avatarHTML = `<div class="w-10 h-10 rounded-lg bg-slate-900 border border-blue-500/50 flex items-center justify-center shrink-0 overflow-hidden p-1 shadow-lg shadow-blue-500/20">
+                <div class="ascii-art text-center w-full">${userStats.ascii}</div>
+            </div>`;
+        }
+        d.innerHTML = `${avatarHTML}<div class="flex-1 max-w-[80%]"><div class="bg-blue-600 rounded-2xl rounded-tr-none p-4 shadow-lg shadow-blue-600/20 text-white text-sm leading-relaxed">${escapeHtml(txt)}</div><div class="text-[10px] text-gray-500 text-right mt-1 mr-1 font-mono">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div></div>`;
+        getBox().appendChild(d);
+        scrollDown();
     }
 
-    function scrollDown() { const b=getBox(); if(b) b.scrollTop=b.scrollHeight; }
-    function escapeHtml(text) { return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+    function scrollDown() { 
+        const b=getBox(); 
+        if(b) {
+            // Smooth scroll to bottom
+            b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' });
+        }
+    }
+    
+    function escapeHtml(text) { 
+        if(!text) return "";
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); 
+    }
 
-    // --- 6. AI LOGIC ---
+    // --- 6. AI LOGIC (FIXED MODEL) ---
     async function handleAI(prompt) {
-        if(!GROQ_API_KEY) return addAIMessage("❌ API Key Missing.");
+        if(!GROQ_API_KEY) return addAIMessage("❌ API Key Missing. Use /setkey YOUR_KEY");
         
         const thinkingId = "think-" + Date.now();
-        getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-gray-500 italic animate-pulse">AI is typing...</div>`);
+        getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-gray-500 italic animate-pulse pl-11">AI is thinking...</div>`);
         scrollDown();
 
         try {
@@ -387,17 +405,16 @@
                 method:"POST",
                 headers:{"Authorization":"Bearer "+GROQ_API_KEY,"Content-Type":"application/json"},
                 body:JSON.stringify({
-                    model:"llama3-8b-8192",
+                    model: MODEL_NAME, // USING NEW MODEL
                     messages:[{
                         role:"system",
-                        content:"You are TermOS AI. If user asks for visual changes, return: SystemRebuilder.install('name'). If user asks for music, return: CMD: PLAY_MUSIC. Otherwise answer normally."
+                        content:"You are TermOS AI, a helpful system assistant. If user asks for visual changes, return exactly this syntax: SystemRebuilder.install('name'). If user asks for music, return: CMD: PLAY_MUSIC. Otherwise answer briefly and conversationally."
                     },{role:"user",content:prompt}]
                 })
             });
             
             const apiData = await r.json();
 
-            // FIX: Safe Parsing to prevent Render Crash
             if (apiData.error) {
                 throw new Error("Groq API: " + apiData.error.message);
             }
@@ -410,14 +427,14 @@
             const el = document.getElementById(thinkingId);
             if(el) el.remove();
             
+            // Check for commands
             let match = reply.match(/SystemRebuilder\.install\(['"](.*?)['"]\)/);
             if(match) { 
                 try { SystemRebuilder.install(match[1]); } catch(e) {}
                 addAIMessage("✨ System updated.");
             }
             else if (reply.includes("CMD: PLAY_MUSIC")) {
-                const audio = document.getElementById('bg-music');
-                if(audio) { audio.play().catch(e => {}); addAIMessage("🎵 Stream active."); }
+                SystemRebuilder.playMusic();
             }
             else { addAIMessage(reply); }
         } catch (e) { 
@@ -448,22 +465,22 @@
         else if (lvl === 8) userStats.ascii = "👁<br>· ·<br>__·__"; 
     }
 
-    // --- 8. EVOLUTION ENGINE ---
+    // --- 8. EVOLUTION ENGINE (FIXED MODEL) ---
     function toggleAdminMode() {
         try {
             let panel = document.getElementById('admin-panel');
             if(!panel) {
-                console.log("Creating Admin Panel dynamically...");
+                // Dynamic creation fallback
                 panel = document.createElement('div');
                 panel.id = 'admin-panel';
                 panel.className = "admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border border-red-500/30 shadow-2xl shadow-red-500/10";
                 panel.innerHTML = `
-                <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> ADMIN CONSOLE (DYNAMIC)</h3>
+                <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> ADMIN CONSOLE</h3>
                 <div class="space-y-3">
-                    <div><label class="block text-xs text-gray-500 mb-1">GitHub Token (Classic)</label><input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
+                    <div><label class="block text-xs text-gray-500 mb-1">GitHub Token</label><input type="password" id="gh-token" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
                     <div class="grid grid-cols-2 gap-2">
-                        <div><label class="text-xs text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" placeholder="username" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"></div>
-                        <div><label class="text-xs text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" placeholder="repo-name" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"></div>
+                        <div><label class="text-xs text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"></div>
+                        <div><label class="text-xs text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"></div>
                     </div>
                     <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors">🧬 INITIATE EVOLUTION</button>
                 </div>`;
@@ -482,8 +499,6 @@
 
     async function initiateEvolution() {
         try {
-            if (!GROQ_API_KEY) return alert("Missing Groq API Key.");
-            
             const tkInput = document.getElementById('gh-token');
             const ownInput = document.getElementById('gh-owner');
             const repInput = document.getElementById('gh-repo');
@@ -494,31 +509,31 @@
             const owner = ownInput.value.trim();
             const repo = repInput.value.trim();
 
-            if (!token) return alert("Please enter your GitHub Token.");
-            if (!owner || !repo) return alert("Please enter Repo Owner and Name.");
+            if (!token) return addSystemMessage("❌ Please enter GitHub Token.");
+            if (!owner || !repo) return addSystemMessage("❌ Please enter Repo Owner and Name.");
             
             localStorage.setItem('termos_github_token', token);
             localStorage.setItem('termos_repo_owner', owner);
             localStorage.setItem('termos_repo_name', repo);
 
-            const input = prompt("Enter your mutation request (e.g., 'Change Matrix color to red'):");
+            const input = prompt("Enter your mutation request (e.g., 'Change Matrix color to hot pink'):");
             if (!input) return;
 
-            addSystemMessage("🧬 INITIATING EVOLUTION SEQUENCE...");
-            addSystemMessage("📡 READING DNA FROM GITHUB...");
+            addSystemMessage("🧬 INITIATING EVOLUTION...");
+            addSystemMessage("📡 CLONING SOURCE DNA...");
             
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000); 
+            const timeoutId = setTimeout(() => controller.abort(), 40000); // 40s timeout for 70b model
 
             try {
                 const url = `https://api.github.com/repos/${owner}/${repo}/contents/${FILE_PATH}`;
                 const res = await fetch(url, { 
-                    headers: { 'Authorization': `token ${token}` }, signal: controller.signal 
+                    headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }, 
+                    signal: controller.signal 
                 });
                 
                 if (!res.ok) {
-                    const errText = await res.text();
-                    throw new Error(`GitHub Read Failed: ${res.status}`);
+                    throw new Error(`GitHub Read Failed (${res.status}): Check repo/token permissions.`);
                 }
 
                 const data = await res.json();
@@ -526,39 +541,48 @@
 
                 addSystemMessage("🧬 ANALYZING DNA & MUTATING...");
 
-                const evolutionPrompt = `You are an expert web developer. TASK: Modify existing HTML code to fulfill "${input}". 
-                Return ONLY full modified HTML code. Do NOT include markdown code blocks (like \`\`\`html) in your response. Just return the raw code.`;
+                // Prompt for the larger model
+                const evolutionPrompt = `You are an expert frontend engineer. TASK: Modify the provided HTML/JS code to fulfill: "${input}". 
+                CRITICAL CONSTRAINTS:
+                1. Return ONLY the full modified code.
+                2. Do NOT wrap code in markdown blocks (like \`\`\`html).
+                3. Do NOT include conversational text before or after the code.
+                4. Ensure all existing IDs and classes remain to prevent UI breakage.`;
 
-                // FIX: USE STABLE MODEL
                 const aiReq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                     signal: controller.signal,
                     body: JSON.stringify({
-                        // CHANGED TO: llama3-8b-8192 (STABLE)
-                        model: "llama3-8b-8192", 
+                        model: MODEL_NAME, // FIX: Using the correct model
                         messages: [
-                            { role: "system", content: "You are a code generator. Return ONLY raw HTML code." }, 
+                            { role: "system", content: "You are a code generator. You output only raw code." }, 
                             { role: "user", content: evolutionPrompt + "\n\nCODE:\n" + currentContent }
                         ],
-                        temperature: 0.7
+                        temperature: 0.5, // Lower temp for code stability
+                        max_tokens: 8000
                     })
                 });
                 
                 const aiData = await aiReq.json();
 
                 if (aiData.error) {
-                    throw new Error(`Groq API: ${aiData.error.message} (${aiData.error.code})`);
+                    throw new Error(`AI Generation Error: ${aiData.error.message}`);
                 }
                 if (!aiData.choices || aiData.choices.length === 0) {
-                    throw new Error("Groq returned no data. Model may be overloaded.");
-                }
-                if (!aiData.choices[0].message || !aiData.choices[0].message.content) {
-                    throw new Error("Groq returned empty content.");
+                    throw new Error("AI returned empty content.");
                 }
 
                 let newCode = aiData.choices[0].message.content;
+                
+                // Aggressive cleanup of markdown wrappers if the model hallucinates them
                 newCode = newCode.replace(/```html/g, "").replace(/```/g, "").trim();
+                // Ensure it starts with < and ends with > to be valid HTML
+                if(!newCode.startsWith("<")) {
+                     // Try to find the first HTML tag
+                     const match = newCode.match(/<.*?>/s);
+                     if(match) newCode = newCode.substring(match.index);
+                }
 
                 addSystemMessage("🧬 UPLOADING MUTATED DNA...");
                 const putUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${FILE_PATH}`;
@@ -585,13 +609,13 @@
                 }
 
                 clearTimeout(timeoutId);
-                addSystemMessage("🎉 EVOLUTION SUCCESS. REBOOTING...");
+                addSystemMessage("🎉 EVOLUTION SUCCESS. REBOOTING SYSTEM...");
                 setTimeout(() => location.reload(), 2000);
 
             } catch (err) {
                 clearTimeout(timeoutId);
                 let errorMsg = err.message;
-                if (err.name === 'AbortError') errorMsg = "Connection Timed Out (30s). Try a smaller request.";
+                if (err.name === 'AbortError') errorMsg = "Operation Timed Out (Model processing took too long).";
                 addSystemMessage("❌ EVOLUTION FAILED: " + errorMsg);
                 console.error("Evolution Stack:", err);
             }
@@ -615,10 +639,13 @@
                     adminMode = true;
                     toggleAdminMode();
                     addSystemMessage("🔴 ADMIN MODE ENABLED.");
+                    // Trigger redraw to change matrix color
+                    initMatrix();
                 } else if (cmd === 'disable') {
                     adminMode = false;
                     toggleAdminMode(); 
                     addSystemMessage("🟢 ADMIN MODE DISABLED.");
+                    initMatrix();
                 }
                 inp.value = '';
                 return;
@@ -630,8 +657,8 @@
             else if(txt.startsWith('/setkey ')) {
                 GROQ_API_KEY = txt.substring(8);
                 localStorage.setItem('termos_groq_key', GROQ_API_KEY);
-                updateStatusDot(true); // Update visual status
-                addSystemMessage("✅ API Key Updated.");
+                updateStatusDot(true); 
+                addSystemMessage("✅ API Key Updated to " + GROQ_API_KEY.substring(0,5) + "...");
             }
             else if(txt.startsWith('/ai ')) {
                 handleAI(txt.substring(4));
@@ -647,7 +674,6 @@
                         mqttClient.send(message);
                     } catch (e) {
                         console.error("MQTT Send Error:", e);
-                        addSystemMessage("⚠️ Message failed to send.");
                     }
                 }
             }
@@ -662,10 +688,13 @@
                 timeout: 10, useSSL: true, keepAliveInterval: 60,
                 onSuccess: () => {
                     console.log("[MQTT] Connected");
-                    addSystemMessage("🟢 Neural Link Online.");
+                    // addSystemMessage("🟢 Neural Link Online."); // Optional: keep clean
                     mqttClient.subscribe("termos/v3/chat", { qos: 1 });
                 },
-                onFailure: () => { addSystemMessage("🔴 Connection Failed."); setTimeout(connectMQTT, 5000); }
+                onFailure: (response) => { 
+                    console.log("MQTT Fail", response);
+                    setTimeout(connectMQTT, 5000); 
+                }
             };
             mqttClient.connect(options);
         } catch (e) {
@@ -678,11 +707,9 @@
         console.log(">> DOM LOADED. INITIALIZING APP...");
         
         try {
-            // Visual Status Check
             updateStatusDot(!!GROQ_API_KEY);
 
             if(!document.getElementById('chat-container')) {
-                console.warn("⚠️ 'chat-container' ID missing. Creating dynamically...");
                 const box = document.createElement('div');
                 box.id = 'chat-container';
                 box.className = "flex flex-col h-full w-full p-4 overflow-y-auto z-10";
@@ -695,6 +722,7 @@
                 catch(e) { console.warn("Stats Corrupt."); }
             }
 
+            // Restore Admin inputs
             const tkInput = document.getElementById('gh-token');
             const ownerInput = document.getElementById('gh-owner');
             const repoInput = document.getElementById('gh-repo');
@@ -705,12 +733,12 @@
 
             initMatrix();
 
+            // MQTT Setup
             if (typeof Paho !== 'undefined') {
-                console.log("Paho MQTT found. Connecting...");
                 const clientId = "termos_client_" + Math.random().toString(16).substr(2, 8);
                 mqttClient = new Paho.MQTT.Client(MQTT_BROKER_URL, clientId);
                 mqttClient.onConnectionLost = () => { 
-                    addSystemMessage("⚠️ Lost. Reconnecting..."); 
+                    // Don't spam chat on reconnect, just log
                     setTimeout(connectMQTT, 5000); 
                 };
                 mqttClient.onMessageArrived = (message) => {
@@ -722,37 +750,63 @@
                     } catch(e) { }
                 };
                 connectMQTT();
-            } else {
-                addSystemMessage("⚠️ MQTT Library not loaded.");
             }
 
+            // Event Listeners
             const sendBtn = document.getElementById('send-btn');
             if(sendBtn) sendBtn.onclick = handleInput;
             
             const userInput = document.getElementById('user-input');
             if(userInput) {
                 userInput.addEventListener('keypress',e=>{ if(e.key==='Enter') handleInput(); });
+                userInput.focus();
             }
 
-            if ('webkitSpeechRecognition' in window) {
-                const r = new webkitSpeechRecognition();
+            // Web Speech API
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const r = new SpeechRecognition();
+                r.continuous = false;
+                r.interimResults = false;
+                r.lang = 'en-US';
+
                 const voiceBtn = document.getElementById('voice-btn');
                 if(voiceBtn) {
-                    voiceBtn.onclick = () => { r.start(); };
-                    r.onresult = (e) => { if(userInput) userInput.value = e.results[0][0].transcript; };
+                    voiceBtn.onclick = () => { 
+                        voiceBtn.classList.add('text-red-400', 'animate-pulse');
+                        r.start(); 
+                    };
+                    r.onresult = (e) => { 
+                        if(userInput) userInput.value = e.results[0][0].transcript; 
+                        voiceBtn.classList.remove('text-red-400', 'animate-pulse');
+                    };
+                    r.onerror = () => {
+                        voiceBtn.classList.remove('text-red-400', 'animate-pulse');
+                    }
+                    r.onend = () => {
+                        voiceBtn.classList.remove('text-red-400', 'animate-pulse');
+                    }
                 }
             }
 
+            // PWA Install Button (Fake logic for demo)
             const installBtn = document.getElementById('install-btn');
-            if(installBtn) installBtn.classList.remove('hidden');
+            if(installBtn && window.deferredPrompt) {
+                installBtn.classList.remove('hidden');
+                installBtn.onclick = () => {
+                    window.deferredPrompt.prompt();
+                    window.deferredPrompt.userChoice.then((choiceResult) => {
+                        if (choiceResult.outcome === 'accepted') {
+                            console.log('User accepted the A2HS prompt');
+                        }
+                        window.deferredPrompt = null;
+                    });
+                };
+            }
 
         } catch (e) {
             console.error("INITIALIZATION FAILED:", e);
-            const d = document.createElement('div');
-            d.style.color = "white";
-            d.style.padding = "20px";
-            d.innerText = "CRITICAL ERROR: " + e.message;
-            document.body.appendChild(d);
+            addSystemMessage("⚠️ System Init Error: " + e.message);
         }
     };
 
@@ -761,11 +815,11 @@
         const dot = document.getElementById('api-status-dot');
         if(dot) {
             if(active) {
-                dot.classList.remove('bg-red-500');
-                dot.classList.add('bg-green-500');
+                dot.classList.remove('bg-red-500', 'animate-pulse');
+                dot.classList.add('bg-green-500', 'shadow-[0_0_8px_rgba(34,197,94,0.8)]');
             } else {
-                dot.classList.remove('bg-green-500');
-                dot.classList.add('bg-red-500');
+                dot.classList.remove('bg-green-500', 'shadow-[0_0_8px_rgba(34,197,94,0.8)]');
+                dot.classList.add('bg-red-500', 'animate-pulse');
             }
         }
     }
@@ -773,6 +827,10 @@
     // Global Error Catcher
     window.onerror = function(message, source, lineno, colno, error) {
         console.error("Global Error:", message);
+        // Only show critical errors in UI to avoid noise
+        if(message.includes("Groq") || message.includes("GitHub")) {
+            addSystemMessage("⚠️ " + message);
+        }
     };
 </script>
 </body>
