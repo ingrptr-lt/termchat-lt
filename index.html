@@ -3,21 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: Smart Evolution</title>
-    
+    <title>TermOS: Stable</title>
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-
     <style>
-        :root {
-            --glass-bg: rgba(15, 23, 42, 0.75);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --accent-primary: #38bdf8;
-            --msg-user-bg: #3b82f6;
-            --msg-ai-bg: #1e293b;
-        }
+        :root { --glass-bg: rgba(15, 23, 42, 0.75); --glass-border: rgba(255, 255, 255, 0.1); --accent-primary: #38bdf8; --msg-user-bg: #3b82f6; --msg-ai-bg: #1e293b; }
         body { background-color: #020617; color: #e2e8f0; font-family: 'Inter', sans-serif; overflow: hidden; }
         #matrix-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.15; pointer-events: none; }
         ::-webkit-scrollbar { width: 4px; }
@@ -28,16 +20,10 @@
         .avatar-gradient-ai { background: linear-gradient(135deg, #10b981, #059669); }
         .input-glow:focus-within { box-shadow: 0 0 20px rgba(56, 189, 248, 0.25); border-color: rgba(56, 189, 248, 0.5); }
         .admin-hidden { display: none; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
-        .pulse-red { animation: pulse-red-2 2s infinite; }
-        @keyframes pulse-red-2 { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col relative">
-
-    <!-- 1. BACKGROUND -->
     <canvas id="matrix-canvas"></canvas>
-
-    <!-- 2. HEADER -->
     <header id="app-header" class="fixed top-0 left-0 right-0 z-20 glass-panel border-b-0 border-b-white/5 h-16 flex items-center justify-between px-4 lg:px-8">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
@@ -52,41 +38,33 @@
             </div>
         </div>
         <div class="flex items-center gap-4">
-            <button onclick="requestApiKey()" id="key-btn" class="hidden md:flex bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white text-[10px] font-mono px-2 py-1 rounded border border-white/10 transition-all">🔑 SET KEY</button>
+            <button onclick="requestApiKey()" id="key-btn" class="hidden md:flex bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white text-[10px] font-mono px-2 py-1 rounded border border-white/10 transition-all">🔑 KEY</button>
             <div class="hidden md:flex flex-col items-end">
                 <span class="text-xs text-gray-400 font-mono">LVL <span id="lvl-disp" class="text-blue-400 font-bold">1</span></span>
                 <span class="text-[10px] text-gray-600 font-mono">XP <span id="xp-val">0</span></span>
             </div>
         </div>
     </header>
-
-    <!-- 3. CHAT AREA -->
     <main id="chat-container" class="flex-1 overflow-y-auto pt-20 pb-32 px-4 z-10 scroll-smooth max-w-5xl mx-auto w-full"></main>
-
-    <!-- 4. INPUT AREA -->
     <div class="fixed bottom-0 left-0 w-full z-30 glass-panel border-t border-white/5 pb-6 pt-4 px-4">
         <div class="max-w-4xl mx-auto">
             <div class="flex items-end gap-2 bg-slate-900/80 rounded-2xl p-2 border border-white/5 shadow-2xl input-glow transition-all">
                 <button id="voice-btn" class="p-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8h4m-4 8H8"></path></svg>
                 </button>
-                <input type="text" id="user-input" placeholder="Type a message... Try '/evolve change header color'" autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light">
+                <input type="text" id="user-input" placeholder="Type... Try '/evolve make header red'" autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light">
                 <button id="send-btn" class="p-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all transform active:scale-95 shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
                 </button>
             </div>
             <div class="text-center mt-2">
-                <button onclick="resetEvolution()" class="text-[10px] text-red-500/50 hover:text-red-400 transition-colors">⚠️ Reset Mutations</button>
+                <button onclick="forceReset()" class="text-[10px] text-red-500/50 hover:text-red-400 transition-colors">⚠️ Force Reset / Clear Cache</button>
             </div>
         </div>
     </div>
-
-<!-- EXPOSED ADMIN BUTTON -->
 <div class="fixed top-4 right-4 z-50">
     <button onclick="toggleAdminMode()" id="admin-toggle-text" class="bg-slate-900/50 hover:bg-red-900/50 border border-slate-700 hover:border-red-500 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-2"><span>🔴</span> GITHUB</button>
 </div>
-
-<!-- ADMIN CONSOLE -->
 <div id="admin-panel" class="admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border border-red-500/30 shadow-2xl shadow-red-500/10">
     <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> GITHUB CONSOLE</h3>
     <div class="space-y-2">
@@ -97,23 +75,13 @@
         <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors shadow-lg shadow-red-600/20 active:scale-95 mt-2">🧬 COMMIT TO GITHUB</button>
     </div>
 </div>
-
-<!-- =========================================================== -->
-<!--  KERNEL: SMART LOCAL EVOLUTION -->
-<!-- =========================================================== -->
 <script>
-    console.log(">> BOOTING TERMOS SMART EVO...");
-
-    // --- 1. CONFIG ---
     const API_MODEL = "llama-3.3-70b-versatile"; 
-    
     let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || "";
     let GITHUB_TOKEN = localStorage.getItem('termos_github_token') || "";
     let REPO_OWNER = localStorage.getItem('termos_repo_owner') || "your-username";
     let REPO_NAME = localStorage.getItem('termos_repo_name') || "termchat-lt";
     let REPO_BRANCH = localStorage.getItem('termos_repo_branch') || "main"; 
-    const FILE_PATH = "index.html";
-    
     const MQTT_BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
     let username = 'User_' + Math.floor(Math.random() * 10000);
     let mqttClient = null;
@@ -122,20 +90,18 @@
     let installedModules = [];
     let adminMode = false;
 
-    // --- 2. SMART EVOLUTION (The Fix) ---
-    function resetEvolution() {
-        if(confirm("Reset all local mutations?")) {
-            localStorage.removeItem('termos_mutations');
+    function forceReset() {
+        if(confirm("Force clear all data (Keys, Stats, Mutations)?")) {
+            localStorage.clear();
             location.reload();
         }
     }
 
     async function handleLocalEvolution(prompt) {
         if(!GROQ_API_KEY) return requestApiKey();
-        
-        addSystemMessage("🧬 Generating Local Mutation...");
+        addSystemMessage("🧬 Generating...");
         const thinkingId = "think-" + Date.now();
-        getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-gray-500 italic animate-pulse pl-11">AI is coding...</div>`);
+        getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-gray-500 italic animate-pulse pl-11">AI Coding...</div>`);
         scrollDown();
 
         try {
@@ -148,45 +114,33 @@
                         role:"system",
                         content:`You are a front-end expert. TASK: Write JAVASCRIPT code to: "${prompt}". 
                         CRITICAL RULES:
-                        1. Return ONLY the raw Javascript code. No markdown blocks, no explanation.
+                        1. Return ONLY raw Javascript code. No markdown blocks, no explanation.
                         2. Use standard DOM manipulation (document.querySelector, etc.).
                         3. Target existing IDs like 'app-header', 'matrix-canvas', 'user-input'.
-                        4. DO NOT try to fetch external APIs. Just manipulate the DOM.
+                        4. DO NOT try to fetch external APIs. Just manipulate DOM.
                         5. Example: "Make header pink" -> document.getElementById('app-header').classList.add('bg-pink-500');`
                     },{role:"user",content:prompt}]
                 })
             });
             
             const apiData = await r.json();
-
             if (apiData.error) throw new Error("Groq: " + apiData.error.message);
             if (!apiData.choices || apiData.choices.length === 0) throw new Error("No choices returned.");
             
             let code = apiData.choices[0].message.content;
-            
-            // Cleanup
             code = code.replace(/```javascript/g, "").replace(/```js/g, "").replace(/```/g, "").trim();
             
             const el = document.getElementById(thinkingId); if(el) el.remove();
-
-            // Execute
             try {
-                // We use Function constructor for scope isolation (safer than global eval, but still eval)
                 const func = new Function(code);
                 func();
-                
                 addSystemMessage("✅ Mutation Applied.");
-                
-                // Save to history
                 let history = JSON.parse(localStorage.getItem('termos_mutations') || "[]");
                 history.push({ date: new Date().toISOString(), prompt: prompt, code: code });
                 localStorage.setItem('termos_mutations', JSON.stringify(history));
-
             } catch (execErr) {
                 addSystemMessage("❌ Runtime Error: " + execErr.message);
-                addSystemMessage("Code: " + code.substring(0, 100) + "...");
             }
-
         } catch (e) { 
             const el = document.getElementById(thinkingId); if(el) el.remove();
             addSystemMessage("❌ AI Error: " + e.message); 
@@ -196,20 +150,14 @@
     function loadMutations() {
         let history = JSON.parse(localStorage.getItem('termos_mutations') || "[]");
         if(history.length > 0) {
-            addSystemMessage(`📂 Loading ${history.length} stored mutations...`);
+            addSystemMessage(`📂 Loading ${history.length} mutations...`);
             history.forEach((item, index) => {
-                try {
-                    const func = new Function(item.code);
-                    func();
-                } catch(e) {
-                    console.error("Failed to load mutation " + index, e);
-                }
+                try { new Function(item.code)(); } 
+                catch(e) { console.error("Mut " + index + " failed", e); }
             });
-            addSystemMessage(`✅ System State Restored.`);
         }
     }
 
-    // --- 3. API KEY HANDLER ---
     function requestApiKey() {
         const key = prompt("🔑 GROQ API KEY REQUIRED\n\nStatus: " + (GROQ_API_KEY ? "Set" : "Empty"));
         if (key !== null) {
@@ -237,7 +185,6 @@
         return el;
     }
 
-    // --- 4. MODULES ---
     const SystemRebuilder = {
         install: function(name) {
             name = name.toLowerCase().trim();
@@ -274,16 +221,15 @@
             document.body.style.boxShadow = "inset 0 0 50px rgba(217, 70, 239, 0.1)";
         },
         playMusic: function() {
-            addSystemMessage("🎵 Audio Module: Simulated Playback.");
+            addSystemMessage("🎵 Audio Module: Simulated.");
         }
     };
 
-    // --- 5. MATRIX ---
     let isMatrixRunning = false;
     function initMatrix() {
         const canvas = document.getElementById('matrix-canvas');
-        if(!canvas) return;
-        if(isMatrixRunning) return; isMatrixRunning = true;
+        if(!canvas || isMatrixRunning) return; 
+        isMatrixRunning = true;
         const ctx = canvas.getContext('2d');
         let width = canvas.width = window.innerWidth;
         let height = canvas.height = window.innerHeight;
@@ -315,7 +261,6 @@
         window.addEventListener('resize', () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; });
     }
 
-    // --- 6. UI HELPERS ---
     function addSystemMessage(txt) {
         const box = getBox();
         const d = document.createElement('div');
@@ -345,56 +290,39 @@
     function scrollDown() { const b=getBox(); if(b) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }); }
     function escapeHtml(text) { if(!text) return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
-    // --- 7. AI LOGIC ---
     async function handleAI(prompt) {
         if(!GROQ_API_KEY) return requestApiKey();
         const thinkingId = "think-" + Date.now();
         getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-gray-500 italic animate-pulse pl-11">Processing...</div>`);
         scrollDown();
-
         try {
             let r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method:"POST",
                 headers:{"Authorization":"Bearer "+GROQ_API_KEY,"Content-Type":"application/json"},
                 body:JSON.stringify({
                     model: API_MODEL,
-                    messages:[{
-                        role:"system",
-                        content:"You are TermOS AI. User commands: visual changes -> SystemRebuilder.install('name'). music -> CMD: PLAY_MUSIC. Otherwise answer briefly."
-                    },{role:"user",content:prompt}]
+                    messages:[{ role:"system", content:"You are TermOS AI. User commands: visual changes -> SystemRebuilder.install('name'). music -> CMD: PLAY_MUSIC. Otherwise answer briefly." },{role:"user",content:prompt}]
                 })
             });
-            
             const apiData = await r.json();
-
             if (apiData.error) {
-                const errMsg = apiData.error.message;
-                if (errMsg.includes("Invalid API Key") || errMsg.includes("401")) {
+                if (apiData.error.message.includes("Invalid API Key") || apiData.error.message.includes("401")) {
                     const el = document.getElementById(thinkingId); if(el) el.remove();
                     requestApiKey();
                     return; 
                 }
-                throw new Error("Groq: " + errMsg);
+                throw new Error("Groq: " + apiData.error.message);
             }
             if (!apiData.choices || apiData.choices.length === 0) throw new Error("No choices returned.");
-            
             const reply = apiData.choices[0].message.content;
             const el = document.getElementById(thinkingId); if(el) el.remove();
-            
             let match = reply.match(/SystemRebuilder\.install\(['"](.*?)['"]\)/);
-            if(match) { 
-                try { SystemRebuilder.install(match[1]); } catch(e) {}
-                addAIMessage("✨ System updated.");
-            }
+            if(match) { try { SystemRebuilder.install(match[1]); } catch(e) {} addAIMessage("✨ System updated."); }
             else if (reply.includes("CMD: PLAY_MUSIC")) { SystemRebuilder.playMusic(); }
             else { addAIMessage(reply); }
-        } catch (e) { 
-            const el = document.getElementById(thinkingId); if(el) el.remove();
-            addAIMessage("Error: " + e.message); 
-        }
+        } catch (e) { const el = document.getElementById(thinkingId); if(el) el.remove(); addAIMessage("Error: " + e.message); }
     }
 
-    // --- 8. GAMIFICATION ---
     function addXP(amount) {
         userStats.xp += amount;
         if(userStats.xp > (userStats.level * 100)) {
@@ -414,7 +342,6 @@
         else if (lvl === 8) userStats.ascii = "👁<br>· ·<br>__·__"; 
     }
 
-    // --- 9. GITHUB ENGINE (Kept for advanced users) ---
     function toggleAdminMode() {
         let panel = document.getElementById('admin-panel');
         if(!panel) {
@@ -424,7 +351,6 @@
             panel.innerHTML = `<h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> GITHUB CONSOLE</h3><div class="space-y-2"><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Branch</label><input type="text" id="gh-branch" value="main" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Token</label><input type="password" id="gh-token" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors shadow-lg shadow-red-600/20 active:scale-95 mt-2">🧬 COMMIT TO GITHUB</button></div>`;
             document.body.appendChild(panel);
         }
-        
         if (panel.classList.contains('admin-hidden')) {
             panel.classList.remove('admin-hidden');
             setTimeout(() => { panel.style.opacity = "1"; }, 10);
@@ -457,16 +383,13 @@
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 40000); 
         try {
-            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${FILE_PATH}?ref=${branch}`;
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/index.html?ref=${branch}`;
             const res = await fetch(url, { headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }, signal: controller.signal });
-            if (!res.ok) {
-                const errText = await res.json();
-                throw new Error(`GitHub Read (${res.status}): ${errText.message || "Check Branch Name/Permissions"}`);
-            }
+            if (!res.ok) { const errText = await res.json(); throw new Error(`GitHub Read (${res.status}): ${errText.message}`); }
             const data = await res.json();
-            if(!data.content) throw new Error("File not found in repo.");
+            if(!data.content) throw new Error("File not found.");
             const currentContent = atob(data.content);
-            addSystemMessage("🧬 MUTATING DNA...");
+            addSystemMessage("🧬 MUTATING...");
             const evolutionPrompt = `Modify HTML/JS to: "${input}". Return ONLY raw code. No markdown.`;
             const aiReq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
@@ -480,14 +403,14 @@
             });
             const aiData = await aiReq.json();
             if (aiData.error) throw new Error(`AI Error: ${aiData.error.message}`);
-            if (!aiData.choices || aiData.choices.length === 0) throw new Error("AI returned empty.");
+            if (!aiData.choices || aiData.choices.length === 0) throw new Error("AI empty.");
             let newCode = aiData.choices[0].message.content;
             if (newCode.startsWith("```html")) newCode = newCode.substring(7);
             else if (newCode.startsWith("```")) newCode = newCode.substring(3);
             if (newCode.endsWith("```")) newCode = newCode.substring(0, newCode.length - 3);
             newCode = newCode.trim();
             addSystemMessage("🧬 UPLOADING...");
-            const putUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${FILE_PATH}`;
+            const putUrl = `https://api.github.com/repos/${owner}/${repo}/contents/index.html`;
             const encodedContent = btoa(unescape(encodeURIComponent(newCode)));
             const putRes = await fetch(putUrl, {
                 method: 'PUT',
@@ -500,7 +423,6 @@
                 }),
                 signal: controller.signal
             });
-            console.log(`[DEBUG] PUT Status: ${putRes.status}`);
             if (!putRes.ok) {
                 let errorMsg = "Unknown";
                 try { const errorData = await putRes.json(); errorMsg = errorData.message || JSON.stringify(errorData); } catch (e) { errorMsg = await putRes.text(); }
@@ -511,31 +433,30 @@
             setTimeout(() => location.reload(), 2000);
         } catch (err) {
             clearTimeout(timeoutId);
-            console.error("[DEBUG] Evolution Error:", err);
+            console.error(err);
             addSystemMessage("❌ FAIL: " + err.message);
-            if(err.message.includes("401") || err.message.includes("403")) addSystemMessage("💡 Hint: Check GitHub Token permissions.");
+            if(err.message.includes("403")) addSystemMessage("💡 Hint: Check GitHub Token permissions.");
         }
     }
 
-    // --- 10. INPUT HANDLER ---
     function handleInput() {
         try {
             let inp = document.getElementById('user-input');
             if(!inp) return; 
             let txt = inp.value.trim(); 
             if(!txt) return;
-
-            // SMART FIX: Handle /evolve
-            if(txt.startsWith('/evolve ')) {
-                handleLocalEvolution(txt.substring(8));
+            if(txt.startsWith('/evolve')) {
+                let prompt = "";
+                if(txt === '/evolve') { prompt = prompt("Describe change:"); } 
+                else { prompt = txt.substring(8); }
+                if(prompt) { handleLocalEvolution(prompt); }
                 inp.value = '';
                 return;
             }
-
             if(txt.startsWith('/admin ')) {
                 const cmd = txt.split(' ')[1];
-                if (cmd === 'enable') { adminMode = true; toggleAdminMode(); addSystemMessage("🔴 ADMIN MODE ON"); initMatrix(); }
-                else if (cmd === 'disable') { adminMode = false; toggleAdminMode(); addSystemMessage("🟢 ADMIN MODE OFF"); initMatrix(); }
+                if (cmd === 'enable') { adminMode = true; toggleAdminMode(); addSystemMessage("🔴 ADMIN ON"); initMatrix(); }
+                else if (cmd === 'disable') { adminMode = false; toggleAdminMode(); addSystemMessage("🟢 ADMIN OFF"); initMatrix(); }
                 inp.value = '';
                 return;
             }
@@ -558,7 +479,6 @@
         } catch (e) { console.error(e); }
     }
 
-    // --- 11. INIT ---
     function connectMQTT() {
         try {
             mqttClient.connect({
@@ -570,22 +490,17 @@
     }
 
     window.onload = function() {
-        console.log(">> SYSTEM LOADED SMART EVO");
+        console.log(">> SYSTEM LOADED STABLE");
         updateStatusDot(!!GROQ_API_KEY);
         if(!document.getElementById('chat-container')) {
             document.body.innerHTML += `<div id="chat-container" class="flex flex-col h-full w-full p-4 overflow-y-auto z-10"></div>`;
         }
-        
         document.getElementById('gh-token').value = GITHUB_TOKEN;
         document.getElementById('gh-owner').value = REPO_OWNER;
         document.getElementById('gh-repo').value = REPO_NAME;
         document.getElementById('gh-branch').value = REPO_BRANCH;
-
         initMatrix();
-        
-        // LOAD SAVED MUTATIONS
         loadMutations();
-
         if (typeof Paho !== 'undefined') {
             mqttClient = new Paho.MQTT.Client(MQTT_BROKER_URL, "termos_client_" + Math.random().toString(16).substr(2, 8));
             mqttClient.onConnectionLost = () => { setTimeout(connectMQTT, 5000); };
@@ -597,10 +512,8 @@
             };
             connectMQTT();
         }
-
         const sendBtn = document.getElementById('send-btn');
         if(sendBtn) sendBtn.onclick = handleInput;
-        
         const userInput = document.getElementById('user-input');
         if(userInput) {
             userInput.addEventListener('keypress',e=>{ if(e.key==='Enter') handleInput(); });
@@ -623,11 +536,7 @@
             }
         }
     }
-
-    window.onerror = function(msg, src, line) {
-        console.error(msg);
-        if(msg.includes("Groq")) addSystemMessage("⚠️ " + msg);
-    };
+    window.onerror = function(msg) { console.error(msg); if(msg.includes("Groq")) addSystemMessage("⚠️ " + msg); };
 </script>
 </body>
 </html>
