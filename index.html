@@ -113,7 +113,6 @@
             <div>
                 <h1 class="font-bold text-lg tracking-wide text-white">TERMOS <span class="text-blue-400">LT</span></h1>
                 <div class="flex items-center gap-2 text-xs text-gray-400">
-                    <!-- Dynamic Status Dot -->
                     <div id="api-status-dot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
                     <span id="room-display">GLOBAL LOBBY</span>
                 </div>
@@ -350,7 +349,7 @@
         try {
             const d = document.createElement('div');
             d.className = "flex gap-3 my-4";
-            d.innerHTML = `<div class="w-8 h-8 rounded-full avatar-gradient-ai shrink-0 flex items-center justify-center shadow-lg ring-2 ring-slate-800"><span class="text-xs font-bold text-white">AI</span></div><div class="flex-1"><div class="bg-slate-800/80 backdrop-blur-md rounded-2xl rounded-tl-none p-4 border border-white/5 shadow-lg text-gray-200 text-sm leading-relaxed">${escapeHtml(txt)}</div></div></div>`;
+            d.innerHTML = `<div class="w-8 h-8 rounded-full avatar-gradient-ai shrink-0 flex items-center justify-center shadow-lg ring-2 ring-slate-800"><span class="text-xs font-bold text-white">AI</span></div><div class="flex-1"><div class="bg-slate-800/80 backdrop-blur-md rounded-2xl rounded-tl-none p-4 border border-white/5 shadow-lg text-gray-200 text-sm leading-relaxed">${escapeHtml(txt)}</div></div>`;
             getBox().appendChild(d);
             scrollDown();
         } catch(e) {}
@@ -398,7 +397,7 @@
             
             const apiData = await r.json();
 
-            // FIX: Safe Parsing
+            // FIX: Safe Parsing to prevent Render Crash
             if (apiData.error) {
                 throw new Error("Groq API: " + apiData.error.message);
             }
@@ -528,14 +527,16 @@
                 addSystemMessage("🧬 ANALYZING DNA & MUTATING...");
 
                 const evolutionPrompt = `You are an expert web developer. TASK: Modify existing HTML code to fulfill "${input}". 
-                Return ONLY full modified HTML code. Do NOT include markdown code blocks (like \`\`\`html) in your response. Just the raw code.`;
+                Return ONLY full modified HTML code. Do NOT include markdown code blocks (like \`\`\`html) in your response. Just return the raw code.`;
 
+                // FIX: USE STABLE MODEL
                 const aiReq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
                     signal: controller.signal,
                     body: JSON.stringify({
-                        model: "llama3-70b-8192", 
+                        // CHANGED TO: llama3-8b-8192 (STABLE)
+                        model: "llama3-8b-8192", 
                         messages: [
                             { role: "system", content: "You are a code generator. Return ONLY raw HTML code." }, 
                             { role: "user", content: evolutionPrompt + "\n\nCODE:\n" + currentContent }
@@ -627,7 +628,6 @@
                 if(SystemRebuilder) SystemRebuilder.install(txt.split(' ')[2]);
             }
             else if(txt.startsWith('/setkey ')) {
-                // Save new key to localStorage and runtime variable
                 GROQ_API_KEY = txt.substring(8);
                 localStorage.setItem('termos_groq_key', GROQ_API_KEY);
                 updateStatusDot(true); // Update visual status
