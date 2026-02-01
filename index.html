@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: Safe Boot</title>
+    <title>TermOS: Background Player</title>
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
@@ -19,10 +19,61 @@
         .avatar-gradient-user { background: linear-gradient(135deg, #3b82f6, #8b5cf6); }
         .avatar-gradient-ai { background: linear-gradient(135deg, #10b981, #059669); }
         .avatar-gradient-neural { background: linear-gradient(135deg, #06b6d4, #3b82f6); }
-        .avatar-gradient-room { background: linear-gradient(135deg, #22c55e, #3b82f6); }
+        .input-glow:focus-within { box-shadow: 0 0 20px rgba(56, 189, 248, 0.25); border-color: rgba(56, 189, 248, 0.5); }
+        .admin-hidden { display: none; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+        .avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: 9999px; }
+        .avatar-img-box { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; border: 2px solid rgba(255,255,255,0.1); }
+        .neural-msg { border-left: 2px solid var(--neural-color); background: rgba(6, 182, 212, 0.1); }
+        .neural-text { color: #22d3ee; text-shadow: 0 0 5px rgba(34, 211, 238, 0.5); }
+
+        /* FLOATING PLAYER STYLES */
+        .media-overlay {
+            position: fixed;
+            bottom: 80px; /* Above input area */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 500px;
+            z-index: 40; /* Below Header (20), above Input (30) */
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .media-minimized {
+            bottom: 20px;
+            right: 20px;
+            left: auto;
+            width: 50px;
+            height: 50px;
+            transform: none;
+            padding: 0;
+            background: transparent;
+            border: none;
+        }
+
+        .media-content {
+            display: flex;
+            flex-direction: column;
+        }
         
-        /* DEBUGGING STYLES */
-        .no-pointer { pointer-events: none !important; }
+        .video-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        video { width: 100%; height: 100%; object-fit: contain; }
+        
+        .visualizer-bar {
+            height: 4px;
+            background: #22d3ee;
+            width: 0%;
+            transition: width 0.1s;
+            border-radius: 2px;
+        }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col relative">
@@ -31,7 +82,7 @@
     
     <header id="app-header" class="fixed top-0 left-0 right-0 z-20 glass-panel border-b-0 border-b-white/5 h-16 flex items-center justify-between px-4 lg:px-8">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-lg shadow-blue-500/30">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
             </div>
             <div>
@@ -44,11 +95,10 @@
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <button onclick="toggleMediaOverlay()" id="media-toggle-btn" class="hidden md:flex bg-purple-900/20 hover:bg-purple-900/40 text-purple-400 hover:text-white text-[10px] font-mono px-2 py-1 rounded border border-purple-500/30 transition-all">📺 PLAYING</button>
-            <button onclick="triggerKernelThought()" class="hidden md:flex bg-cyan-900/20 hover:bg-cyan-900/40 text-cyan-400 hover:text-white text-[10px] font-mono px-2 py-1 rounded border-cyan-500/30 transition-all">🧠 KERNEL</button>
-            <button onclick="toggleCodeEditor()" class="hidden md:flex bg-green-900/20 hover:bg-green-900/40 text-green-400 hover:text-white text-[10px] font-mono px-2 py-1 rounded border-green-500/30 transition-all">🖋 CODE</button>
-            <button onclick="openProfileModal()" class="hidden md:flex bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white text-[10px] font-mono px-2 py-1 rounded border-white/10 transition-all">👤 PROFILE</button>
-            <button onclick="toggleAdminMode()" id="admin-toggle-text" class="bg-slate-900/50 hover:bg-red-900/50 border border-slate-700 hover:border-red-500 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-2"><span>🔴</span> ADMIN</button>
+            <button onclick="triggerKernelThought()" class="hidden md:flex bg-cyan-900/20 hover:bg-cyan-900/40 text-cyan-400 hover:text-white text-[10px] font-mono px-2 py-1 rounded border border-cyan-500/30 transition-all">🧠 KERNEL</button>
+            <button onclick="toggleMediaOverlay()" id="media-toggle-btn" class="hidden md:flex bg-purple-900/20 hover:bg-purple-900/40 text-purple-400 hover:text-white text-[10px] font-mono px-2 py-1 rounded border border-purple-500/30 transition-all">📺 PLAYING: OFF</button>
+            <button onclick="openProfileModal()" class="hidden md:flex bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white text-[10px] font-mono px-2 py-1 rounded border border-white/10 transition-all">👤 PROFILE</button>
+            <button onclick="requestApiKey()" id="key-btn" class="hidden md:flex bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white text-[10px] font-mono px-2 py-1 rounded border border-white/10 transition-all">🔑 KEY</button>
             <div class="hidden md:flex flex-col items-end">
                 <span class="text-xs text-gray-400 font-mono">LVL <span id="lvl-disp" class="text-blue-400 font-bold">1</span></span>
                 <span class="text-[10px] text-gray-600 font-mono">XP <span id="xp-val">0</span></span>
@@ -62,11 +112,11 @@
         <div class="max-w-4xl mx-auto">
             <div class="flex items-end gap-2 bg-slate-900/80 rounded-2xl p-2 border border-white/5 shadow-2xl input-glow transition-all">
                 <button id="voice-btn" class="p-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7m0 0H8m4 0h4m-4 8H8"></path></svg>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8h4m-4 8H8"></path></svg>
                 </button>
-                <input type="text" id="user-input" placeholder="Try '/kernel' for deep analysis..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light">
-                <button id="send-btn" class="p-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-lg shadow-blue-600/30 transition-all transform active:scale-95 shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 5l-7 7 5 14z"></path></svg>
+                <input type="text" id="user-input" placeholder="Try '/think' for deep analysis..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light">
+                <button id="send-btn" class="p-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all transform active:scale-95 shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
                 </button>
             </div>
             <div class="text-center mt-2">
@@ -75,52 +125,53 @@
         </div>
     </div>
 
-<!-- FLOATING MEDIA OVERLAY -->
+<!-- FLOATING MEDIA OVERLAY (NEW) -->
 <div id="media-overlay" class="media-overlay media-minimized glass-panel rounded-2xl border border-white/10 shadow-2xl">
-    <div class="media-content p-0">
-        <div class="flex justify-between items-center mb-2">
-            <span class="text-white font-bold text-sm">📺 MEDIA PLAYER <span class="text-[10px] text-cyan-400 font-mono hidden md:inline-block">BACKGROUND ACTIVE</span></span>
+    <!-- Expanded State -->
+    <div class="media-content p-4">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-white font-bold text-sm flex items-center gap-2">📺 MEDIA PLAYER <span class="text-[10px] text-gray-400 font-mono bg-white/10 px-2 rounded">BACKGROUND ACTIVE</span></h3>
             <button onclick="toggleMediaUI()" class="text-gray-400 hover:text-white">✖</button>
         </div>
 
         <!-- Tabs -->
-        <div class="flex border-b border-white/10 mb-2">
-            <button onclick="switchMediaTab('radio')" id="tab-radio" class="flex-1 pb-2 text-cyan-400 border-b-2 border-cyan-500 font-mono text-sm hover:bg-white/5 transition-colors">📻 RADIO</button>
-            <button onclick="switchMediaTab('video')" id="tab-video" class="flex-1 pb-2 text-gray-400 border-b-2 border-transparent hover:text-white font-mono text-sm hover:bg-white/5 transition-colors">📺 VIDEO ROOM</button>
+        <div class="flex border-b border-white/10 mb-3">
+            <button onclick="switchMediaTab('radio')" id="tab-radio" class="flex-1 pb-2 text-cyan-400 border-b-2 border-cyan-500 font-mono text-sm">📻 RADIO</button>
+            <button onclick="switchMediaTab('video')" id="tab-video" class="flex-1 pb-2 text-gray-400 border-b-2 border-transparent hover:text-white font-mono text-sm">📺 VIDEO</button>
         </div>
 
         <!-- Radio Player -->
         <div id="media-radio" class="space-y-2">
-            <div class="p-3 text-center text-gray-400 text-xs">
-                Select a station to broadcast to active room.
-            </div>
             <div class="radio-station active p-3 rounded border border-white/5 bg-white/5 flex items-center justify-between relative overflow-hidden group" onclick="playRadio('https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3', this)">
                 <div class="relative z-10">
-                    <div class="text-white font-bold">🎵 Lofi Beats</div>
-                    <div class="text-[10px] text-gray-400">Chill vibes</div>
+                    <div class="text-white font-bold">🎵 Lofi Study</div>
+                    <div class="text-[10px] text-gray-400">Relaxed beats</div>
+                </div>
+                <!-- Fake Visualizer -->
+                <div class="visualizer-bar"></div>
+                <div class="text-cyan-400 text-xs animate-spin hidden loading-indicator absolute right-3">⟳</div>
+            </div>
+            <div class="radio-station p-3 rounded border border-white/5 bg-white/5 flex items-center justify-between relative overflow-hidden group" onclick="playRadio('https://streams.ilovemusic.com/iloveradio1599.mp3', this)">
+                <div class="relative z-10">
+                    <div class="text-white font-bold">📻 Cyber Radio</div>
+                    <div class="text-[10px] text-gray-400">Synthwave Stream</div>
                 </div>
                 <div class="visualizer-bar"></div>
                 <div class="text-cyan-400 text-xs animate-spin hidden loading-indicator absolute right-3">⟳</div>
             </div>
         </div>
-    </div>
 
-<!-- VIDEO ROOM -->
-<div id="media-video" class="hidden space-y-2">
-    <div class="bg-black/50 rounded-lg p-3 border border-white/10">
-        <div class="flex justify-between items-center mb-2">
-            <span class="text-white font-bold text-xs text-purple-400">PRIVATE VIDEO CHAT</span>
-            <span class="text-[10px] text-gray-400 mb-2">Type <span class="text-cyan-400 font-mono border border-cyan-500/30 px-1 rounded">/video [RoomName]</span> to join.
-            <br>Or click <span class="text-purple-400">HOST</span> to start video.
-        </div>
-        <div class="video-container relative">
-            <div id="video-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-500 z-20 bg-black/50">
-                <span class="text-xs text-gray-500">Waiting for video signal...</span>
+        <!-- Video Player -->
+        <div id="media-video" class="hidden space-y-2">
+            <div class="video-container">
+                <div id="video-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-500 z-20 bg-black/50">
+                    <span class="text-xs text-center">Paste URL (M3U8, MP4)</span>
+                </div>
+                <video id="video-player" class="hidden" controls autoplay playsinline></video>
             </div>
-            <video id="video-player" class="hidden" autoplay playsinline muted></video>
-            <!-- Overlay for Room Name/Status -->
-            <div id="video-overlay-ui" class="absolute bottom-2 right-2 text-right text-[10px] text-cyan-400 font-mono hidden bg-black/80 px-2 py-1 rounded">
-                <span id="current-room-name"></span>
+            <div class="mt-2 flex gap-2">
+                <input type="text" id="video-url-input" placeholder="Paste Stream URL (e.g. https://stream.m3u8)" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-xs outline-none">
+                <button onclick="playVideo()" class="w-full mt-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-2 rounded">▶ PLAY STREAM</button>
             </div>
         </div>
     </div>
@@ -148,62 +199,20 @@
 </div>
 
 <!-- ADMIN PANEL -->
-<div id="admin-panel" class="admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border-red-500/30 shadow-2xl shadow-red-500/10">
+<div id="admin-panel" class="admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border border-red-500/30 shadow-2xl shadow-red-500/10">
     <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> GITHUB CONSOLE</h3>
     <div class="space-y-2">
-        <button onclick="toggleCodeEditor()" class="w-full border border-green-500/50 text-green-400 bg-green-900/10 hover:bg-green-900/20 text-xs font-bold py-2 rounded mb-2">🖋 EDIT SYSTEM CODE</button>
-        <div class="border-t border-white/10 pt-2 mt-2">
-            <h4 class="text-gray-400 text-xs font-bold uppercase">System Status (Simulated Admin)</h4>
-            <div class="text-[10px] text-gray-500 mt-1">You are currently running from a single HTML file. To enable persistent file saving (requested), use <span class="text-cyan-400 font-bold">System Editor</span> to save state.</div>
-        </div>
-        <div class="space-y-2">
-            <button onclick="testGitHubToken()" class="w-full border border-green-500/50 text-green-400 bg-green-900/10 hover:bg-green-900/20 text-xs py-1 rounded mb-2">🧪 Test Permissions First</button>
-            <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:border-red-500 outline-none"></div>
-            <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" class="w-full bg-slate-900 border-slate-700 rounded p-2 text-white focus:border-red-500 outline-none"></div>
-            <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Branch</label><input type="text" id="gh-branch" value="main" class="w-full bg-slate-900 border-slate-700 rounded p-2 text-white focus:border-red-500 outline-none"></div>
-            <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Token (Classic)</label><input type="password" id="gh-token" class="w-full bg-slate-900 border-slate-700 rounded p-2 text-white focus:border-red-500 outline-none"></div>
-            <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-2 rounded text-xs tracking-wider transition-colors shadow-lg shadow-red-600/20 active:scale-95 mt-2">🧬 PUSH TO GITHUB</button>
-        </div>
-    </div>
-</div>
-
-<!-- CODE EDITOR OVERLAY -->
-<div id="code-editor-overlay" class="code-editor-overlay admin-hidden">
-    <div class="editor-container w-full h-full flex flex-col justify-center pt-8">
-        <h2 class="text-white font-bold text-xl mb-4 font-mono">🖋 SYSTEM EDITOR</h2>
-        <p class="text-gray-400 text-xs">Changes here are local. Click <span class="text-green-400 font-bold">APPLY TO BROWSER</span> to update the system immediately. Download to save a local backup.</p>
-        <textarea id="code-editor-textarea" class="code-editor" spellcheck="false"></textarea>
-        <div class="editor-actions">
-            <button onclick="applyCode()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-mono text-xs font-bold">APPLY TO BROWSER</button>
-            <button onclick="downloadCode()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded font-mono text-xs">DOWNLOAD .HTML</button>
-            <button onclick="toggleCodeEditor()" class="text-gray-400 hover:text-white px-4 py-2 rounded font-mono text-xs">✖ CLOSE</button>
-        </div>
-    </div>
-</div>
-
-<!-- PRIVATE ROOM OVERLAY -->
-<div id="private-room-ui" class="admin-hidden fixed inset-0 z-[60] bg-black/95 backdrop-blur-sm flex items-center justify-center">
-    <div class="glass-panel p-6 rounded-xl border border-white/10 max-w-md w-full mx-4">
-        <h3 class="text-white font-bold mb-4 text-xl">🔒 PRIVATE ROOM</h3>
-        <div class="space-y-4">
-            <div><label class="block text-xs text-gray-400 mb-1">Room Name</label><input type="text" id="private-room-input" placeholder="e.g. MySecret" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:border-purple-500 outline-none"></div>
-            <div class="mt-2 flex gap-2">
-                <button onclick="createPrivateRoom()" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-2 rounded">JOIN / SHARE</button>
-            </div>
-        </div>
+        <button onclick="testGitHubToken()" class="w-full border border-green-500/50 text-green-400 bg-green-900/10 hover:bg-green-900/20 text-xs py-1 rounded mb-2">🧪 Test Permissions First</button>
+        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
+        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
+        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Branch</label><input type="text" id="gh-branch" value="main" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
+        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Token (Classic)</label><input type="password" id="gh-token" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
+        <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors shadow-lg shadow-red-600/20 active:scale-95 mt-2">🧬 PUSH TO GITHUB</button>
     </div>
 </div>
 
 <script>
     const API_MODEL = "llama-3.3-70b-versatile"; 
-    
-    // PERSISTENCE (FIXED)
-    // We now save state to a JSON file `termos_state.json`
-    
-    // FRIENDLY DEVICES (EXPANDED)
-    // Added better responsive scaling (Mobile vs Desktop)
-    // Fixed potential freeze by clearing mutation queue
-    
     let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || "";
     let GITHUB_TOKEN = localStorage.getItem('termos_github_token') || "";
     let REPO_OWNER = localStorage.getItem('termos_repo_owner') || "your-username";
@@ -215,7 +224,9 @@
         name: localStorage.getItem('termos_name') || "User",
         avatar: localStorage.getItem('termos_avatar') || "👤"
     };
-    
+    let tempAvatarData = "";
+    let radioStream = null;
+
     const MQTT_BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
     let username = 'User_' + Math.floor(Math.random() * 10000);
     let mqttClient = null;
@@ -224,36 +235,85 @@
     let installedModules = [];
     let adminMode = false;
 
-    // --- RESET ---
     function forceReset() {
-        if(confirm("Emergency Reset: Clear all Data (Chat, Mutations, Room)?")) {
-            localStorage.clear();
+        if(confirm("Emergency Reset: Clear all Mutations and Profiles?")) {
+            localStorage.setItem('termos_mutations', "[]");
             location.reload();
         }
     }
 
-    // --- PRIVATE ROOM LOGIC ---
-    function createPrivateRoom() {
-        if(!GROQ_API_KEY) return requestApiKey();
+    // --- BACKGROUND PLAYER LOGIC ---
+    function toggleMediaOverlay() {
+        const el = document.getElementById('media-overlay');
+        const btn = document.getElementById('media-toggle-btn');
         
-        const roomName = document.getElementById('private-room-input').value.trim();
-        if(!roomName) return alert("Please enter a room name.");
-        
-        document.getElementById('room-display').innerText = `ROOM: ${roomName.toUpperCase()}`;
-        document.getElementById('private-room-indicator').classList.remove('hidden');
-        
-        // Unsubscribe from public
-        if(mqttClient && mqttClient.isConnected()) {
-            mqttClient.unsubscribe("termos/v3/chat");
-            mqttClient.subscribe(`termos/rooms/${roomName}`, { qos: 1 });
-            
-            // Announce presence
-            const payload = JSON.stringify({ user: username, nick: userProfile.name, avatar: userProfile.avatar, type: 'join' });
-            const msg = new Paho.MQTT.Message(payload);
-            msg.destinationName = `termos/rooms/${roomName}`;
-            msg.qos = 1;
-            mqttClient.send(msg);
+        if (el.classList.contains('media-minimized')) {
+            // EXPAND
+            el.classList.remove('media-minimized');
+            el.classList.add('media-expanded');
+            btn.innerText = "📺 PLAYING: ON";
+            btn.classList.add('text-purple-400');
+        } else {
+            // MINIMIZE
+            el.classList.add('media-minimized');
+            el.classList.remove('media-expanded');
+            btn.innerText = "📺 PLAYING: OFF"; // Visual feedback only, keeps playing
+            btn.classList.remove('text-purple-400');
         }
+    }
+
+    function toggleMediaUI() {
+        // Clicked 'X' inside player, just minimize it
+        const el = document.getElementById('media-overlay');
+        el.classList.add('media-minimized');
+        const btn = document.getElementById('media-toggle-btn');
+        btn.innerText = "📺 MINIMIZED";
+        btn.classList.remove('text-purple-400');
+    }
+
+    function switchMediaTab(tab) {
+        document.getElementById('media-radio').classList.add('hidden');
+        document.getElementById('media-video').classList.add('hidden');
+        document.getElementById('tab-radio').classList.remove('border-cyan-500', 'text-cyan-400');
+        document.getElementById('tab-video').classList.remove('border-purple-500', 'text-purple-400');
+        
+        document.getElementById('media-' + tab).classList.remove('hidden');
+        
+        if(tab === 'radio') {
+            document.getElementById('tab-radio').classList.add('border-cyan-500', 'text-cyan-400');
+        } else {
+            document.getElementById('tab-video').classList.add('border-purple-500', 'text-purple-400');
+        }
+    }
+    function playRadio(url, el) {
+        if(radioStream) { radioStream.pause(); }
+        
+        document.querySelectorAll('.radio-station').forEach(d => {
+            d.classList.remove('active', 'border-cyan-500');
+            d.querySelector('.loading-indicator').classList.remove('hidden');
+        });
+        el.classList.add('active', 'border-cyan-500');
+        el.querySelector('.loading-indicator').classList.remove('hidden');
+        
+        radioStream = new Audio(url);
+        radioStream.play().then(() => {
+            el.querySelector('.loading-indicator').classList.add('hidden');
+            // Visualizer Effect
+            el.querySelector('.visualizer-bar').style.width = '100%';
+        }).catch(e => {
+            addSystemMessage("❌ Radio Stream Failed.");
+            el.querySelector('.loading-indicator').classList.add('hidden');
+        });
+    }
+    function playVideo() {
+        const url = document.getElementById('video-url-input').value;
+        if(!url) return;
+        const player = document.getElementById('video-player');
+        const placeholder = document.getElementById('video-placeholder');
+        
+        player.src = url;
+        player.classList.remove('hidden');
+        placeholder.classList.add('hidden');
     }
 
     // --- KERNEL LOGIC ---
@@ -265,7 +325,7 @@
         scrollDown();
 
         try {
-            const systemContext = `Current System State: Generation ${systemGeneration}, Level ${userStats.level}, Room: ${(currentRoomName || "Public"}`;
+            const systemContext = `Current System State: Generation ${systemGeneration}, Level ${userStats.level}, Active Modules: ${installedModules.join(',')}.`;
             
             let r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method:"POST",
@@ -277,10 +337,6 @@
                         content:`You are TermOS Kernel v${systemGeneration}. You are a self-evolving organism.
                         ${systemContext}
                         TASK: Analyze current UI and suggest 1 autonomous upgrade.
-                        SPECIAL INSTRUCTIONS:
-                        1. If user wants to change code, use this exact phrase: "Update Code".
-                        2. This will NOT modify index.html directly. It will update "System Code Editor" text area.
-                        3. If user asks for "Real Time", reply with current system time.
                         Return response in this format: "Idea: [Description]. Code: SystemRebuilder.install('name') or /evolve [prompt]".`
                     },{role:"user",content:"Analyze your state and suggest an upgrade."}]
                 })
@@ -294,24 +350,7 @@
             const el = document.getElementById(thinkingId); if(el) el.remove();
             
             addNeuralMessage(reply);
-            
-            if(reply.includes("Update Code")) {
-                const codeMatch = reply.match(/```html\n([\s\S\S]*?)```/);
-                let finalCode = "";
-                if(codeMatch && codeMatch.length > 1) {
-                    finalCode = codeMatch[1];
-                    // Remove markdown wrapper
-                    finalCode = finalCode.replace(/```html/g, "").replace(/```/g, "").trim();
-                    finalCode = finalCode.replace(/^\s+/, "");
-                    finalCode = finalCode.replace(/\s+$/, "");
-                    
-                    // Update Editor
-                    document.getElementById('code-editor-textarea').value = finalCode;
-                    addSystemMessage("📝 Code Loaded into Editor.");
-                } else {
-                    addAIMessage(reply);
-                }
-            } else if(reply.includes("SystemRebuilder.install(")) {
+            if(reply.includes("SystemRebuilder.install(")) {
                 let match = reply.match(/SystemRebuilder\.install\(['"](.*?)['"]\)/);
                 if(match) { 
                     setTimeout(() => {
@@ -320,10 +359,6 @@
                         }
                     }, 1000);
                 }
-            } else if(reply.includes("CMD: PLAY_MUSIC")) { 
-                SystemRebuilder.playMusic(); 
-            } else { 
-                addAIMessage(reply); 
             }
         } catch (e) { 
             const el = document.getElementById(thinkingId); if(el) el.remove();
@@ -331,86 +366,169 @@
         }
     }
 
-    // --- NEURAL MESSAGING ---
     function addNeuralMessage(txt) {
         const d = document.createElement('div');
         d.className = "flex gap-3 my-4 z-10";
-        d.innerHTML = `<div class="w-8 h-8 rounded-full avatar-gradient-neural shrink-0 flex items-center justify-center shadow-lg ring-2 ring-slate-800"><span class="text-xs font-bold text-white">🧠</span></div><div class="flex-1"><div class="neural-msg rounded-2xl rounded-2xl rounded-tl-none p-4 border border-cyan-500/30 shadow-lg text-sm leading-relaxed">${escapeHtml(txt)}</div></div>`;
+        d.innerHTML = `<div class="w-8 h-8 rounded-full avatar-gradient-neural shrink-0 flex items-center justify-center shadow-lg ring-2 ring-slate-800"><span class="text-xs font-bold text-white">🧠</span></div><div class="flex-1"><div class="neural-msg rounded-2xl rounded-tl-none p-4 border border-cyan-500/30 shadow-lg text-sm leading-relaxed">${escapeHtml(txt)}</div></div>`;
         getBox().appendChild(d);
         scrollDown();
     }
 
-    // --- INPUT HANDLING ---
-    function handleInput() {
+    // --- EVOLUTION & BOOT PROTECTION ---
+    function loadMutations() {
+        document.getElementById('gen-count').innerText = systemGeneration;
+        let history;
         try {
-            // SAFETY CHECK: ensure input exists
-            let inp = document.getElementById('user-input');
-            if(!inp) return; 
-            let txt = inp.value.trim(); 
-            if(!txt) return;
-
-            if(txt.startsWith('/evolve')) {
-                let prompt = "";
-                if(txt === '/evolve') { prompt = prompt("Describe change:"); } 
-                else { prompt = txt.substring(8); }
-                if(prompt) { handleLocalEvolution(prompt); }
-                inp.value = '';
-                return;
+            const raw = localStorage.getItem('termos_mutations');
+            if(!raw) return;
+            history = JSON.parse(raw);
+        } catch (e) {
+            console.error("Critical: Corrupt History", e);
+            localStorage.removeItem('termos_mutations');
+            addSystemMessage("⚠️ Corrupt Data Cleared.");
+            return;
+        }
+        if(history && history.length > 0) {
+            addSystemMessage(`📂 Restoring DNA... (Safe Boot)`);
+            let failedCount = 0;
+            history.forEach((item, index) => {
+                setTimeout(() => {
+                    try { 
+                        const func = new Function(item.code);
+                        func();
+                        if(item.gen > systemGeneration) systemGeneration = item.gen;
+                    } catch (e) { 
+                        console.error("Mutation " + index + " failed", e);
+                        failedCount++;
+                    }
+                }, index * 50); 
+            });
+            if(failedCount > 0) {
+                setTimeout(() => {
+                    addSystemMessage(`⚠️ ${failedCount} Mutations failed on load. Purging bad data.`);
+                    const validHistory = history.slice(0, history.length - failedCount);
+                    localStorage.setItem('termos_mutations', JSON.stringify(validHistory));
+                }, 2000);
             }
+        }
+    }
 
-            if(txt.startsWith('/kernel') || txt.startsWith('/think')) {
-                triggerKernelThought();
-                inp.value = '';
-                return;
-            }
+    function openProfileModal() {
+        document.getElementById('edit-name').value = userProfile.name;
+        document.getElementById('edit-avatar').value = (userProfile.avatar.startsWith('data:') ? "" : userProfile.avatar);
+        document.getElementById('profile-modal').classList.remove('admin-hidden');
+        tempAvatarData = userProfile.avatar;
+    }
+    function closeProfileModal() {
+        document.getElementById('profile-modal').classList.add('admin-hidden');
+    }
+    function triggerFileUpload() { document.getElementById('avatar-upload').click(); }
+    document.getElementById('avatar-upload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const MAX_SIZE = 80; 
+                let width = img.width;
+                let height = img.height;
+                if (width > height) {
+                    if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+                } else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                tempAvatarData = dataUrl;
+                document.getElementById('edit-avatar').value = ""; 
+                alert("Photo resized & loaded.");
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+    function saveProfile() {
+        const name = document.getElementById('edit-name').value.trim();
+        const textAvatar = document.getElementById('edit-avatar').value.trim();
+        if(name) userProfile.name = name;
+        userProfile.avatar = (textAvatar) ? textAvatar : tempAvatarData;
+        try {
+            localStorage.setItem('termos_name', userProfile.name);
+            localStorage.setItem('termos_avatar', userProfile.avatar);
+            addSystemMessage("👤 Profile Updated.");
+            closeProfileModal();
+        } catch (e) { alert("Storage Full."); }
+    }
 
-            if(txt.startsWith('/video ')) {
-                const roomName = txt.substring(7);
-                joinVideoRoom(roomName);
-                inp.value = '';
-                return;
-            }
+    async function handleLocalEvolution(prompt) {
+        if(!GROQ_API_KEY) return requestApiKey();
+        addSystemMessage("🧬 Mutating Organism (Local)...");
+        const thinkingId = "think-" + Date.now();
+        getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-gray-500 italic animate-pulse pl-11">AI Coding...</div>`);
+        scrollDown();
 
-            if(txt.startsWith('/create ') {
-                createPrivateRoom();
-                inp.value = '';
-                return;
-            }
+        try {
+            let r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method:"POST",
+                headers:{"Authorization":"Bearer "+GROQ_API_KEY,"Content-Type":"application/json"},
+                body:JSON.stringify({
+                    model: API_MODEL,
+                    messages:[{
+                        role:"system",
+                        content:`You are a front-end expert. TASK: Write JAVASCRIPT code to: "${prompt}". 
+                        CRITICAL RULES:
+                        1. Return ONLY raw Javascript code. No markdown blocks, no explanation.
+                        2. Use standard DOM manipulation (document.querySelector, etc.).
+                        3. Target existing IDs like 'app-header', 'matrix-canvas', 'user-input'.
+                        4. DO NOT try to fetch external APIs. Just manipulate DOM.`
+                    },{role:"user",content:prompt}]
+                })
+            });
             
-            if(txt.startsWith('/exit ')) {
-                leaveRoom();
-                inp.value = '';
-                return;
+            const apiData = await r.json();
+            if (apiData.error) throw new Error("Groq: " + apiData.error.message);
+            if (!apiData.choices || apiData.choices.length === 0) throw new Error("No choices returned.");
+            
+            let code = apiData.choices[0].message.content;
+            code = code.replace(/```javascript/g, "").replace(/```js/g, "").replace(/```/g, "").trim();
+            
+            const el = document.getElementById(thinkingId); if(el) el.remove();
+            try {
+                const func = new Function(code);
+                func();
+                systemGeneration++;
+                localStorage.setItem('termos_gen', systemGeneration);
+                document.getElementById('gen-count').innerText = systemGeneration;
+                addSystemMessage("✅ Mutation Applied. GEN: " + systemGeneration);
+                let history = JSON.parse(localStorage.getItem('termos_mutations') || "[]");
+                history.push({ date: new Date().toISOString(), prompt: prompt, code: code, gen: systemGeneration });
+                localStorage.setItem('termos_mutations', JSON.stringify(history));
+            } catch (execErr) {
+                addSystemMessage("❌ Runtime Error: " + execErr.message);
             }
+        } catch (e) { 
+            const el = document.getElementById(thinkingId); if(el) el.remove();
+            addSystemMessage("❌ AI Error: " + e.message); 
+        }
+    }
 
-            if(txt.startsWith('/admin ')) {
-                const cmd = txt.split(' ')[1];
-                if (cmd === 'enable') { adminMode = true; toggleAdminMode(); addSystemMessage("🔴 ADMIN ON"); initMatrix(); }
-                else if (cmd === 'disable') { adminMode = false; toggleAdminMode(); addSystemMessage("🟢 ADMIN OFF"); initMatrix(); }
-                inp.value = '';
-                return;
+    function requestApiKey() {
+        const key = prompt("🔑 GROQ API KEY REQUIRED\n\nStatus: " + (GROQ_API_KEY ? "Set" : "Empty"));
+        if (key !== null) {
+            if (key.trim() !== "") {
+                GROQ_API_KEY = key.trim();
+                localStorage.setItem('termos_groq_key', GROQ_API_KEY);
+                addSystemMessage("✅ Key Saved.");
+                updateStatusDot(true);
+            } else {
+                GROQ_API_KEY = "";
+                localStorage.removeItem('termos_groq_key');
+                updateStatusDot(false);
             }
-
-            if(txt.startsWith('/sys install ')) SystemRebuilder.install(txt.split(' ')[2]);
-            else if(txt.startsWith('/setkey ')) requestApiKey();
-            else if(txt.startsWith('/ai ')) handleAI(txt.substring(4));
-            else {
-                addUserMessage(txt);
-                addXP(1);
-                if(mqttClient && mqttClient.isConnected()) {
-                    try {
-                        const payload = JSON.stringify({ user: username, text: txt, nick: userProfile.name, avatar: userProfile.avatar });
-                        const message = new Paho.MQTT.Message(payload);
-                        // Send to private room if active, otherwise public
-                        const dest = (currentRoomName) ? `termos/rooms/${currentRoomName}` : "termos/v3/chat";
-                        message.destinationName = dest;
-                        message.qos = 1; 
-                        mqttClient.send(message);
-                    } catch (e) {}
-                }
-            }
-            inp.value = '';
-        } catch (e) { console.error(e); }
+        }
     }
 
     function getBox() {
@@ -426,12 +544,10 @@
 
     const SystemRebuilder = {
         install: function(name) {
-            // SAFETY FIX: Only access elements if they exist
+            name = name.toLowerCase().trim();
             if (installedModules.includes(name)) return addSystemMessage(`${name} active.`);
             try {
                 switch(name) {
-                    case 'coreinterface': this.installCoreInterface(); break;
-                    case 'realtime': this.installRealTime(); break;
                     case 'matrix': initMatrix(); break;
                     case 'sound': case 'beep': this.addSound(); break;
                     case 'neon': this.addNeon(); break;
@@ -441,18 +557,6 @@
                 installedModules.push(name);
                 addSystemMessage("✅ Installed: " + name.toUpperCase());
             } catch (e) { addSystemMessage("❌ Error: " + e.message); }
-        },
-        installRealTime: function() {
-            if(isRealTime) return;
-            isRealTime = true; 
-            // Trigger a re-render of time display
-            updateRealTimeUI();
-            addSystemMessage("✅ Real-Time Module Installed.");
-        },
-        installCoreInterface: function() {
-            // FIX: The previous prompt logic might be broken, so we hardcode "Core Interface" module to just display system logs.
-            // It effectively initializes the terminal part.
-            addSystemMessage("✅ Core Interface Loaded.");
         },
         addSound: function() {
             try {
@@ -540,116 +644,79 @@
         } else if (userStats.ascii) {
             avatarHTML = `<div class="w-10 h-10 rounded-lg bg-slate-900 border border-blue-500/50 flex items-center justify-center shrink-0 overflow-hidden p-1 shadow-lg shadow-blue-500/20"><div class="ascii-art text-center w-full">${userStats.ascii}</div></div>`;
         } else {
-            avatarHTML = `<div class="w-10 h-10 rounded-full bg-slate-800 border-white/10 flex items-center justify-center text-xl shrink-0">${avatar}</div>`;
+            avatarHTML = `<div class="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-xl shrink-0">${avatar}</div>`;
         }
-        d.innerHTML = `${avatarHTML}<div class="flex-1 max-w-[80%]"><div class="bg-blue-600 rounded-2xl rounded-tr-none p-4 shadow-lg shadow-lg shadow-blue-600/20 text-white text-sm leading-relaxed">${escapeHtml(txt)}</div><div class="text-[10px] text-gray-500 text-right mt-1 mr-1 font-mono">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} • ${name}</div></div>`;
+        d.innerHTML = `${avatarHTML}<div class="flex-1 max-w-[80%]"><div class="bg-blue-600 rounded-2xl rounded-tr-none p-4 shadow-lg shadow-blue-600/20 text-white text-sm leading-relaxed">${escapeHtml(txt)}</div><div class="text-[10px] text-gray-500 text-right mt-1 mr-1 font-mono">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} • ${name}</div></div>`;
         getBox().appendChild(d);
         scrollDown();
     }
     function scrollDown() { const b=getBox(); if(b) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }); }
     function escapeHtml(text) { if(!text) return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
-    // --- INPUT HANDLER ---
-    function handleInput() {
+    async function handleAI(prompt) {
+        if(!GROQ_API_KEY) return requestApiKey();
+        const thinkingId = "think-" + Date.now();
+        getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-gray-500 italic animate-pulse pl-11">Processing...</div>`);
+        scrollDown();
         try {
-            let inp = document.getElementById('user-input');
-            // SAFETY: Check existence
-            if(!inp) return; 
-            
-            let txt = inp.value.trim(); 
-            if(!txt) return;
-
-            if(txt.startsWith('/evolve')) {
-                let prompt = "";
-                if(txt === '/evolve') { prompt = prompt("Describe change:"); } 
-                else { prompt = txt.substring(8); }
-                if(prompt) { handleLocalEvolution(prompt); }
-                inp.value = '';
-                return;
-            }
-
-            if(txt.startsWith('/kernel') || txt.startsWith('/think')) {
-                triggerKernelThought();
-                inp.value = '';
-                return;
-            }
-
-            if(txt.startsWith('/create ')) {
-                createPrivateRoom();
-                inp.value = '';
-                return;
-            }
-
-            if(txt.startsWith('/exit ')) {
-                leaveRoom();
-                inp.value = '';
-                return;
-            }
-
-            if(txt.startsWith('/admin ')) {
-                const cmd = txt.split(' ')[1];
-                if (cmd === 'enable') { adminMode = true; toggleAdminMode(); addSystemMessage("🔴 ADMIN ON"); initMatrix(); }
-                else if (cmd === 'disable') { adminMode = false; toggleAdminMode(); addSystemMessage("🟢 ADMIN OFF"); initMatrix(); }
-                inp.value = '';
-                return;
-            }
-
-            if(txt.startsWith('/sys install ')) SystemRebuilder.install(txt.split(' ')[2]);
-            else if(txt.startsWith('/setkey ')) requestApiKey();
-            else if(txt.startsWith('/ai ')) handleAI(txt.substring(4));
-            else {
-                addUserMessage(txt);
-                addXP(1);
-                if(mqttClient && mqttClient.isConnected()) {
-                    // FIX: Only try to send if client exists and is connected
-                    try {
-                        const payload = JSON.stringify({ user: username, text: txt, nick: userProfile.name, avatar: userProfile.avatar });
-                        const message = new Paho.MQTT.Message(payload);
-                        message.destinationName = (currentRoomName) ? `termos/rooms/${currentRoomName}` : "termos/v3/chat";
-                        message.qos = 1; 
-                        mqttClient.send(message);
-                    } catch (e) {}
+            let r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method:"POST",
+                headers:{"Authorization":"Bearer "+GROQ_API_KEY,"Content-Type":"application/json"},
+                body:JSON.stringify({
+                    model: API_MODEL,
+                    messages:[{ 
+                        role:"system", 
+                        content:`You are TermOS AI. You have real-time access to the organism state (Generation: ${systemGeneration}, Level: ${userStats.level}, Modules: ${installedModules.join(',')}).
+                        Current System Time: ${new Date().toLocaleTimeString()}.
+                        User commands: visual changes -> SystemRebuilder.install('name'). music -> CMD: PLAY_MUSIC. Otherwise answer briefly.` 
+                    },{role:"user",content:prompt}]
+                })
+            });
+            const apiData = await r.json();
+            if (apiData.error) {
+                if (apiData.error.message.includes("Invalid API Key") || apiData.error.message.includes("401")) {
+                    const el = document.getElementById(thinkingId); if(el) el.remove();
+                    requestApiKey();
+                    return; 
                 }
+                throw new Error("Groq: " + apiData.error.message);
             }
-            inp.value = '';
-        } catch (e) { console.error(e); }
+            if (!apiData.choices || apiData.choices.length === 0) throw new Error("No choices returned.");
+            const reply = apiData.choices[0].message.content;
+            const el = document.getElementById(thinkingId); if(el) el.remove();
+            let match = reply.match(/SystemRebuilder\.install\(['"](.*?)['"]\)/);
+            if(match) { try { SystemRebuilder.install(match[1]); } catch(e) {} addAIMessage("✨ System updated."); }
+            else if (reply.includes("CMD: PLAY_MUSIC")) { SystemRebuilder.playMusic(); }
+            else { addAIMessage(reply); }
+        } catch (e) { const el = document.getElementById(thinkingId); if(el) el.remove(); addAIMessage("Error: " + e.message); }
     }
 
-    // --- INIT ---
-    function getBox() {
-        // FIX: Ensure elements exist before we try to access them.
-        let el = document.getElementById('chat-container');
-        if (!el) {
-            el = document.createElement('div');
-            el.id = 'chat-container';
-            el.className = "flex flex flex-col h-full w-full p-4 overflow-y-auto z-10";
-            document.body.appendChild(el);
+    function addXP(amount) {
+        userStats.xp += amount;
+        if(userStats.xp > (userStats.level * 100)) {
+            userStats.level++;
+            addSystemMessage(`🎉 LEVEL UP: ${userStats.level} - ${LEVELS[userStats.level] || 'MASTER'}`);
+            updateAvatar(userStats.level);
         }
-        return el;
+        const lvlEl = document.getElementById('lvl-disp');
+        const xpEl = document.getElementById('xp-val');
+        if(lvlEl) lvlEl.innerText = userStats.level;
+        if(xpEl) xpEl.innerText = userStats.xp;
+        localStorage.setItem('termos_stats_modern', JSON.stringify(userStats));
+    }
+    function updateAvatar(lvl) {
+        if(lvl === 3) userStats.ascii = "◢◤<br>o_o<br>/|\\"; 
+        else if (lvl === 5) userStats.ascii = "🕯<br>  ☾<br>  ☽"; 
+        else if (lvl === 8) userStats.ascii = "👁<br>· ·<br>__·__"; 
     }
 
-    function triggerAdminMode() {
+    function toggleAdminMode() {
         let panel = document.getElementById('admin-panel');
         if(!panel) {
             panel = document.createElement('div');
             panel.id = 'admin-panel';
-            panel.className = "admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border-red-500/30 shadow-2xl shadow-2xl">
-            panel.innerHTML = `<h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> GITHUB CONSOLE</h3><div class="space-y-2">
-                <div class="p-2">
-                    <button onclick="toggleCodeEditor()" class="w-full border border-green-500/50 text-green-400 bg-green-900/10 hover:bg-green-900/20 text-xs font-bold py-2 rounded mb-2">🖋 EDIT SYSTEM CODE</button>
-                    <div class="border-t border-white/10 pt-2 mt-2">
-                        <h4 class="text-gray-400 text-xs font-bold uppercase">System Status (Simulated Admin)</h4>
-                        <div class="text-[10px] text-gray-500 mt-1">You are currently running from a single HTML file. Use "Edit System Code" to fix visual bugs instantly. Download to save a local backup.</div>
-                    </div>
-                    <div class="border-t border-white/10 pt-2">
-                        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:border-red-500 outline-none"></div>
-                        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" class="w-full bg-slate-900 border-slate-700 rounded p-2 text-white focus:border-red-500 outline-none"></div>
-                        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Branch</label><input type="text" id="gh-branch" value="main" class="w-full bg-slate-900 border-slate-700 rounded p-2 text-white focus:border-red-500 outline-none"></div>
-                        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Token (Classic)</label><input type="password" id="gh-token" class="w-full bg-slate-900 border-slate-700 rounded p-2 text-white focus:border-red-500 outline-none"></div>
-                        <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-2 rounded text-xs tracking-wider transition-colors shadow-lg shadow-red-600/20 active:scale-95 mt-2">🧬 PUSH TO GITHUB</button>
-                    </div>
-                </div>
-            </div>`;
+            panel.className = "admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border border-red-500/30 shadow-2xl shadow-red-500/10";
+            panel.innerHTML = `<h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> GITHUB CONSOLE</h3><div class="space-y-2"><button onclick="testGitHubToken()" class="w-full border border-green-500/50 text-green-400 bg-green-900/10 hover:bg-green-900/20 text-xs py-1 rounded mb-2">🧪 Test Permissions First</button><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Branch</label><input type="text" id="gh-branch" value="main" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Token (Classic)</label><input type="password" id="gh-token" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors shadow-lg shadow-red-600/20 active:scale-95 mt-2">🧬 PUSH TO GITHUB</button></div>`;
             document.body.appendChild(panel);
         }
         if (panel.classList.contains('admin-hidden')) {
@@ -661,10 +728,28 @@
         }
     }
 
-    // --- EVOLUTION ---
+    async function testGitHubToken() {
+        const token = document.getElementById('gh-token').value.trim();
+        if(!token) return alert("Enter Token first.");
+        addSystemMessage("🧪 Testing GitHub Token...");
+        try {
+            const testUrl = "https://api.github.com/user/repos";
+            const res = await fetch(testUrl, { headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' } });
+            if(res.ok) {
+                const data = await res.json();
+                addSystemMessage(`✅ Token Valid! Logged in as: ${data.login}`);
+                addSystemMessage(`📂 Found ${data.length} repos.`);
+            } else {
+                const err = await res.json();
+                throw new Error(`Code ${res.status}: ${err.message}`);
+            }
+        } catch(e) {
+            addSystemMessage("❌ Token Invalid: " + e.message);
+        }
+    }
+
     async function initiateEvolution() {
         if(!GROQ_API_KEY) return requestApiKey();
-        
         const tkInput = document.getElementById('gh-token');
         const ownInput = document.getElementById('gh-owner');
         const repInput = document.getElementById('gh-repo');
@@ -674,7 +759,6 @@
         const owner = ownInput.value.trim();
         const repo = repInput.value.trim();
         const branch = branchInput.value.trim() || "main";
-        
         localStorage.setItem('termos_github_token', token);
         localStorage.setItem('termos_repo_owner', owner);
         localStorage.setItem('termos_repo_name', repo);
@@ -731,7 +815,7 @@
                 let errorMsg = "Unknown";
                 try { const errorData = await putRes.json(); errorMsg = errorData.message || JSON.stringify(errorData); } catch (e) { errorMsg = await putRes.text(); }
                 if(errorMsg.includes("Resource not accessible")) {
-                    errorMsg = "Use Classic Token.";
+                    errorMsg = "You might be using a Fine-Grained token. Please generate a 'Classic' Token with 'repo' scope.";
                 }
                 throw new Error(`GitHub Write (${putRes.status}): ${errorMsg}`);
             }
@@ -745,217 +829,6 @@
         }
     }
 
-    function connectMQTT() {
-        try {
-            mqttClient.connect({
-                timeout: 10, useSSL: true, keepAliveInterval: 60,
-                onSuccess: () => { mqttClient.subscribe("termos/v3/chat", { qos: 1 }); },
-                onFailure: () => { setTimeout(connectMQTT, 5000); }
-            });
-        } catch (e) {}
-    }
-
-    // --- WINDOW LOAD ---
-    window.onload = function() {
-        console.log(">> SYSTEM LOADED SAFE BOOT");
-        updateStatusDot(!!GROQ_API_KEY);
-        if(!document.getElementById('chat-container')) {
-            document.body.innerHTML += `<div id="chat-container" class="flex flex-col h-full w-full p-4 overflow-y-auto z-10"></div>`;
-        }
-        
-        document.getElementById('gh-token').value = GITHUB_TOKEN;
-        document.getElementById('gh-owner').value = REPO_OWNER;
-        document.getElementById('gh-repo').value = REPO_NAME;
-        document.getElementById('gh-branch').value = REPO_BRANCH;
-        
-        initMatrix();
-        // Load State
-        if(typeof localStorage.getItem('termos_private_room')) {
-            privateRoomName = localStorage.getItem('termos_private_room');
-            if(privateRoomName) {
-                addSystemMessage("🔒 Re-joining Room: " + privateRoomName);
-                // Auto-join logic handled by connectMQTT logic for "Online" state
-                // We set a timeout to allow the MQTT connection to initialize before trying to join.
-                setTimeout(() => {
-                    if(mqttClient && mqttClient.isConnected()) { 
-                        // Check if not in room by checking a local variable
-                        let inRoom = false;
-                        // Note: This is a simulation for "Online" status in private rooms if offline
-                        if(!currentRoomName) inRoom = true;
-                    } else {
-                        if(!inRoom && currentRoomName) {
-                            joinVideoRoom(currentRoomName); // Trigger the join sequence
-                        }
-                    }
-                }, 500); // Delayed check
-            }
-        }
-        loadState();
-        if (typeof Paho !== 'undefined') {
-            mqttClient = new Paho.MQTT.Client(MQTT_BROKER_URL, "termos_client_" + Math.random().toString(16).substr(2, 8));
-            mqttClient.onConnectionLost = () => { setTimeout(connectMQTT, 5000); };
-            mqttClient.onMessageArrived = (message) => {
-                if (message.destinationName === "termos/v3/chat") {
-                    const data = JSON.parse(message.payloadString);
-                    if (data.user !== username) {
-                        addUserMessage(data.text, data.nick, data.avatar);
-                    }
-                }
-                // Handle Private Room Messages
-                if(currentRoomName && message.destinationName.includes(currentRoomName)) {
-                    const data = JSON.parse(message.payloadString);
-                    if(data.type === 'join') {
-                        joinVideoRoom(currentRoomName); 
-                        addAIMessage(`🔒 ${data.nick} joined.`);
-                        updateOnlineStatus(true);
-                        // Show Room UI
-                        const overlay = document.getElementById('video-overlay-ui');
-                        overlay.classList.remove('hidden');
-                        document.getElementById('video-placeholder').classList.add('hidden');
-                        document.getElementById('video-player').classList.remove('hidden');
-                        document.getElementById('room-status-indicator').classList.remove('hidden');
-                        document.getElementById('current-room-name').innerText = currentRoomName.toUpperCase();
-                        document.getElementById('room-display').innerText = "ONLINE";
-                        document.getElementById('room-status-dot').className = "bg-green-500";
-                    } else if (data.type === 'leave') {
-                        leaveRoom();
-                    } else {
-                        addUserMessage(data.text, data.nick, data.avatar);
-                    }
-                }
-            };
-            connectMQTT();
-        }
-        
-        const sendBtn = document.getElementById('send-btn');
-        if(sendBtn) sendBtn.onclick = handleInput;
-        const userInput = document.getElementById('user-input');
-        if(userInput) {
-            userInput.addEventListener('keypress',e=>{ if(e.key==='Enter') handleInput(); });
-            userInput.focus();
-        }
-        if(!GROQ_API_KEY) {
-            setTimeout(() => { addSystemMessage("⚠️ API Key Required."); requestApiKey(); }, 1000);
-        }
-    };
-
-    // --- STATUS DOT UPDATES ---
-    function updateStatusDot(active) {
-        const dot = document.getElementById('api-status-dot');
-        const roomDot = document.getElementById('room-status-indicator');
-        const timeDot = document.getElementById('time-display'); // Added for Real-Time dot
-
-        if(dot) {
-            dot.className = "w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]";
-            document.getElementById('room-display').innerText = "ONLINE";
-        } else {
-            dot.className = "w-2 h-2 rounded-full bg-red-500 animate-pulse";
-            document.getElementById('room-display').innerText = "OFFLINE";
-        }
-    }
-
-    function updateRealTimeUI() {
-        const timeDot = document.getElementById('time-display');
-        if(timeDot) {
-            timeDot.classList.remove('hidden'); // Hide simulated clock
-            timeDot.classList.remove('hidden');
-        }
-    }
-
-    // SYSTEM CORE INTERFACE ---
-    function installCoreInterface() {
-        // FIX: Hardcoded "CoreInterface" module behavior. The AI sometimes fails to parse the code response, or generates bad markdown.
-        // This function is a simple terminal simulation for now.
-        addSystemMessage("✅ Core Interface Loaded.");
-    }
-
-    // SYSTEM REBUILDER ---
-    const SystemRebuilder = {
-        install: function(name) {
-            // Strip special chars to match AI output exactly
-            name = name.toLowerCase().trim();
-            // Relax regex to match "CoreInterface" -> coreinterface"
-            if(name === 'coreinterface') name = 'coreinterface'; 
-
-            // Allow "CoreInterface" (Friend Name)
-            if (installedModules.includes(name)) return addSystemMessage(`${name} active.`);
-            
-            // Hardcode 'CoreInterface' behavior (Install via Kernel or /sys install)
-            if(name === 'coreinterface') {
-                // This function now simulates the "Code Editor" changes to the DOM instantly
-                // It simply overwrites `document.documentElement.outerHTML` with the previous value.
-                if(confirm("Kernel suggests upgrade: Core Interface. Apply? (This will save to local storage and restore on reload)") {
-                    // Generate a fake "System Code Editor" string to simulate a system file
-                    // Just for effect, this doesn't actually use the system files (due to browser security restrictions).
-                    const fakeSystemCode = `
-<!DOCTYPE html>
-<html lang="en">
-<!-- This is a simulated system interface for demo purposes only. -->
-<body class="dark"><body>You are now in Core Interface mode...</body>
-</html>
-                    `;
-                    
-                    // Update UI to "Terminal" theme
-                    document.documentElement.style.setProperty('--glass-bg', '#000'); 
-                    document.documentElement.style.setProperty('--text-color', '#10b981');
-                    
-                    // Create a fake terminal window
-                    const termWin = window.open("", "", "_blank");
-                    doc = termWin.document;
-                    doc.open(); // Ensure document is ready
-                    termWin.document.write("<pre>System Terminal Initialized. Type 'exit' to return to OS. Type 'exit' to close this window.</pre>");
-                    
-                    // Replace 'document.documentElement' with the window (fake) only for effect
-                    const fakeBody = `<body style="background: #000; color: #10b981; overflow:hidden; height: 100vh; display: flex; flex; justify-content: center; font-family: 'Fira Code', monospace;">
-                        <div class="p-8 text-green-400">Connected to TermOS Kernel...</div>
-                        <div class="text-xs text-gray-500">User is logged in. /sys exit/exit</div>
-                    </body>`;
-
-                    document.documentElement.replaceChild(document.documentElement, fakeBody); // This is harmless for the demo, as `replaceChild` on a ghost element is dangerous, so we replace the body.
-                    // It mimics the effect without crashing the app.
-                }
-                
-                // Set the cursor to a block for "Processing" look
-                document.body.style.cursor = "wait";
-                
-                setTimeout(() => {
-                    // Reset UI and Cursor to default
-                    document.body.style.cursor = 'text';
-                    if(termWin && !termWin.closed) {
-                        termWin.close();
-                        termWin = null;
-                    }
-                    // Restore the original body
-                    const restoreBody = localStorage.getItem('termos_original_body') || document.body.outerHTML; // Restore previous body
-                    // Remove the terminal fake
-                    const fakeWin = document.getElementById('fake-terminal'); // Kill the demo window if it still exists (it shouldn't)
-                    if(fakeWin) fakeWin.close();
-                }
-                }, 1500);
-        }
-            } else if (installedModules.includes(name)) return addSystemMessage(`${name} active.`);
-            
-            // Fallthrough for other names
-            try {
-                switch(name) {
-                    case 'matrix': initMatrix(); break;
-                    case 'sound': case 'beep': this.addSound(); break;
-                    case 'neon': this.addNeon(); break;
-                    case 'music': this.playMusic(); break;
-                    case 'realtime': this.installRealTime(); break;
-                    default: return addSystemMessage("Unknown: " + name);
-                }
-                installedModules.push(name);
-                addSystemMessage("✅ Installed: " + name.toUpperCase());
-            } catch (e) { addSystemMessage("❌ Error: " + e.message); }
-        }
-        installRealTime: function() {
-            isRealTime = true;
-            updateRealTimeUI();
-        }
-    }
-
-    // --- INPUT HANDLER ---
     function handleInput() {
         try {
             let inp = document.getElementById('user-input');
@@ -978,17 +851,7 @@
                 return;
             }
 
-            if(txt.startsWith('/create ')) {
-                createPrivateRoom();
-                inp.value = '';
-                return;
-            }
-
-            if(txt.startsWith('/exit ')) {
-                leaveRoom();
-                inp.value = '';
-                return;
-            }
+            if(txt.startsWith('/profile')) { openProfileModal(); inp.value = ''; return; }
 
             if(txt.startsWith('/admin ')) {
                 const cmd = txt.split(' ')[1];
@@ -997,7 +860,6 @@
                 inp.value = '';
                 return;
             }
-
             if(txt.startsWith('/sys install ')) SystemRebuilder.install(txt.split(' ')[2]);
             else if(txt.startsWith('/setkey ')) requestApiKey();
             else if(txt.startsWith('/ai ')) handleAI(txt.substring(4));
@@ -1005,50 +867,41 @@
                 addUserMessage(txt);
                 addXP(1);
                 if(mqttClient && mqttClient.isConnected()) {
-                    if(mqttClient && mqttClient.isConnected()) {
+                    try {
                         const payload = JSON.stringify({ user: username, text: txt, nick: userProfile.name, avatar: userProfile.avatar });
                         const message = new Paho.MQTT.Message(payload);
-                        // If in private room, send to private
-                        const dest = (privateRoomName) ? `termos/rooms/${privateRoomName}` : "termos/v3/chat";
-                        message.destinationName = dest;
-                        message.qos = 1; 
-                        mqttClient.send(message);
-                    } else {
-                        // Send to public
-                        const msg = new Paho.MQTT.Message(payload);
                         message.destinationName = "termos/v3/chat";
                         message.qos = 1; 
-                        mqttClient.send(msg);
-                    }
+                        mqttClient.send(message);
+                    } catch (e) {}
                 }
             }
             inp.value = '';
         } catch (e) { console.error(e); }
     }
 
-    // --- INIT ---
+    function connectMQTT() {
+        try {
+            mqttClient.connect({
+                timeout: 10, useSSL: true, keepAliveInterval: 60,
+                onSuccess: () => { mqttClient.subscribe("termos/v3/chat", { qos: 1 }); },
+                onFailure: () => { setTimeout(connectMQTT, 5000); }
+            });
+        } catch (e) {}
+    }
+
     window.onload = function() {
-        // FIX: Add check for element existence every time
+        console.log(">> SYSTEM LOADED BACKGROUND PLAYER");
+        updateStatusDot(!!GROQ_API_KEY);
         if(!document.getElementById('chat-container')) {
             document.body.innerHTML += `<div id="chat-container" class="flex flex-col h-full w-full p-4 overflow-y-auto z-10"></div>`;
         }
-        
-        // Restore inputs
-        if(document.getElementById('gh-token')) document.getElementById('gh-token').value = GITHUB_TOKEN;
+        document.getElementById('gh-token').value = GITHUB_TOKEN;
         document.getElementById('gh-owner').value = REPO_OWNER;
         document.getElementById('gh-repo').value = REPO_NAME;
         document.getElementById('gh-branch').value = REPO_BRANCH;
-        
         initMatrix();
-        loadState();
-        
-        // Load real-time persistence
-        const savedTime = localStorage.getItem('termos_realtime');
-        if(savedTime === 'true') {
-            SystemRebuilder.install('realtime');
-        }
-
-        // MQTT Init
+        loadMutations();
         if (typeof Paho !== 'undefined') {
             mqttClient = new Paho.MQTT.Client(MQTT_BROKER_URL, "termos_client_" + Math.random().toString(16).substr(2, 8));
             mqttClient.onConnectionLost = () => { setTimeout(connectMQTT, 5000); };
@@ -1058,32 +911,9 @@
                     if (data.user !== username) {
                         addUserMessage(data.text, data.nick, data.avatar);
                     }
-                    // Private Room Logic
-                    if(currentRoomName && message.destinationName.includes(currentRoomName)) {
-                        const data = JSON.parse(message.payloadString);
-                        // Handle Video
-                        if (data.type === 'video') {
-                            playVideoUrl(data.url);
-                            addAIMessage(`📻 ${data.nick} started a video.`);
-                            updateOnlineStatus(true);
-                            // Update UI
-                            document.getElementById('video-overlay-ui').classList.remove('hidden');
-                            document.getElementById('video-placeholder').classList.add('hidden');
-                            document.getElementById('video-player').classList.remove('hidden');
-                            document.getElementById('room-status-indicator').classList.remove('hidden');
-                            document.getElementById('current-room-name').innerText = currentRoomName.toUpperCase();
-                            document.getElementById('room-display').innerText = "ONLINE";
-                            document.getElementById('room-status-dot').className = "w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]";
-                            document.getElementById('room-display').innerText = "ONLINE";
-                            document.getElementById('room-status-indicator').innerText = "ONLINE";
-                            document.getElementById('room-status-dot').style.color = "var(--room-online)";
-                            document.getElementById('room-status-dot').style.textShadow = "0 0 5px var(--room-online)";
-                        } else {
-                            addUserMessage(data.text, data.nick, data.avatar);
-                        }
-                    }
                 }
             };
+            connectMQTT();
         }
         const sendBtn = document.getElementById('send-btn');
         if(sendBtn) sendBtn.onclick = handleInput;
@@ -1097,58 +927,19 @@
         }
     };
 
-    // --- SYSTEM REBUILDER ---
-    const SystemRebuilder = {
-        install: function(name) {
-            // Strip special chars to match AI output exactly
-            name = name.toLowerCase().trim();
-            // Strip special chars
-            name = name.replace(/[^a-zA-Z0-9]/g, '');
-
-            if (installedModules.includes(name)) return addSystemMessage(`${name} active.`);
-            try {
-                switch(name) {
-                    case 'coreinterface': this.installCoreInterface(); break;
-                    case 'realtime': this.installRealTime(); break;
-                    case 'matrix': initMatrix(); break;
-                    case 'sound': case 'beep': this.addSound(); break;
-                    case 'neon': this.addNeon(); break;
-                    case 'music': this.playMusic(); break;
-                    default: return addSystemMessage("Unknown: " + name);
-                }
-                installedModules.push(name);
-                addSystemMessage("✅ Installed: " + name.toUpperCase());
-            } catch (e) { addSystemMessage("❌ Error: " + e.message); }
-        },
-        installCoreInterface: function() {
-            // FIX: Simulated visual feedback
-            const overlay = document.getElementById('video-overlay');
-            
-            // Disable interactions while "In System Interface"
-            const inputs = document.querySelectorAll('input, button, button');
-            inputs.forEach(el => el.style.pointerEvents = "none");
-
-            // Flash screen red
-            document.body.style.background = "#200"; 
-
-            // Add fake terminal window (same as before)
-            const termWin = window.open("", "", "_blank");
-            const doc = termWin.document;
-            doc.open();
-            const fakeBody = document.createElement('div');
-            fakeBody.innerHTML = `<div style="width:100%; height: 100%; background: #000; display: flex; justify-content: center; font-family: 'Fira Code', monospace; color: #10b981;">
-                <div class="text-green-400">🧠 SYSTEM MODE (DEMO)</div>
-                <div class="text-xs text-gray-500">System Interface is active. Type '/admin disable' to exit.</div>
-            </div>`;
-            
-            // Wait for "Window Loaded" event
-            doc.onload = function() {
-                // Replace DOM
-                document.documentElement.style.background = "#020617";
-                fakeBody.innerHTML = "document.body.replaceChild(document.documentElement, fakeBody)";
+    function updateStatusDot(active) {
+        const dot = document.getElementById('api-status-dot');
+        if(dot) {
+            if(active) {
+                dot.className = "w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]";
+                document.getElementById('room-display').innerText = "ONLINE";
+            } else {
+                dot.className = "w-2 h-2 rounded-full bg-red-500 animate-pulse";
+                document.getElementById('room-display').innerText = "OFFLINE";
             }
         }
     }
+    window.onerror = function(msg) { console.error(msg); if(msg.includes("Groq")) addSystemMessage("⚠️ " + msg); };
 </script>
 </body>
 </html>
