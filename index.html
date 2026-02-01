@@ -3,13 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: Background Player</title>
+    <title>TermOS: Friendly Devices</title>
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <style>
-        :root { --glass-bg: rgba(15, 23, 42, 0.85); --glass-border: rgba(255, 255, 255, 0.1); --accent-primary: #38bdf8; --msg-user-bg: #3b82f6; --msg-ai-bg: #1e293b; --neural-color: #06b6d4; }
+        :root { 
+            --glass-bg: rgba(15, 23, 42, 0.85); --glass-border: rgba(255, 255, 255, 0.1); 
+            --accent-primary: #38bdf8; --msg-user-bg: #3b82f6; --msg-ai-bg: #1e293b; --neural-color: #06b6d4; 
+            --room-online: #22c55e; --room-offline: --room-private: #d946ef; --room-active: #22c55e;
+        }
         body { background-color: #020617; color: #e2e8f0; font-family: 'Inter', sans-serif; overflow: hidden; }
         #matrix-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.15; pointer-events: none; }
         ::-webkit-scrollbar { width: 4px; }
@@ -19,42 +23,55 @@
         .avatar-gradient-user { background: linear-gradient(135deg, #3b82f6, #8b5cf6); }
         .avatar-gradient-ai { background: linear-gradient(135deg, #10b981, #059669); }
         .avatar-gradient-neural { background: linear-gradient(135deg, #06b6d4, #3b82f6); }
+        .avatar-gradient-room { background: linear-gradient(135deg, #d946ef, #8b5cf6); }
         .input-glow:focus-within { box-shadow: 0 0 20px rgba(56, 189, 248, 0.25); border-color: rgba(56, 189, 248, 0.5); }
         .admin-hidden { display: none; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
         .avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: 9999px; }
         .avatar-img-box { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; border: 2px solid rgba(255,255,255,0.1); }
-        .neural-msg { border-left: 2px solid var(--neural-color); background: rgba(6, 182, 212, 0.1); }
-        .neural-text { color: #22d3ee; text-shadow: 0 0 5px rgba(34, 211, 238, 0.5); }
-
-        /* FLOATING PLAYER STYLES */
+        
+        /* Floating Player Styles */
         .media-overlay {
-            position: fixed;
-            bottom: 80px; /* Above input area */
-            left: 50%;
+            position: fixed; bottom: 80px; left: 50%;
             transform: translateX(-50%);
-            width: 90%;
-            max-width: 500px;
-            z-index: 40; /* Below Header (20), above Input (30) */
+            width: 90%; max-width: 500px;
+            z-index: 40;
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
-
         .media-minimized {
-            bottom: 20px;
-            right: 20px;
-            left: auto;
-            width: 50px;
-            height: 50px;
+            bottom: 20px; right: 20px; left: auto;
+            width: 50px; height: 50px;
             transform: none;
             padding: 0;
-            background: transparent;
-            border: none;
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 12px;
+            cursor: pointer;
         }
-
-        .media-content {
+        .editor-container {
+            height: calc(100% - 60px);
+            width: 90%;
+            max-width: 500px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border: 1px solid #333;
             display: flex;
             flex-direction: column;
         }
         
+        .code-editor {
+            width: 95%;
+            height: 80%;
+            background: #1e1e1e1; /* VS Code Light mode */
+            color: #d1d5db; /* VS Code light gray */
+            font-family: 'Fira Code', monospace;
+            border: 1px solid #333;
+            padding: 10px;
+            resize: none;
+            outline: none;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        /* Private Room Styles */
         .video-container {
             width: 100%;
             aspect-ratio: 16/9;
@@ -62,21 +79,20 @@
             border-radius: 12px;
             overflow: hidden;
             position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
-        
         video { width: 100%; height: 100%; object-fit: contain; }
         
-        .visualizer-bar {
-            height: 4px;
-            background: #22d3ee;
-            width: 0%;
-            transition: width 0.1s;
-            border-radius: 2px;
+        .video-overlay-ui {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            padding: 2px;
+            z-index: 30; /* Below Video Player */
         }
     </style>
 </head>
-<body class="h-screen w-screen flex flex-col relative">
+<body class="h-screen w-screen flex flex flex-col relative">
     <input type="file" id="avatar-upload" class="hidden" accept="image/*">
     <canvas id="matrix-canvas"></canvas>
     
@@ -90,15 +106,15 @@
                 <div class="flex items-center gap-2 text-xs text-gray-400">
                     <div id="api-status-dot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
                     <span id="room-display">SYSTEM READY</span>
-                    <span class="text-[10px] text-cyan-400 font-mono border border-cyan-500/30 px-1 rounded">GEN <span id="gen-count">1</span></span>
+                    <!-- Real Time Status -->
+                    <div id="time-status-indicator" class="hidden items-center gap-1 text-xs text-green-400 font-mono border border border-green-500/20 px-1 rounded-full bg-green-500/10">ONLINE</div>
                 </div>
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <button onclick="triggerKernelThought()" class="hidden md:flex bg-cyan-900/20 hover:bg-cyan-900/40 text-cyan-400 hover:text-white text-[10px] font-mono px-2 py-1 rounded border border-cyan-500/30 transition-all">🧠 KERNEL</button>
-            <button onclick="toggleMediaOverlay()" id="media-toggle-btn" class="hidden md:flex bg-purple-900/20 hover:bg-purple-900/40 text-purple-400 hover:text-white text-[10px] font-mono px-2 py-1 rounded border border-purple-500/30 transition-all">📺 PLAYING: OFF</button>
-            <button onclick="openProfileModal()" class="hidden md:flex bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white text-[10px] font-mono px-2 py-1 rounded border border-white/10 transition-all">👤 PROFILE</button>
-            <button onclick="requestApiKey()" id="key-btn" class="hidden md:flex bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white text-[10px] font-mono px-2 py-1 rounded border border-white/10 transition-all">🔑 KEY</button>
+            <button onclick="toggleMediaOverlay()" id="media-toggle-btn" class="hidden md:flex bg-purple-900/20 hover:bg-purple-900/40 text-purple-400 hover:text-white text-[10px] font-mono px-2 py-1 rounded border border-purple-500/30 transition-all">📺 MEDIA</button>
+            <button onclick="toggleCodeEditor()" class="hidden md:flex bg-green-900/20 hover:bg-green-900/40 text-green-400 hover:text-white text-[10px] font-mono px-2 py-1 rounded border border-green-500/30 transition-all">🖋 CODE</button>
+            <button onclick="toggleAdminMode()" id="admin-toggle-text" class="bg-slate-900/50 hover:bg-red-900/50 border border-slate-700 hover:border-red-500 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-2"><span>🔴</span> ADMIN</button>
             <div class="hidden md:flex flex-col items-end">
                 <span class="text-xs text-gray-400 font-mono">LVL <span id="lvl-disp" class="text-blue-400 font-bold">1</span></span>
                 <span class="text-[10px] text-gray-600 font-mono">XP <span id="xp-val">0</span></span>
@@ -107,54 +123,49 @@
     </header>
     
     <main id="chat-container" class="flex-1 overflow-y-auto pt-20 pb-32 px-4 z-10 scroll-smooth max-w-5xl mx-auto w-full"></main>
-    
+
     <div class="fixed bottom-0 left-0 w-full z-30 glass-panel border-t border-white/5 pb-6 pt-4 px-4">
         <div class="max-w-4xl mx-auto">
             <div class="flex items-end gap-2 bg-slate-900/80 rounded-2xl p-2 border border-white/5 shadow-2xl input-glow transition-all">
                 <button id="voice-btn" class="p-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8h4m-4 8H8"></path></svg>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7 7m7 7v4m0 0H8m4 0h4m-4 8h4m-4 8H8"></path></svg>
                 </button>
-                <input type="text" id="user-input" placeholder="Try '/think' for deep analysis..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light">
-                <button id="send-btn" class="p-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all transform active:scale-95 shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
+                <input type="text" id="user-input" placeholder="Try '/video MyRoom to start private chat..." autocomplete="off" class="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 px-4 py-3 text-base font-light">
+                <button id="send-btn" class="p-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-lg shadow-blue-600/30 transition-all transform active:scale-95 shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7</div>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7 7-7" 7"></path></svg>
                 </button>
             </div>
             <div class="text-center mt-2">
-                <button onclick="forceReset()" class="text-[10px] text-red-500/50 hover:text-red-400 transition-colors">⚠️ Emergency Reset</button>
+                <button onclick="forceReset()" class="text-[10px] text-red-500/50 hover:text-red-400 transition-colors">⚠️ Reset System</button>
             </div>
         </div>
     </div>
 
-<!-- FLOATING MEDIA OVERLAY (NEW) -->
+<!-- FLOATING MEDIA OVERLAY -->
 <div id="media-overlay" class="media-overlay media-minimized glass-panel rounded-2xl border border-white/10 shadow-2xl">
     <!-- Expanded State -->
-    <div class="media-content p-4">
+    <div class="media-content p-0">
         <div class="flex justify-between items-center mb-3">
-            <h3 class="text-white font-bold text-sm flex items-center gap-2">📺 MEDIA PLAYER <span class="text-[10px] text-gray-400 font-mono bg-white/10 px-2 rounded">BACKGROUND ACTIVE</span></h3>
+            <span class="text-white font-bold text-sm flex items-center gap-2">📺 MEDIA PLAYER</span>
             <button onclick="toggleMediaUI()" class="text-gray-400 hover:text-white">✖</button>
         </div>
 
         <!-- Tabs -->
         <div class="flex border-b border-white/10 mb-3">
-            <button onclick="switchMediaTab('radio')" id="tab-radio" class="flex-1 pb-2 text-cyan-400 border-b-2 border-cyan-500 font-mono text-sm">📻 RADIO</button>
-            <button onclick="switchMediaTab('video')" id="tab-video" class="flex-1 pb-2 text-gray-400 border-b-2 border-transparent hover:text-white font-mono text-sm">📺 VIDEO</button>
+            <button onclick="switchMediaTab('radio')" id="tab-radio" class="flex-1 pb-2 text-cyan-400 border-b-2 border-cyan-500 font-mono text-sm hover:bg-white/5 transition-colors">📻 RADIO</button>
+            <button onclick="switchMediaTab('video')" id="tab-video" class="flex-1 pb-2 text-purple-400 border-b-2 border-purple-500 font-mono text-sm hover:bg-white/5 transition-colors">📹 VIDEO ROOM</button>
         </div>
 
         <!-- Radio Player -->
         <div id="media-radio" class="space-y-2">
+            <div class="p-3 text-center text-gray-400 text-xs">
+                Select a station to broadcast to active room.
+            </div>
             <div class="radio-station active p-3 rounded border border-white/5 bg-white/5 flex items-center justify-between relative overflow-hidden group" onclick="playRadio('https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3', this)">
                 <div class="relative z-10">
-                    <div class="text-white font-bold">🎵 Lofi Study</div>
-                    <div class="text-[10px] text-gray-400">Relaxed beats</div>
-                </div>
-                <!-- Fake Visualizer -->
-                <div class="visualizer-bar"></div>
-                <div class="text-cyan-400 text-xs animate-spin hidden loading-indicator absolute right-3">⟳</div>
-            </div>
-            <div class="radio-station p-3 rounded border border-white/5 bg-white/5 flex items-center justify-between relative overflow-hidden group" onclick="playRadio('https://streams.ilovemusic.com/iloveradio1599.mp3', this)">
-                <div class="relative z-10">
-                    <div class="text-white font-bold">📻 Cyber Radio</div>
-                    <div class="text-[10px] text-gray-400">Synthwave Stream</div>
+                    <div class="text-white font-bold">🎵 Lofi Beats</div>
+                    <div class="text-[10px] text-gray-400">Chill vibes</div>
                 </div>
                 <div class="visualizer-bar"></div>
                 <div class="text-cyan-400 text-xs animate-spin hidden loading-indicator absolute right-3">⟳</div>
@@ -163,56 +174,92 @@
 
         <!-- Video Player -->
         <div id="media-video" class="hidden space-y-2">
-            <div class="video-container">
-                <div id="video-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-500 z-20 bg-black/50">
-                    <span class="text-xs text-center">Paste URL (M3U8, MP4)</span>
+            <div class="bg-black/50 rounded-lg p-3 border border-white/10">
+                <div class="text-white font-bold text-xs mb-2">PRIVATE VIDEO CHAT</div>
+                <div class="text-[10px] text-gray-400 mb-2">
+                    Type <span class="text-cyan-400 font-mono">/video [RoomName]</span> to join.
+                    <br>Or click <span class="text-purple-400">HOST</span> to start video.
                 </div>
-                <video id="video-player" class="hidden" controls autoplay playsinline></video>
-            </div>
-            <div class="mt-2 flex gap-2">
-                <input type="text" id="video-url-input" placeholder="Paste Stream URL (e.g. https://stream.m3u8)" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-xs outline-none">
-                <button onclick="playVideo()" class="w-full mt-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-2 rounded">▶ PLAY STREAM</button>
+                <div class="video-container relative">
+                    <div id="video-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-500 z-20 bg-black/50">
+                        <span class="text-xs">Waiting for video signal...</span>
+                    </div>
+                    <video id="video-player" class="w-full h-full hidden" controls playsinline autoplay muted></video>
+                    <!-- Overlay for Room Name/Status -->
+                    <div id="video-overlay-ui" class="absolute bottom-2 right-2 text-right text-[10px] text-cyan-400 font-mono hidden bg-black/80 px-2 py-1 rounded">
+                        <span id="current-room-name" class="text-cyan-400 text-white font-mono"></span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- PROFILE MODAL -->
-<div id="profile-modal" class="admin-hidden fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center">
-    <div class="glass-panel p-6 rounded-xl border border-white/10 max-w-sm w-full mx-4">
-        <h3 class="text-white font-bold mb-4 text-lg">👤 Profile Settings</h3>
-        <div class="space-y-4">
-            <div><label class="block text-xs text-gray-400 mb-1">Nickname</label><input type="text" id="edit-name" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:border-blue-500 outline-none"></div>
-            <div>
-                <label class="block text-xs text-gray-400 mb-1">Avatar</label>
-                <div class="flex gap-2">
-                    <button onclick="triggerFileUpload()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs py-2 rounded transition-colors">📷 Upload Photo</button>
-                    <input type="text" id="edit-avatar" placeholder="Or Emoji" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-center">
-                </div>
-            </div>
+<!-- CODE EDITOR OVERLAY -->
+<div id="code-editor-overlay" class="code-editor-overlay">
+    <!-- Expanded State -->
+    <div class="editor-container">
+        <div class="bg-[#1e1e1e1]; border: 1px solid #333; /* VS Code Light Mode */
+            width: 90%; height: 80%; border-radius: 8px;
+            padding: 10px;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            outline: none;
+            resize: none;
+            box-shadow: 0 4px 0 0 0.25 rgba(0, 0, 0, 0.1);
         </div>
-        <div class="flex gap-2 mt-4">
-            <button onclick="saveProfile()" class="flex-1 bg-green-600 hover:bg-green-500 text-white text-xs font-bold py-2 rounded">Save</button>
-            <button onclick="closeProfileModal()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold py-2 rounded">Cancel</button>
+        <div class="editor-actions">
+            <button onclick="applyCode()" class="flex-1 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded font-mono text-xs">APPLY TO BROWSER</button>
+            <button onclick="toggleCodeEditor()" class="text-gray-400 hover:text-white px-4 py-2 rounded font-mono text-xs">✖ CLOSE</button>
+        </div>
+    </div>
+</div>
+
+<!-- PRIVATE ROOM OVERLAY -->
+<div id="private-room-ui" class="admin-hidden fixed inset-0 z-[70] bg-black/95 backdrop-blur-md flex items-center justify-center">
+    <div class="glass-panel p-6 rounded-xl border border-white/10 max-w-md w-full mx-4">
+        <h3 class="text-white font-bold text-lg">🔒 PRIVATE ROOM SETTINGS</h3>
+        <div class="space-y-4">
+            <div><label class="block text-xs text-gray-400 mb-1">Room Name</label><input type="text" id="private-room-input" placeholder="e.g. MySecret" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:border-purple-500 outline-none"></div>
+            <div class="text-[10px] text-gray-400 mb-2">
+                Copy this name: <span id="room-copy-name" class="text-cyan-400 font-mono bg-slate-800/50 border-slate-700 rounded px-1">/video MySecret</span> and share with friends.
+            </div>
+            <div class="mt-2">
+                <button onclick="createPrivateRoom()" class="w-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-2 rounded">📻 JOIN ROOM</button>
+                <button onclick="leaveRoom()" class="w-full bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-2 rounded">EXIT ROOM</button>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- ADMIN PANEL -->
-<div id="admin-panel" class="admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border border-red-500/30 shadow-2xl shadow-red-500/10">
-    <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> GITHUB CONSOLE</h3>
+<div id="admin-panel" class="admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50 glass-panel p-4 rounded-xl border-red-500/30 shadow-2xl shadow-red-500/10">
+    <h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> ADMIN CONSOLE</h3>
     <div class="space-y-2">
-        <button onclick="testGitHubToken()" class="w-full border border-green-500/50 text-green-400 bg-green-900/10 hover:bg-green-900/20 text-xs py-1 rounded mb-2">🧪 Test Permissions First</button>
-        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
-        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
-        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Branch</label><input type="text" id="gh-branch" value="main" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
-        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Token (Classic)</label><input type="password" id="gh-token" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div>
-        <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors shadow-lg shadow-red-600/20 active:scale-95 mt-2">🧬 PUSH TO GITHUB</button>
+        <button onclick="toggleCodeEditor()" class="w-full border border-green-500/50 text-green-400 bg-green-900/10 hover:bg-green-900/20 text-xs py-2 rounded mb-2">🖋 EDIT SYSTEM CODE</button>
+        <div class="p-1 rounded bg-slate-900 border border-slate-700 rounded p-2 text-gray-400">You are currently running from a single HTML file. Use this to fix visual bugs instantly.</div>
+        
+        <!-- Real Time Toggle -->
+        <div class="border-t border-white/10 pt-2 mt-2">
+            <div class="flex justify-between items-center">
+                <span class="text-[10px] text-gray-500 font-mono uppercase tracking-wider">Real-Time Server</span>
+                <button onclick="toggleRealTime()" id="toggle-time-btn" class="w-full bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-mono px-2 rounded">ON</button>
+            </div>
+        </div>
+        
+        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:border-red-500 outline-none"></div>
+        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" class="w-full bg-slate-900 border-slate-700 rounded p-2 text-white focus:border-red-500 outline-none"></div>
+        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Branch</label><input type="text" id="gh-branch" value="main" class="w-full bg-slate-900 border-slate-700 rounded p-2 text-white focus:border-red-500 outline-none"></div>
+        <div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Token (Classic)</label><input type="password" id="gh-token" class="w-full bg-slate-900 border-slate-700 rounded p-2 text-white focus:border-red-500 outline-none"></div>
+        <button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold py-2 rounded tracking-wider">🧬 PUSH TO GITHUB</button>
     </div>
 </div>
 
 <script>
     const API_MODEL = "llama-3.3-70b-versatile"; 
+    
+    // STATE (FIXED)
     let GROQ_API_KEY = localStorage.getItem('termos_groq_key') || "";
     let GITHUB_TOKEN = localStorage.getItem('termos_github_token') || "";
     let REPO_OWNER = localStorage.getItem('termos_repo_owner') || "your-username";
@@ -224,8 +271,10 @@
         name: localStorage.getItem('termos_name') || "User",
         avatar: localStorage.getItem('termos_avatar') || "👤"
     };
-    let tempAvatarData = "";
-    let radioStream = null;
+
+    // VIDEO ROOM STATE
+    let privateRoomName = localStorage.getItem('termos_private_room');
+    let isRealTime = JSON.parse(localStorage.getItem('termos_realtime')) || { enabled: false, server: "time.nist" }; // Default is simulated time
 
     const MQTT_BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
     let username = 'User_' + Math.floor(Math.random() * 10000);
@@ -234,98 +283,141 @@
     const LEVELS = { 3: 'Cyber', 5: 'Ghost', 8: 'Oracle' }; 
     let installedModules = [];
     let adminMode = false;
-
+    
+    // --- RESET & PERSISTENCE FIXED ---
     function forceReset() {
-        if(confirm("Emergency Reset: Clear all Mutations and Profiles?")) {
-            localStorage.setItem('termos_mutations', "[]");
+        if(confirm("Reset System (State & Cache)?")) {
+            localStorage.clear();
             location.reload();
         }
     }
 
-    // --- BACKGROUND PLAYER LOGIC ---
-    function toggleMediaOverlay() {
-        const el = document.getElementById('media-overlay');
-        const btn = document.getElementById('media-toggle-btn');
+    // --- SYSTEM BUILDER ---
+    const SystemRebuilder = {
+        install: function(name) {
+            name = name.toLowerCase().trim();
+            // Relax regex to match AI output exactly
+            name = name.replace(/[^a-zA-Z0-9]/g, '');
+            
+            // FRIENDLY NAMES
+            if(name === 'coreinterface') name = 'coreinterface';
+            
+            if (installedModules.includes(name)) return addSystemMessage(`${name} active.`);
+            try {
+                switch(name) {
+                    case 'matrix': initMatrix(); break;
+                    case 'sound': case 'beep': this.addSound(); break;
+                    case 'neon': this.addNeon(); break;
+                    case 'music': this.playMusic(); break;
+                    case 'realtime': this.installRealTime(); break;
+                    default: return addSystemMessage("Unknown: " + name);
+                }
+                installedModules.push(name);
+                addSystemMessage("✅ Installed: " + name.toUpperCase());
+            } catch (e) { addSystemMessage("❌ Error: " + e.message); }
+        },
+        installRealTime: function() {
+            // Install Core Interface (Friendly System Logs)
+            this.installCoreInterface();
+            // Actually just simulates the interface logs in the chat area.
+            setTimeout(() => {
+                addSystemMessage("✅ Real-Time Module Installed.");
+                addAIMessage("📡 Sync enabled. Time is now based on system clock, but simulated for this demo.");
+            }, 500);
+        },
+        installCoreInterface: function() {
+            // Logs a fake system boot sequence to "terminal"
+            setTimeout(() => addSystemMessage("🧠 KERNEL: Initializing Core Interface..."), 1000);
+            setTimeout(() => addSystemMessage("🧠 KERNEL: Loading Modules..."), 2000);
+            setTimeout(() => addSystemMessage("✅ Core Interface Loaded."), 4000);
+        },
+        playMusic: function() { addSystemMessage("🎵 Audio Module: Simulated."); }
+    };
+
+    // --- PRIVATE ROOM LOGIC ---
+    function createPrivateRoom() {
+        const roomName = document.getElementById('private-room-input').value.trim();
+        if(!roomName) return alert("Enter a room name.");
         
-        if (el.classList.contains('media-minimized')) {
-            // EXPAND
-            el.classList.remove('media-minimized');
-            el.classList.add('media-expanded');
-            btn.innerText = "📺 PLAYING: ON";
-            btn.classList.add('text-purple-400');
-        } else {
-            // MINIMIZE
-            el.classList.add('media-minimized');
-            el.classList.remove('media-expanded');
-            btn.innerText = "📺 PLAYING: OFF"; // Visual feedback only, keeps playing
-            btn.classList.remove('text-purple-400');
+        localStorage.setItem('termos_private_room', roomName);
+        privateRoomName = roomName;
+        document.getElementById('room-display').innerText = "PRIVATE: " + roomName.toUpperCase();
+        
+        // Switch Media UI to Private Video Chat Mode
+        switchMediaTab('video');
+        
+        // Start Private Session
+        startPrivateSession(roomName);
+    }
+
+    function leaveRoom() {
+        if(!privateRoomName) return alert("No room to leave.");
+        
+        mqttClient.unsubscribe("termos/v3/chat"); // Unsubscribe public
+        if (mqttClient && mqttClient.isConnected()) {
+            // Send leave message
+            const payload = JSON.stringify({ user: username, nick: userProfile.name, avatar: userProfile.avatar, type: 'leave' });
+            const msg = new Paho.MQTT.Message(payload);
+            msg.destinationName = `termos/rooms/${privateRoomName}`;
+            msg.qos = 1;
+            mqttClient.send(msg);
+            
+            addSystemMessage(`🚪 Left Room: ${privateRoomName}`);
+            
+            localStorage.removeItem('termos_private_room');
+            privateRoomName = "";
+            document.getElementById('room-display').innerText = "PUBLIC LOBBY";
+            // Hide private UI
+            if(document.getElementById('private-room-ui')) {
+                toggleAdminMode(); // Close admin if open
+            }
         }
     }
 
-    function toggleMediaUI() {
-        // Clicked 'X' inside player, just minimize it
-        const el = document.getElementById('media-overlay');
-        el.classList.add('media-minimized');
-        const btn = document.getElementById('media-toggle-btn');
-        btn.innerText = "📺 MINIMIZED";
-        btn.classList.remove('text-purple-400');
-    }
-
-    function switchMediaTab(tab) {
-        document.getElementById('media-radio').classList.add('hidden');
-        document.getElementById('media-video').classList.add('hidden');
-        document.getElementById('tab-radio').classList.remove('border-cyan-500', 'text-cyan-400');
-        document.getElementById('tab-video').classList.remove('border-purple-500', 'text-purple-400');
+    function startPrivateSession(roomName) {
+        currentRoomName = roomName;
+        const roomStatus = document.getElementById('room-status-msg');
+        roomStatus.innerText = "CONNECTING...";
+        roomStatus.className = "text-cyan-400 font-mono border border border-cyan-500/30 px-1 rounded bg-cyan-500/10 animate-spin"; // Add spinner
         
-        document.getElementById('media-' + tab).classList.remove('hidden');
+        // Unsubscribe from public, Subscribe to Private
+        if(mqttClient && mqttClient.isConnected()) {
+            mqttClient.unsubscribe("termos/v3/chat");
+            mqttClient.subscribe(`termos/rooms/${roomName}`, { qos: 1 });
+        }
         
-        if(tab === 'radio') {
-            document.getElementById('tab-radio').classList.add('border-cyan-500', 'text-cyan-400');
-        } else {
-            document.getElementById('tab-video').classList.add('border-purple-500', 'text-purple-400');
+        // Announce presence
+        if(mqttClient && mqttClient.isConnected()) {
+            const payload = JSON.stringify({ user: username, nick: userProfile.name, avatar: userProfile.avatar, type: 'join' });
+            const msg = new Paho.MQTT.Message(payload);
+            msg.destinationName = `termos/rooms/${roomName}`;
+            msg.qos = 1;
+            mqttClient.send(msg);
+            
+            // Notify locally that we are in a room
+            setTimeout(() => {
+                // If this succeeds, we switch status
+                const roomStat = document.getElementById('room-status-msg');
+                if(roomStat) {
+                    roomStat.innerText = "IN ROOM: " + roomName.toUpperCase();
+                    roomStat.className = "text-green-400 font-mono px-1 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]"; // Green
+                    roomStatus.classList.remove('border-cyan-500', 'animate-spin'); // Stop spinner
+                }
+            }, 2000);
         }
     }
-    function playRadio(url, el) {
-        if(radioStream) { radioStream.pause(); }
-        
-        document.querySelectorAll('.radio-station').forEach(d => {
-            d.classList.remove('active', 'border-cyan-500');
-            d.querySelector('.loading-indicator').classList.remove('hidden');
-        });
-        el.classList.add('active', 'border-cyan-500');
-        el.querySelector('.loading-indicator').classList.remove('hidden');
-        
-        radioStream = new Audio(url);
-        radioStream.play().then(() => {
-            el.querySelector('.loading-indicator').classList.add('hidden');
-            // Visualizer Effect
-            el.querySelector('.visualizer-bar').style.width = '100%';
-        }).catch(e => {
-            addSystemMessage("❌ Radio Stream Failed.");
-            el.querySelector('.loading-indicator').classList.add('hidden');
-        });
-    }
-    function playVideo() {
-        const url = document.getElementById('video-url-input').value;
-        if(!url) return;
-        const player = document.getElementById('video-player');
-        const placeholder = document.getElementById('video-placeholder');
-        
-        player.src = url;
-        player.classList.remove('hidden');
-        placeholder.classList.add('hidden');
-    }
 
-    // --- KERNEL LOGIC ---
-    async function triggerKernelThought() {
+    // --- LOGIC: FRIENDLY DEVICES ---
+    function triggerKernelThought() {
         if(!GROQ_API_KEY) return requestApiKey();
+        
         addSystemMessage("🧠 KERNEL: Engaging Neural Core...");
         const thinkingId = "think-" + Date.now();
         getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-cyan-400 italic animate-pulse pl-11">Synthesizing self-awareness...</div>`);
         scrollDown();
 
         try {
-            const systemContext = `Current System State: Generation ${systemGeneration}, Level ${userStats.level}, Active Modules: ${installedModules.join(',')}.`;
+            const systemContext = `Current System State: Generation ${systemGeneration}, Level ${userStats.level}, Modules: ${installedModules.join(',')}, Room: ${currentRoomName || "Public"} | (${isRealTime ? "Real" : "Local"}).`;
             
             let r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method:"POST",
@@ -337,6 +429,12 @@
                         content:`You are TermOS Kernel v${systemGeneration}. You are a self-evolving organism.
                         ${systemContext}
                         TASK: Analyze current UI and suggest 1 autonomous upgrade.
+                        
+                        SPECIAL INSTRUCTIONS:
+                        1. If user wants to change code, use this exact phrase: "Update Code".
+                        2. This will update the "Code Editor" text area.
+                        3. If user asks for "Real-Time", reply with current time.
+                        
                         Return response in this format: "Idea: [Description]. Code: SystemRebuilder.install('name') or /evolve [prompt]".`
                     },{role:"user",content:"Analyze your state and suggest an upgrade."}]
                 })
@@ -349,23 +447,41 @@
             const reply = apiData.choices[0].message.content;
             const el = document.getElementById(thinkingId); if(el) el.remove();
             
-            addNeuralMessage(reply);
-            if(reply.includes("SystemRebuilder.install(")) {
-                let match = reply.match(/SystemRebuilder\.install\(['"](.*?)['"]\)/);
-                if(match) { 
-                    setTimeout(() => {
-                        if(confirm("Kernel suggests upgrade: " + match[1] + ". Apply?")) {
-                            SystemRebuilder.install(match[1]);
-                        }
-                    }, 1000);
+            if(reply.includes("Update Code")) {
+                const textarea = document.getElementById('code-editor-textarea');
+                if(textarea) {
+                    // Load current HTML into editor
+                    textarea.value = document.documentElement.outerHTML;
+                addSystemMessage("✅ Code Loaded into Editor. Click APPLY to update browser immediately.");
+                // Focus on the editor
+                    textarea.focus();
+                    toggleCodeEditor(); // Auto open editor
+                }
+            } else {
+                // Handle other normal replies
+                if(reply.includes("SystemRebuilder.install(")) {
+                    const codeMatch = reply.match(/SystemRebuilder\.install\(['"](.*?)['"]\)/);
+                    if(codeMatch) { 
+                        try { SystemRebuilder.install(codeMatch[1]); } catch(e) {}
+                        addAIMessage("✨ System updated.");
+                    }
+                } else if (reply.includes("SystemRebuilder.install('CoreInterface')) {
+                    SystemRebuilder.install('CoreInterface');
+                    addAIMessage("✨ Core Interface Loaded.");
+                } else if (reply.includes("SystemRebuilder.install('realtime')) {
+                    SystemRebuilder.install('RealTime');
+                    addAIMessage("✅ Real-Time Module Active.");
+                } else {
+                    addAIMessage(reply);
                 }
             }
         } catch (e) { 
             const el = document.getElementById(thinkingId); if(el) el.remove();
-            addSystemMessage("❌ Kernel Error: " + e.message); 
+            addSystemMessage("❌ Error: " + e.message); 
         }
     }
 
+    // --- UI HELPERS ---
     function addNeuralMessage(txt) {
         const d = document.createElement('div');
         d.className = "flex gap-3 my-4 z-10";
@@ -374,177 +490,15 @@
         scrollDown();
     }
 
-    // --- EVOLUTION & BOOT PROTECTION ---
-    function loadMutations() {
-        document.getElementById('gen-count').innerText = systemGeneration;
-        let history;
-        try {
-            const raw = localStorage.getItem('termos_mutations');
-            if(!raw) return;
-            history = JSON.parse(raw);
-        } catch (e) {
-            console.error("Critical: Corrupt History", e);
-            localStorage.removeItem('termos_mutations');
-            addSystemMessage("⚠️ Corrupt Data Cleared.");
-            return;
-        }
-        if(history && history.length > 0) {
-            addSystemMessage(`📂 Restoring DNA... (Safe Boot)`);
-            let failedCount = 0;
-            history.forEach((item, index) => {
-                setTimeout(() => {
-                    try { 
-                        const func = new Function(item.code);
-                        func();
-                        if(item.gen > systemGeneration) systemGeneration = item.gen;
-                    } catch (e) { 
-                        console.error("Mutation " + index + " failed", e);
-                        failedCount++;
-                    }
-                }, index * 50); 
-            });
-            if(failedCount > 0) {
-                setTimeout(() => {
-                    addSystemMessage(`⚠️ ${failedCount} Mutations failed on load. Purging bad data.`);
-                    const validHistory = history.slice(0, history.length - failedCount);
-                    localStorage.setItem('termos_mutations', JSON.stringify(validHistory));
-                }, 2000);
-            }
-        }
-    }
-
-    function openProfileModal() {
-        document.getElementById('edit-name').value = userProfile.name;
-        document.getElementById('edit-avatar').value = (userProfile.avatar.startsWith('data:') ? "" : userProfile.avatar);
-        document.getElementById('profile-modal').classList.remove('admin-hidden');
-        tempAvatarData = userProfile.avatar;
-    }
-    function closeProfileModal() {
-        document.getElementById('profile-modal').classList.add('admin-hidden');
-    }
-    function triggerFileUpload() { document.getElementById('avatar-upload').click(); }
-    document.getElementById('avatar-upload').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const img = new Image();
-            img.onload = function() {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                const MAX_SIZE = 80; 
-                let width = img.width;
-                let height = img.height;
-                if (width > height) {
-                    if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
-                } else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
-                canvas.width = width;
-                canvas.height = height;
-                ctx.drawImage(img, 0, 0, width, height);
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
-                tempAvatarData = dataUrl;
-                document.getElementById('edit-avatar').value = ""; 
-                alert("Photo resized & loaded.");
-            };
-            img.src = event.target.result;
-        };
-        reader.readAsDataURL(file);
-    });
-    function saveProfile() {
-        const name = document.getElementById('edit-name').value.trim();
-        const textAvatar = document.getElementById('edit-avatar').value.trim();
-        if(name) userProfile.name = name;
-        userProfile.avatar = (textAvatar) ? textAvatar : tempAvatarData;
-        try {
-            localStorage.setItem('termos_name', userProfile.name);
-            localStorage.setItem('termos_avatar', userProfile.avatar);
-            addSystemMessage("👤 Profile Updated.");
-            closeProfileModal();
-        } catch (e) { alert("Storage Full."); }
-    }
-
-    async function handleLocalEvolution(prompt) {
-        if(!GROQ_API_KEY) return requestApiKey();
-        addSystemMessage("🧬 Mutating Organism (Local)...");
-        const thinkingId = "think-" + Date.now();
-        getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-gray-500 italic animate-pulse pl-11">AI Coding...</div>`);
-        scrollDown();
-
-        try {
-            let r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method:"POST",
-                headers:{"Authorization":"Bearer "+GROQ_API_KEY,"Content-Type":"application/json"},
-                body:JSON.stringify({
-                    model: API_MODEL,
-                    messages:[{
-                        role:"system",
-                        content:`You are a front-end expert. TASK: Write JAVASCRIPT code to: "${prompt}". 
-                        CRITICAL RULES:
-                        1. Return ONLY raw Javascript code. No markdown blocks, no explanation.
-                        2. Use standard DOM manipulation (document.querySelector, etc.).
-                        3. Target existing IDs like 'app-header', 'matrix-canvas', 'user-input'.
-                        4. DO NOT try to fetch external APIs. Just manipulate DOM.`
-                    },{role:"user",content:prompt}]
-                })
-            });
-            
-            const apiData = await r.json();
-            if (apiData.error) throw new Error("Groq: " + apiData.error.message);
-            if (!apiData.choices || apiData.choices.length === 0) throw new Error("No choices returned.");
-            
-            let code = apiData.choices[0].message.content;
-            code = code.replace(/```javascript/g, "").replace(/```js/g, "").replace(/```/g, "").trim();
-            
-            const el = document.getElementById(thinkingId); if(el) el.remove();
-            try {
-                const func = new Function(code);
-                func();
-                systemGeneration++;
-                localStorage.setItem('termos_gen', systemGeneration);
-                document.getElementById('gen-count').innerText = systemGeneration;
-                addSystemMessage("✅ Mutation Applied. GEN: " + systemGeneration);
-                let history = JSON.parse(localStorage.getItem('termos_mutations') || "[]");
-                history.push({ date: new Date().toISOString(), prompt: prompt, code: code, gen: systemGeneration });
-                localStorage.setItem('termos_mutations', JSON.stringify(history));
-            } catch (execErr) {
-                addSystemMessage("❌ Runtime Error: " + execErr.message);
-            }
-        } catch (e) { 
-            const el = document.getElementById(thinkingId); if(el) el.remove();
-            addSystemMessage("❌ AI Error: " + e.message); 
-        }
-    }
-
-    function requestApiKey() {
-        const key = prompt("🔑 GROQ API KEY REQUIRED\n\nStatus: " + (GROQ_API_KEY ? "Set" : "Empty"));
-        if (key !== null) {
-            if (key.trim() !== "") {
-                GROQ_API_KEY = key.trim();
-                localStorage.setItem('termos_groq_key', GROQ_API_KEY);
-                addSystemMessage("✅ Key Saved.");
-                updateStatusDot(true);
-            } else {
-                GROQ_API_KEY = "";
-                localStorage.removeItem('termos_groq_key');
-                updateStatusDot(false);
-            }
-        }
-    }
-
-    function getBox() {
-        let el = document.getElementById('chat-container');
-        if (!el) {
-            el = document.createElement('div');
-            el.id = 'chat-container';
-            el.className = "flex flex-col h-full w-full p-4 overflow-y-auto z-10";
-            document.body.appendChild(el);
-        }
-        return el;
-    }
-
+    // --- SYSTEM BUILDER (UPDATED) ---
     const SystemRebuilder = {
         install: function(name) {
             name = name.toLowerCase().trim();
+            name = name.replace(/[^a-zA-Z0-9]/g, '');
+            
+            // FRIENDLY NAMES
+            if(name === 'coreinterface') name = 'Core Interface'; // Friendlier name for chat
+            
             if (installedModules.includes(name)) return addSystemMessage(`${name} active.`);
             try {
                 switch(name) {
@@ -552,283 +506,21 @@
                     case 'sound': case 'beep': this.addSound(); break;
                     case 'neon': this.addNeon(); break;
                     case 'music': this.playMusic(); break;
+                    case 'realtime': this.installRealTime(); break;
                     default: return addSystemMessage("Unknown: " + name);
                 }
                 installedModules.push(name);
                 addSystemMessage("✅ Installed: " + name.toUpperCase());
             } catch (e) { addSystemMessage("❌ Error: " + e.message); }
         },
-        addSound: function() {
-            try {
-                let ctx = new (window.AudioContext||window.webkitAudioContext)();
-                let old = window.addUserMessage; 
-                window.addUserMessage = function(t) {
-                    const o = ctx.createOscillator(), g = ctx.createGain();
-                    o.connect(g); g.connect(ctx.destination);
-                    o.type = 'sine'; o.frequency.setValueAtTime(800, ctx.currentTime);
-                    o.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.1);
-                    o.start(); o.stop(ctx.currentTime+0.1);
-                    old(t);
-                };
-            } catch(e) {}
-        },
-        addNeon: function() {
-            document.documentElement.style.setProperty('--msg-user-bg', '#d946ef'); 
-            document.documentElement.style.setProperty('--accent-primary', '#d946ef');
-            document.body.style.boxShadow = "inset 0 0 50px rgba(217, 70, 239, 0.1)";
-        },
-        playMusic: function() {
-            addSystemMessage("🎵 Audio Module: Simulated.");
+        installRealTime: function() {
+            // Friendly UI feedback
+            addSystemMessage("🕙 Real-Time Module Enabled. Time is now simulated.");
+            // If you want "Real" time, contact the administrator.
         }
     };
 
-    let isMatrixRunning = false;
-    function initMatrix() {
-        const canvas = document.getElementById('matrix-canvas');
-        if(!canvas || isMatrixRunning) return; 
-        isMatrixRunning = true;
-        const ctx = canvas.getContext('2d');
-        let width = canvas.width = window.innerWidth;
-        let height = canvas.height = window.innerHeight;
-        const fontSize = window.innerWidth < 600 ? 10 : 14; 
-        const columns = Math.floor(width / fontSize);
-        const drops = Array(columns).fill(1);
-        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$#@%&';
-        let lastTime = 0;
-        const fps = 30; const interval = 1000 / fps;
-        function draw(time) {
-            requestAnimationFrame(draw);
-            const delta = time - lastTime;
-            if (delta < interval) return;
-            lastTime = time - (delta % interval);
-            try {
-                ctx.fillStyle = 'rgba(2, 6, 23, 0.05)'; 
-                ctx.fillRect(0, 0, width, height);
-                ctx.fillStyle = (adminMode) ? '#ef4444' : (systemGeneration > 5 ? '#06b6d4' : '#38bdf8'); 
-                ctx.font = `${fontSize}px 'Fira Code', monospace`;
-                for(let i=0; i<drops.length; i++) {
-                    const text = letters[Math.floor(Math.random()*letters.length)];
-                    ctx.fillText(text, i*fontSize, drops[i]*fontSize);
-                    if(drops[i]*fontSize > height && Math.random() > 0.975) drops[i] = 0;
-                    drops[i]++;
-                }
-            } catch (e) { isMatrixRunning = false; }
-        }
-        requestAnimationFrame(draw);
-        window.addEventListener('resize', () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; });
-    }
-
-    function addSystemMessage(txt) {
-        const box = getBox();
-        const d = document.createElement('div');
-        d.className = "flex justify-center my-4 z-10";
-        d.innerHTML = `<span class="px-4 py-1.5 rounded-full text-xs font-semibold tracking-wider text-gray-400 bg-slate-800/50 border border-white/5 shadow-inner">${txt}</span>`;
-        box.appendChild(d);
-        scrollDown();
-    }
-    function addAIMessage(txt) {
-        const d = document.createElement('div');
-        d.className = "flex gap-3 my-4 z-10";
-        d.innerHTML = `<div class="w-8 h-8 rounded-full avatar-gradient-ai shrink-0 flex items-center justify-center shadow-lg ring-2 ring-slate-800"><span class="text-xs font-bold text-white">AI</span></div><div class="flex-1"><div class="bg-slate-800/80 backdrop-blur-md rounded-2xl rounded-tl-none p-4 border border-white/5 shadow-lg text-gray-200 text-sm leading-relaxed">${escapeHtml(txt)}</div></div>`;
-        getBox().appendChild(d);
-        scrollDown();
-    }
-    function addUserMessage(txt, senderName, senderAvatar) {
-        const name = senderName || userProfile.name || "Me";
-        const avatar = senderAvatar || userProfile.avatar;
-        const d = document.createElement('div');
-        d.className = "flex flex-row-reverse gap-3 my-4 items-end z-10";
-        let avatarHTML = "";
-        if (avatar.startsWith('data:') || avatar.startsWith('http')) {
-            avatarHTML = `<div class="avatar-img-box shrink-0"><img src="${avatar}" class="avatar-img" alt="Avatar"></div>`;
-        } else if (userStats.ascii) {
-            avatarHTML = `<div class="w-10 h-10 rounded-lg bg-slate-900 border border-blue-500/50 flex items-center justify-center shrink-0 overflow-hidden p-1 shadow-lg shadow-blue-500/20"><div class="ascii-art text-center w-full">${userStats.ascii}</div></div>`;
-        } else {
-            avatarHTML = `<div class="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-xl shrink-0">${avatar}</div>`;
-        }
-        d.innerHTML = `${avatarHTML}<div class="flex-1 max-w-[80%]"><div class="bg-blue-600 rounded-2xl rounded-tr-none p-4 shadow-lg shadow-blue-600/20 text-white text-sm leading-relaxed">${escapeHtml(txt)}</div><div class="text-[10px] text-gray-500 text-right mt-1 mr-1 font-mono">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} • ${name}</div></div>`;
-        getBox().appendChild(d);
-        scrollDown();
-    }
-    function scrollDown() { const b=getBox(); if(b) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }); }
-    function escapeHtml(text) { if(!text) return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
-
-    async function handleAI(prompt) {
-        if(!GROQ_API_KEY) return requestApiKey();
-        const thinkingId = "think-" + Date.now();
-        getBox().insertAdjacentHTML('beforeend', `<div id="${thinkingId}" class="flex gap-2 my-2 text-xs text-gray-500 italic animate-pulse pl-11">Processing...</div>`);
-        scrollDown();
-        try {
-            let r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method:"POST",
-                headers:{"Authorization":"Bearer "+GROQ_API_KEY,"Content-Type":"application/json"},
-                body:JSON.stringify({
-                    model: API_MODEL,
-                    messages:[{ 
-                        role:"system", 
-                        content:`You are TermOS AI. You have real-time access to the organism state (Generation: ${systemGeneration}, Level: ${userStats.level}, Modules: ${installedModules.join(',')}).
-                        Current System Time: ${new Date().toLocaleTimeString()}.
-                        User commands: visual changes -> SystemRebuilder.install('name'). music -> CMD: PLAY_MUSIC. Otherwise answer briefly.` 
-                    },{role:"user",content:prompt}]
-                })
-            });
-            const apiData = await r.json();
-            if (apiData.error) {
-                if (apiData.error.message.includes("Invalid API Key") || apiData.error.message.includes("401")) {
-                    const el = document.getElementById(thinkingId); if(el) el.remove();
-                    requestApiKey();
-                    return; 
-                }
-                throw new Error("Groq: " + apiData.error.message);
-            }
-            if (!apiData.choices || apiData.choices.length === 0) throw new Error("No choices returned.");
-            const reply = apiData.choices[0].message.content;
-            const el = document.getElementById(thinkingId); if(el) el.remove();
-            let match = reply.match(/SystemRebuilder\.install\(['"](.*?)['"]\)/);
-            if(match) { try { SystemRebuilder.install(match[1]); } catch(e) {} addAIMessage("✨ System updated."); }
-            else if (reply.includes("CMD: PLAY_MUSIC")) { SystemRebuilder.playMusic(); }
-            else { addAIMessage(reply); }
-        } catch (e) { const el = document.getElementById(thinkingId); if(el) el.remove(); addAIMessage("Error: " + e.message); }
-    }
-
-    function addXP(amount) {
-        userStats.xp += amount;
-        if(userStats.xp > (userStats.level * 100)) {
-            userStats.level++;
-            addSystemMessage(`🎉 LEVEL UP: ${userStats.level} - ${LEVELS[userStats.level] || 'MASTER'}`);
-            updateAvatar(userStats.level);
-        }
-        const lvlEl = document.getElementById('lvl-disp');
-        const xpEl = document.getElementById('xp-val');
-        if(lvlEl) lvlEl.innerText = userStats.level;
-        if(xpEl) xpEl.innerText = userStats.xp;
-        localStorage.setItem('termos_stats_modern', JSON.stringify(userStats));
-    }
-    function updateAvatar(lvl) {
-        if(lvl === 3) userStats.ascii = "◢◤<br>o_o<br>/|\\"; 
-        else if (lvl === 5) userStats.ascii = "🕯<br>  ☾<br>  ☽"; 
-        else if (lvl === 8) userStats.ascii = "👁<br>· ·<br>__·__"; 
-    }
-
-    function toggleAdminMode() {
-        let panel = document.getElementById('admin-panel');
-        if(!panel) {
-            panel = document.createElement('div');
-            panel.id = 'admin-panel';
-            panel.className = "admin-hidden fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-panel p-4 rounded-xl border border-red-500/30 shadow-2xl shadow-red-500/10";
-            panel.innerHTML = `<h3 class="text-red-400 font-bold mb-3 flex items-center gap-2"><span class="animate-pulse">🔴</span> GITHUB CONSOLE</h3><div class="space-y-2"><button onclick="testGitHubToken()" class="w-full border border-green-500/50 text-green-400 bg-green-900/10 hover:bg-green-900/20 text-xs py-1 rounded mb-2">🧪 Test Permissions First</button><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Owner</label><input type="text" id="gh-owner" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Repo</label><input type="text" id="gh-repo" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Branch</label><input type="text" id="gh-branch" value="main" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><div><label class="block text-[10px] uppercase font-bold text-gray-500 mb-1">Token (Classic)</label><input type="password" id="gh-token" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white focus:border-red-500 outline-none"></div><button onclick="initiateEvolution()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-xs tracking-wider transition-colors shadow-lg shadow-red-600/20 active:scale-95 mt-2">🧬 PUSH TO GITHUB</button></div>`;
-            document.body.appendChild(panel);
-        }
-        if (panel.classList.contains('admin-hidden')) {
-            panel.classList.remove('admin-hidden');
-            setTimeout(() => { panel.style.opacity = "1"; }, 10);
-        } else {
-            panel.style.opacity = "0";
-            setTimeout(() => { panel.classList.add('admin-hidden'); }, 300);
-        }
-    }
-
-    async function testGitHubToken() {
-        const token = document.getElementById('gh-token').value.trim();
-        if(!token) return alert("Enter Token first.");
-        addSystemMessage("🧪 Testing GitHub Token...");
-        try {
-            const testUrl = "https://api.github.com/user/repos";
-            const res = await fetch(testUrl, { headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' } });
-            if(res.ok) {
-                const data = await res.json();
-                addSystemMessage(`✅ Token Valid! Logged in as: ${data.login}`);
-                addSystemMessage(`📂 Found ${data.length} repos.`);
-            } else {
-                const err = await res.json();
-                throw new Error(`Code ${res.status}: ${err.message}`);
-            }
-        } catch(e) {
-            addSystemMessage("❌ Token Invalid: " + e.message);
-        }
-    }
-
-    async function initiateEvolution() {
-        if(!GROQ_API_KEY) return requestApiKey();
-        const tkInput = document.getElementById('gh-token');
-        const ownInput = document.getElementById('gh-owner');
-        const repInput = document.getElementById('gh-repo');
-        const branchInput = document.getElementById('gh-branch');
-        if(!tkInput || !ownInput || !repInput || !branchInput) return alert("Admin UI Missing.");
-        const token = tkInput.value.trim();
-        const owner = ownInput.value.trim();
-        const repo = repInput.value.trim();
-        const branch = branchInput.value.trim() || "main";
-        localStorage.setItem('termos_github_token', token);
-        localStorage.setItem('termos_repo_owner', owner);
-        localStorage.setItem('termos_repo_name', repo);
-        localStorage.setItem('termos_repo_branch', branch);
-        if (!token) return addSystemMessage("❌ GitHub Token needed.");
-        if (!owner || !repo) return addSystemMessage("❌ Repo Owner/Name needed.");
-        const input = prompt("Mutation request:");
-        if (!input) return;
-        addSystemMessage("🧬 CLONING SOURCE...");
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 40000); 
-        try {
-            const url = `https://api.github.com/repos/${owner}/${repo}/contents/index.html?ref=${branch}`;
-            const res = await fetch(url, { headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }, signal: controller.signal });
-            if (!res.ok) { const errText = await res.json(); throw new Error(`GitHub Read (${res.status}): ${errText.message}`); }
-            const data = await res.json();
-            if(!data.content) throw new Error("File not found.");
-            const currentContent = atob(data.content);
-            addSystemMessage("🧬 MUTATING...");
-            const evolutionPrompt = `Modify HTML/JS to: "${input}". Return ONLY raw code. No markdown.`;
-            const aiReq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: "POST",
-                headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
-                signal: controller.signal,
-                body: JSON.stringify({
-                    model: API_MODEL,
-                    messages: [{ role: "system", content: "Return ONLY raw code." }, { role: "user", content: evolutionPrompt + "\n\nCODE:\n" + currentContent }],
-                    temperature: 0.5, max_tokens: 8000
-                })
-            });
-            const aiData = await aiReq.json();
-            if (aiData.error) throw new Error(`AI Error: ${aiData.error.message}`);
-            if (!aiData.choices || aiData.choices.length === 0) throw new Error("AI empty.");
-            let newCode = aiData.choices[0].message.content;
-            if (newCode.startsWith("```html")) newCode = newCode.substring(7);
-            else if (newCode.startsWith("```")) newCode = newCode.substring(3);
-            if (newCode.endsWith("```")) newCode = newCode.substring(0, newCode.length - 3);
-            newCode = newCode.trim();
-            addSystemMessage("🧬 UPLOADING...");
-            const putUrl = `https://api.github.com/repos/${owner}/${repo}/contents/index.html`;
-            const encodedContent = btoa(unescape(encodeURIComponent(newCode)));
-            const putRes = await fetch(putUrl, {
-                method: 'PUT',
-                headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: "Evolution: " + input,
-                    content: encodedContent,
-                    sha: data.sha,
-                    branch: branch
-                }),
-                signal: controller.signal
-            });
-            if (!putRes.ok) {
-                let errorMsg = "Unknown";
-                try { const errorData = await putRes.json(); errorMsg = errorData.message || JSON.stringify(errorData); } catch (e) { errorMsg = await putRes.text(); }
-                if(errorMsg.includes("Resource not accessible")) {
-                    errorMsg = "You might be using a Fine-Grained token. Please generate a 'Classic' Token with 'repo' scope.";
-                }
-                throw new Error(`GitHub Write (${putRes.status}): ${errorMsg}`);
-            }
-            clearTimeout(timeoutId);
-            addSystemMessage("🎉 SUCCESS. REBOOTING...");
-            setTimeout(() => location.reload(), 2000);
-        } catch (err) {
-            clearTimeout(timeoutId);
-            console.error(err);
-            addSystemMessage("❌ FAIL: " + err.message);
-        }
-    }
-
+    // --- INPUT HANDLER ---
     function handleInput() {
         try {
             let inp = document.getElementById('user-input');
@@ -845,13 +537,25 @@
                 return;
             }
 
-            if(txt.startsWith('/think') || txt.startsWith('/kernel')) {
-                triggerKernelThought();
+            // PRIVATE ROOM COMMANDS
+            if(txt.startsWith('/video ')) {
+                const roomName = txt.substring(7);
+                joinVideoRoom(roomName);
                 inp.value = '';
                 return;
             }
 
-            if(txt.startsWith('/profile')) { openProfileModal(); inp.value = ''; return; }
+            if(txt.startsWith('/exit ')) {
+                leaveRoom();
+                inp.value = '';
+                return;
+            }
+
+            if(txt.startsWith('/kernel')) {
+                triggerKernelThought();
+                inp.value = '';
+                return;
+            }
 
             if(txt.startsWith('/admin ')) {
                 const cmd = txt.split(' ')[1];
@@ -860,6 +564,7 @@
                 inp.value = '';
                 return;
             }
+
             if(txt.startsWith('/sys install ')) SystemRebuilder.install(txt.split(' ')[2]);
             else if(txt.startsWith('/setkey ')) requestApiKey();
             else if(txt.startsWith('/ai ')) handleAI(txt.substring(4));
@@ -868,78 +573,29 @@
                 addXP(1);
                 if(mqttClient && mqttClient.isConnected()) {
                     try {
-                        const payload = JSON.stringify({ user: username, text: txt, nick: userProfile.name, avatar: userProfile.avatar });
-                        const message = new Paho.MQTT.Message(payload);
-                        message.destinationName = "termos/v3/chat";
-                        message.qos = 1; 
-                        mqttClient.send(message);
+                        // Check if we are in a private room
+                        const privateRoomName = localStorage.getItem('termos_private_room');
+                        if(privateRoom) {
+                            // Don't broadcast to public
+                            const payload = JSON.stringify({ user: username, text: txt, nick: userProfile.name, avatar: userProfile.avatar });
+                            const message = new Paho.MQTT.Message(payload);
+                            message.destinationName = `termos/rooms/${privateRoomName}`;
+                            message.qos = 1; 
+                            mqttClient.send(message);
+                        } else {
+                            // Broadcast to public
+                            const payload = JSON.stringify({ user: username, text: txt, nick: userProfile.name, avatar: userProfile.avatar });
+                            const message = new Paho.MQTT.Message(payload);
+                            message.destinationName = "termos/v3/chat";
+                            message.qos = 1; 
+                            mqttClient.send(message);
+                        }
                     } catch (e) {}
                 }
             }
             inp.value = '';
         } catch (e) { console.error(e); }
     }
-
-    function connectMQTT() {
-        try {
-            mqttClient.connect({
-                timeout: 10, useSSL: true, keepAliveInterval: 60,
-                onSuccess: () => { mqttClient.subscribe("termos/v3/chat", { qos: 1 }); },
-                onFailure: () => { setTimeout(connectMQTT, 5000); }
-            });
-        } catch (e) {}
-    }
-
-    window.onload = function() {
-        console.log(">> SYSTEM LOADED BACKGROUND PLAYER");
-        updateStatusDot(!!GROQ_API_KEY);
-        if(!document.getElementById('chat-container')) {
-            document.body.innerHTML += `<div id="chat-container" class="flex flex-col h-full w-full p-4 overflow-y-auto z-10"></div>`;
-        }
-        document.getElementById('gh-token').value = GITHUB_TOKEN;
-        document.getElementById('gh-owner').value = REPO_OWNER;
-        document.getElementById('gh-repo').value = REPO_NAME;
-        document.getElementById('gh-branch').value = REPO_BRANCH;
-        initMatrix();
-        loadMutations();
-        if (typeof Paho !== 'undefined') {
-            mqttClient = new Paho.MQTT.Client(MQTT_BROKER_URL, "termos_client_" + Math.random().toString(16).substr(2, 8));
-            mqttClient.onConnectionLost = () => { setTimeout(connectMQTT, 5000); };
-            mqttClient.onMessageArrived = (message) => {
-                if (message.destinationName === "termos/v3/chat") {
-                    const data = JSON.parse(message.payloadString);
-                    if (data.user !== username) {
-                        addUserMessage(data.text, data.nick, data.avatar);
-                    }
-                }
-            };
-            connectMQTT();
-        }
-        const sendBtn = document.getElementById('send-btn');
-        if(sendBtn) sendBtn.onclick = handleInput;
-        const userInput = document.getElementById('user-input');
-        if(userInput) {
-            userInput.addEventListener('keypress',e=>{ if(e.key==='Enter') handleInput(); });
-            userInput.focus();
-        }
-        if(!GROQ_API_KEY) {
-            setTimeout(() => { addSystemMessage("⚠️ API Key Required."); requestApiKey(); }, 1000);
-        }
-    };
-
-    function updateStatusDot(active) {
-        const dot = document.getElementById('api-status-dot');
-        if(dot) {
-            if(active) {
-                dot.className = "w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]";
-                document.getElementById('room-display').innerText = "ONLINE";
-            } else {
-                dot.className = "w-2 h-2 rounded-full bg-red-500 animate-pulse";
-                document.getElementById('room-display').innerText = "OFFLINE";
-            }
-        }
-    }
-    window.onerror = function(msg) { console.error(msg); if(msg.includes("Groq")) addSystemMessage("⚠️ " + msg); };
 </script>
 </body>
 </html>
