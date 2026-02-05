@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: Galactic [Ultimate] (Fix)</title>
+    <title>TermOS: Galactic [Ultimate] (Video Fix)</title>
     <meta name="theme-color" content="#050505">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23000'/><path d='M16 2L2 30h28L16 2zm0 6l10 20H6l10-20z' fill='%23a855f7'/></svg>">
     
@@ -395,7 +395,7 @@
     </div>
     <input type="file" id="avatar-upload" class="hidden" accept="image/*">
 
-    <!-- GITHUB PUSH MODAL (NEW - FIXES STUCK ISSUE) -->
+    <!-- GITHUB PUSH MODAL -->
     <div id="github-modal" class="hidden-ui fixed inset-0 z-[1005] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
         <div class="glass-panel p-6 rounded-2xl border border-purple-500/30 max-w-md w-full mx-4 shadow-[0_0_60px_rgba(168,85,247,0.2)]">
             <h3 class="text-white font-header font-bold mb-6 text-lg tracking-wider flex items-center gap-2">
@@ -490,16 +490,6 @@
         // --- SYSTEM MEMORY ---
         let systemMemory = []; 
         const MAX_MEMORY = 5;
-
-        // --- WEBRTC STATE ---
-        let localStream = null;
-        const peers = {}; 
-        const rtcConfig = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:global.stun.twilio.com:3478' }
-            ]
-        };
 
         // --- DOM ELEMENTS ---
         const UI = {
@@ -799,28 +789,55 @@
             }
         }
 
-        /* --- ROBUST WEBRTC LOGIC --- */
+        /* =========================================
+           --- ROBUST WEBRTC LOGIC (UPDATED) ---
+           ========================================= */
+        
+        let localStream = null;
+        const peers = {}; // Stores active RTCPeerConnections: { username: RTCPeerConnection }
+
+        // Google's public STUN servers to help traverse NATs/Firewalls
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:global.stun.twilio.com:3478' }
+            ]
+        };
+
+        // 1. START VIDEO
         async function startWebRTC() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                // Request Camera/Mic
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 640, height: 360 }, 
+                    audio: true 
+                });
+                
                 localStream = stream;
-
+                
+                // UI Updates
                 UI.btnVideoEnable.classList.add('hidden-ui');
                 UI.btnVideoDisable.classList.remove('hidden-ui');
                 UI.btnVideoDisable.classList.add('flex-ui');
                 
                 addLocalVideo(stream);
-                addSystemMessage("📹 Uplink Established. Broadcasting...", "info");
+                addSystemMessage("📹 Uplink Established. Broadcasting signal...", "info");
                 AudioFX.system();
 
-                broadcastWebRTC({ type: 'video_ready' });
+                // Tell everyone in the room we are ready
+                broadcastWebRTCSignal('video_ready', {});
 
             } catch (err) {
-                addSystemMessage("Camera Error: " + err.message, "error");
+                console.error("Camera Access Error:", err);
+                addSystemMessage("Hardware Error: " + err.message, "error");
                 AudioFX.error();
+                if(err.name === 'NotAllowedError') {
+                    addSystemMessage("Permission denied. Allow camera access.", "warning");
+                }
             }
         }
 
+        // 2. STOP VIDEO
         function stopWebRTC() {
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
@@ -836,149 +853,196 @@
             UI.btnVideoEnable.classList.remove('hidden-ui');
 
             addSystemMessage("📹 Uplink Terminated.", "warning");
-            broadcastWebRTC({ type: 'video_stop' });
+            broadcastWebRTCSignal('video_stop', {});
         }
 
-        async function handleOffer(data) {
-            const sender = data.user;
-            if(sender === userProfile.name) return;
-
-            if (peers[sender]) {
-                const pc = peers[sender];
-                if (pc.signalingState === 'have-local-offer') {
-                     await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-                     const answer = await pc.createAnswer();
-                     await pc.setLocalDescription(answer);
-                     broadcastWebRTC({ type: 'answer', sdp: answer, target: sender });
-                     return;
-                }
-            }
-
-            const pc = createPeerConnection(sender);
-            if(pc) {
-                await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                broadcastWebRTC({ type: 'answer', sdp: answer, target: sender });
-            }
-        }
-
-        async function handleAnswer(data) {
-            const sender = data.user;
-            const pc = peers[sender];
-            if(pc) await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-        }
-
-        async function handleCandidate(data) {
-            const sender = data.user;
-            const pc = peers[sender];
-            if(pc) {
-                try {
-                    await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-                } catch (e) { console.log("Candidate Error", e); }
-            }
-        }
-
-        function handleVideoReady(sender) {
-            if(sender === userProfile.name) return;
-            if (localStream && !peers[sender]) {
-                console.log(`Saw ${sender} ready. Initiating offer...`);
-                initiateCall(sender);
-            }
-        }
-
-        async function initiateCall(remoteUser) {
-            if(peers[remoteUser]) return; 
-
-            const pc = createPeerConnection(remoteUser);
-            if(!pc) return;
-
-            try {
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-                broadcastWebRTC({ type: 'offer', sdp: offer, target: remoteUser });
-            } catch(e) { console.error("Offer creation failed", e); }
-        }
-
+        // 3. CREATE PEER CONNECTION
         function createPeerConnection(remoteUser) {
             const pc = new RTCPeerConnection(rtcConfig);
             peers[remoteUser] = pc;
 
+            // When the browser finds a network path (ICE Candidate)
             pc.onicecandidate = (e) => {
-                if(e.candidate) {
-                    broadcastWebRTC({ type: 'candidate', candidate: e.candidate, target: remoteUser });
+                if (e.candidate) {
+                    broadcastWebRTCSignal('candidate', { candidate: e.candidate, target: remoteUser });
                 }
             };
 
+            // When a remote stream is received
             pc.ontrack = (e) => {
-                const el = document.getElementById(`vid-remote-${remoteUser}`);
-                if(el) return; 
-
-                const div = document.createElement('div');
-                div.id = `vid-remote-${remoteUser}`;
-                div.className = "video-container remote";
-                div.innerHTML = `<video autoplay playsinline muted></video><div class="remote-label">${remoteUser}</div>`;
-                div.querySelector('video').srcObject = e.streams[0];
-                UI.videoGrid.appendChild(div);
-                UI.videoGrid.classList.remove('hidden');
-                AudioFX.system();
+                const elId = `vid-remote-${remoteUser}`;
+                const existingEl = document.getElementById(elId);
+                
+                if (!existingEl) {
+                    const div = document.createElement('div');
+                    div.id = elId;
+                    div.className = "video-container remote";
+                    div.innerHTML = `
+                        <video autoplay playsinline muted></video>
+                        <div class="remote-label">${remoteUser}</div>
+                    `;
+                    div.querySelector('video').srcObject = e.streams[0];
+                    UI.videoGrid.appendChild(div);
+                    UI.videoGrid.classList.remove('hidden');
+                    AudioFX.system();
+                    addSystemMessage(`Visual link established with ${remoteUser}`, "info");
+                }
             };
 
+            // Handle connection state changes
             pc.onconnectionstatechange = () => {
-                if(pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-                    delete peers[remoteUser];
-                    const el = document.getElementById(`vid-remote-${remoteUser}`);
-                    if(el) el.remove();
+                const state = pc.connectionState;
+                if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+                    handleLeaveCall(remoteUser);
                 }
-            }
+            };
 
-            if(localStream) {
+            // Add our local stream to the connection
+            if (localStream) {
                 localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
             }
 
             return pc;
         }
 
+        // 4. HANDLE INCOMING SIGNALS (Router)
+        function handleWebRTCMessage(data) {
+            const sender = data.user;
+            if (sender === userProfile.name) return; 
+
+            console.log(`WebRTC Signal: ${data.signal}`);
+
+            switch (data.signal) {
+                case 'video_ready':
+                    // If I have video enabled, I should call them
+                    if (localStream && !peers[sender]) {
+                        console.log(`User ${sender} is ready. Initiating offer...`);
+                        initiateCall(sender);
+                    }
+                    break;
+
+                case 'video_stop':
+                    handleLeaveCall(sender);
+                    break;
+
+                case 'offer':
+                    handleOffer(data.payload, sender);
+                    break;
+
+                case 'answer':
+                    handleAnswer(data.payload, sender);
+                    break;
+
+                case 'candidate':
+                    handleCandidate(data.payload, sender);
+                    break;
+            }
+        }
+
+        // 5. INITIATE CALL
+        async function initiateCall(remoteUser) {
+            if (peers[remoteUser]) return; 
+
+            const pc = createPeerConnection(remoteUser);
+            if (!pc) return;
+
+            try {
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                broadcastWebRTCSignal('offer', { sdp: offer, target: remoteUser });
+                addSystemMessage(`Sending handshake request to ${remoteUser}...`, "info");
+            } catch (e) {
+                console.error("Offer creation failed", e);
+            }
+        }
+
+        // 6. HANDLE OFFER
+        async function handleOffer(payload, sender) {
+            let pc = peers[sender];
+
+            // Create connection if it doesn't exist
+            if (!pc) {
+                pc = createPeerConnection(sender);
+            }
+
+            if (pc.signalingState === 'stable') {
+                try {
+                    await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    broadcastWebRTCSignal('answer', { sdp: answer, target: sender });
+                } catch (e) {
+                    console.error("Error handling offer", e);
+                }
+            }
+        }
+
+        // 7. HANDLE ANSWER
+        async function handleAnswer(payload, sender) {
+            const pc = peers[sender];
+            if (pc && pc.signalingState === 'have-local-offer') {
+                try {
+                    await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+                } catch (e) {
+                    console.error("Error handling answer", e);
+                }
+            }
+        }
+
+        // 8. HANDLE ICE CANDIDATES
+        async function handleCandidate(payload, sender) {
+            const pc = peers[sender];
+            if (pc) {
+                try {
+                    await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+                } catch (e) {
+                    console.error("Error adding candidate", e);
+                }
+            }
+        }
+
+        // 9. CLEANUP
+        function handleLeaveCall(remoteUser) {
+            if (peers[remoteUser]) {
+                peers[remoteUser].close();
+                delete peers[remoteUser];
+                const el = document.getElementById(`vid-remote-${remoteUser}`);
+                if (el) el.remove();
+                addSystemMessage(`Signal lost from ${remoteUser}`, "warning");
+            }
+        }
+
+        // UI HELPERS
         function addLocalVideo(stream) {
             const div = document.createElement('div');
             div.id = "vid-local";
             div.className = "video-container local";
-            div.innerHTML = `<video autoplay muted playsinline></video><div class="remote-label" style="color:#d8b4fe; border-color:rgba(216,180,254,0.3)">ME</div>`;
+            div.innerHTML = `
+                <video autoplay muted playsinline></video>
+                <div class="remote-label" style="color:#d8b4fe; border-color:rgba(216,180,254,0.3)">ME</div>
+            `;
             div.querySelector('video').srcObject = stream;
             UI.videoGrid.appendChild(div);
             UI.videoGrid.classList.remove('hidden');
         }
 
-        function broadcastWebRTC(payload) {
-            if(mqttClient && mqttClient.isConnected()) {
+        // Broadcast WebRTC signal via MQTT
+        function broadcastWebRTCSignal(signalType, payload) {
+            if (mqttClient && mqttClient.isConnected()) {
                 const topic = currentRoom === "public" ? "termos/public" : `termos/rooms/${currentRoom}`;
-                const fullPayload = {
-                    ...payload,
-                    user: userProfile.name,
-                    type: 'webrtc' 
-                };
                 
-                const msg = new Paho.MQTT.Message(JSON.stringify(fullPayload));
+                // We wrap the signal in a 'webrtc' type for the MQTT router
+                // and use 'signal' for the internal WebRTC handler
+                const msgPayload = {
+                    user: userProfile.name,
+                    type: 'webrtc', 
+                    signal: signalType, 
+                    payload: payload 
+                };
+
+                const msg = new Paho.MQTT.Message(JSON.stringify(msgPayload));
                 msg.destinationName = topic;
                 mqttClient.send(msg);
-            }
-        }
-
-        function handleWebRTCMessage(data) {
-            const type = data.type; 
-            if(type === 'video_ready') handleVideoReady(data.user);
-            else if(type === 'video_stop') handleLeaveCall(data.user);
-            else if(type === 'offer') handleOffer(data);
-            else if(type === 'answer') handleAnswer(data);
-            else if(type === 'candidate') handleCandidate(data);
-        }
-
-        function handleLeaveCall(remoteUser) {
-            if(peers[remoteUser]) {
-                peers[remoteUser].close();
-                delete peers[remoteUser];
-                const el = document.getElementById(`vid-remote-${remoteUser}`);
-                if(el) el.remove();
             }
         }
 
@@ -1262,7 +1326,7 @@
             return str.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
         }
 
-        /* --- GITHUB PUSH LOGIC (FIXED) --- */
+        /* --- GITHUB PUSH LOGIC --- */
         function toggleGitHubModal(show) {
             if(show) {
                 UI.githubModal.classList.remove('hidden-ui');
@@ -1287,10 +1351,8 @@
                 return;
             }
 
-            // Close Modal before starting
             toggleGitHubModal(false);
 
-            // Helper to log steps to the chat
             const logStep = (msg) => {
                 const div = document.createElement('div');
                 div.className = "flex items-start gap-2 my-2 msg-anim";
@@ -1305,7 +1367,6 @@
             const path = "index.html";
             const content = UI.codeArea.value;
             
-            // Validate
             if(content.length > 500000) {
                 alert("❌ Error: File too large (>500KB).");
                 return;
@@ -1315,7 +1376,6 @@
                 return;
             }
 
-            // Indicate Loading in Button
             const btn = document.querySelector('button[onclick="toggleGitHubModal(true)"]');
             const originalText = btn.innerText;
             btn.innerText = "UPLOADING...";
@@ -1356,7 +1416,6 @@
                 const repoData = await repoRes.json();
                 logStep(`Found repo: ${repoData.name}. Size: ${repoData.size}.`);
 
-                // Empty Repo Check
                 if(repoData.size === 0) {
                     throw new Error("Repository is empty (0 commits). Please create a file (e.g., README.md) on GitHub first to initialize the branch.");
                 }
@@ -1562,6 +1621,7 @@
                     const payload = JSON.parse(message.payloadString);
                     const sender = payload.user;
 
+                    // Standard Chat
                     if (payload.type === 'chat') {
                         if (sender !== userProfile.name) {
                             AudioFX.receive();
@@ -1569,6 +1629,7 @@
                         }
                     }
 
+                    // System Events
                     if (payload.type === 'join' && sender !== userProfile.name) {
                          addSystemMessage(`${sender} entered the sector.`, "join");
                          AudioFX.system();
@@ -1582,6 +1643,7 @@
                         addSystemMessage(`${sender} updated identity.`, "info");
                     }
 
+                    // WebRTC Signaling (Updated Router)
                     if (payload.type === 'webrtc') {
                         handleWebRTCMessage(payload);
                     }
@@ -1642,7 +1704,6 @@
             document.getElementById('tab-radio').classList.add('hidden');
             document.getElementById('tab-'+tab).classList.remove('hidden');
             
-            // Visual state update for buttons (simplified logic for this snippet)
             const buttons = document.querySelectorAll('#media-deck .flex.gap-2 button');
             buttons.forEach(b => {
                 if(b.textContent.toLowerCase().includes(tab)) {
@@ -1681,16 +1742,14 @@
             let w = canvas.width = window.innerWidth;
             let h = canvas.height = window.innerHeight;
             
-            // Star parameters
             const stars = Array(200).fill().map(() => ({
                 x: Math.random() * w,
                 y: Math.random() * h,
-                z: Math.random() * 2, // depth
-                o: Math.random(), // opacity
-                s: Math.random() * 2 // size
+                z: Math.random() * 2,
+                o: Math.random(),
+                s: Math.random() * 2
             }));
             
-            // Mouse interaction
             let mouseX = w / 2;
             let mouseY = h / 2;
             window.addEventListener('mousemove', e => {
@@ -1701,19 +1760,16 @@
             function draw() {
                 if (canvas.dataset.mode !== 'galaxy') return;
                 
-                // Trail effect
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
                 ctx.fillRect(0, 0, w, h);
                 
                 stars.forEach(s => {
-                    // Move stars towards camera or sideways based on mouse
                     const dx = (mouseX - w/2) * 0.005 * s.z;
                     const dy = (mouseY - h/2) * 0.005 * s.z;
                     
                     s.x -= dx;
                     s.y -= dy;
                     
-                    // Wrap around
                     if (s.x < 0) s.x = w;
                     if (s.x > w) s.x = 0;
                     if (s.y < 0) s.y = h;
@@ -1722,14 +1778,13 @@
                     const size = s.s + (s.z * 0.5);
                     const opacity = s.o * (0.5 + Math.random() * 0.5);
                     
-                    ctx.fillStyle = `rgba(168, 85, 247, ${opacity})`; // Purple stars
-                    if (Math.random() > 0.9) ctx.fillStyle = `rgba(34, 211, 238, ${opacity})`; // Cyan stars
+                    ctx.fillStyle = `rgba(168, 85, 247, ${opacity})`;
+                    if (Math.random() > 0.9) ctx.fillStyle = `rgba(34, 211, 238, ${opacity})`;
 
                     ctx.beginPath();
                     ctx.arc(s.x, s.y, size, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Add glow to some stars
                     if(s.s > 1.5) {
                         ctx.shadowBlur = 10;
                         ctx.shadowColor = ctx.fillStyle;
@@ -1767,14 +1822,13 @@
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
                 ctx.fillRect(0, 0, w, h);
                 
-                ctx.fillStyle = '#0f0'; // Classic Green
+                ctx.fillStyle = '#0f0';
                 ctx.font = '15pt monospace';
                 
                 ypos.forEach((y, ind) => {
                     const text = String.fromCharCode(Math.random() * 128);
                     const x = ind * 20;
                     
-                    // Random color variation
                     if(Math.random() > 0.95) ctx.fillStyle = '#fff';
                     else ctx.fillStyle = '#0f0';
 
