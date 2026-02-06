@@ -363,7 +363,7 @@
             </div>
             
             <div id="tab-radio" class="hidden">
-                <!-- NEW: SEARCH BAR -->
+                <!-- SEARCH BAR -->
                 <div class="relative mb-2">
                     <input type="text" id="radio-search-input" placeholder="Search stations (e.g. BBC, Jazz)..." 
                            class="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-purple-500 outline-none font-mono placeholder-gray-600">
@@ -555,7 +555,9 @@
                 imgError: "Neural Network saturated or blocked. Try a simpler prompt.",
                 radioBuffering: "BUFFERING...",
                 radioError: "Stream Offline. Try another station.",
-                radioPlaying: "NOW PLAYING"
+                radioPlaying: "NOW PLAYING",
+                saveSuccess: "Identity Updated.",
+                storageError: "Storage Full (Avatar too large). Name saved, but avatar skipped."
             },
             lt: {
                 init: "INICIALIZUOJAMAS NEURONINIS RYŠYS...",
@@ -574,7 +576,9 @@
                 imgError: "Neuronalinis tinklas užsikrovė. Bandykite paprastesnį užklausą.",
                 radioBuffering: "BUFERIUOJAMA...",
                 radioError: "Transliacija neveikia. Bandykite kitą stotį.",
-                radioPlaying: "LEIDŽIAMA"
+                radioPlaying: "LEIDŽIAMA",
+                saveSuccess: "Tapatybė atnaujinta.",
+                storageError: "Atmintis pilna (Avataras per didelis). Vardas išsaugotas, bet avataras praleistas."
             }
         };
 
@@ -656,16 +660,7 @@
 
             UI.sendBtn.addEventListener('click', handleInput);
             UI.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleInput(); } });
-            document.getElementById('avatar-upload').addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    tempAvatarData = event.target.result;
-                    UI.profilePreview.innerHTML = `<img src="${tempAvatarData}" class="w-full h-full object-cover">`;
-                };
-                reader.readAsDataURL(file);
-            });
+            document.getElementById('avatar-upload').addEventListener('change', handleAvatarUpload);
             
             const urlParams = new URLSearchParams(window.location.search);
             const inviteState = urlParams.get('s');
@@ -726,7 +721,6 @@
             }
             UI.input.placeholder = currentLang === 'en' ? "Command: /ai [prompt], /img [prompt], /web [topic]..." : "Komanda: /ai [užklausa], /img [užklausa], /web [tema]...";
             
-            // Update Radio Placeholder
             if(UI.radioSearchInput) {
                 UI.radioSearchInput.placeholder = currentLang === 'en' ? "Search stations (e.g. BBC, Jazz)..." : "Ieškoti stočių (pvz. BBC, Džiazas)...";
             }
@@ -779,7 +773,7 @@
             } catch (error) { throw error; }
         }
 
-        /* --- WEB SEARCH (WIKIPEDIA API) --- */
+        /* --- WEB SEARCH --- */
         async function performWebSearch(query) {
             const id = 'web-' + Date.now();
             addThinking(id, "WEB");
@@ -1042,6 +1036,55 @@
         }
         function resetSystem() { localStorage.clear(); location.reload(); }
         
+        /* --- PROFILE & IMAGE COMPRESSION LOGIC --- */
+        
+        // Helper: Compress Image to fit LocalStorage
+        function compressImage(file, callback) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const MAX_WIDTH = 200; // Compress to 200px width
+                    const MAX_HEIGHT = 200;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    // Compress to JPEG 0.7 quality
+                    callback(canvas.toDataURL('image/jpeg', 0.7));
+                };
+            };
+        }
+
+        // Event Listener for Upload (Modified to use compression)
+        function handleAvatarUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Use compression
+            compressImage(file, (compressedDataUrl) => {
+                tempAvatarData = compressedDataUrl;
+                UI.profilePreview.innerHTML = `<img src="${tempAvatarData}" class="w-full h-full object-cover">`;
+            });
+        }
+
         function toggleProfile() {
             const p = UI.profileModal;
             if(p.classList.contains('hidden-ui')) {
@@ -1053,14 +1096,33 @@
                 p.classList.add('flex-ui');
             } else { p.classList.add('hidden-ui'); p.classList.remove('flex-ui'); }
         }
+
         function saveProfile() {
             const newName = UI.profileNameInput.value.trim();
             if(newName) userProfile.name = newName;
             if(tempAvatarData) userProfile.avatar = tempAvatarData;
-            localStorage.setItem('termos_username', userProfile.name);
-            localStorage.setItem('termos_avatar', userProfile.avatar);
-            addSystemMessage(`Identity Updated: ${userProfile.name}`, "info");
-            toggleProfile();
+
+            try {
+                localStorage.setItem('termos_username', userProfile.name);
+                localStorage.setItem('termos_avatar', userProfile.avatar);
+                addSystemMessage(t('saveSuccess'), "info");
+                toggleProfile();
+            } catch (e) {
+                // Specific fix for QuotaExceeded
+                if (e.name === 'QuotaExceededError' || e.code === 22) {
+                    // Save name only if possible, or warn user
+                    try {
+                        localStorage.setItem('termos_username', userProfile.name);
+                        addSystemMessage(t('storageError'), "error");
+                        AudioFX.error();
+                    } catch (e2) {
+                        addSystemMessage("Critical Storage Error. Clear cache.", "error");
+                    }
+                } else {
+                    console.error(e);
+                    addSystemMessage("Save Error: " + e.message, "error");
+                }
+            }
         }
 
         function generateInviteLink() {
@@ -1326,7 +1388,6 @@
         let currentPlayingStationUrl = null;
         let currentPlayingEl = null;
 
-        // Setup Search Bar
         let searchTimeout = null;
         if(UI.radioSearchInput) {
             UI.radioSearchInput.addEventListener('input', (e) => {
@@ -1382,7 +1443,6 @@
         async function searchStationsByName(name) {
             UI.radioStations.innerHTML = '<div class="text-gray-500 text-[9px] text-center py-4">SEARCHING...</div>';
             try {
-                // Limit to 10 results to keep UI clean
                 const res = await fetch(`https://de1.api.radio-browser.info/json/stations/search?name=${encodeURIComponent(name)}&limit=10&order=clickcount&reverse=true&hidebroken=true`);
                 const stations = await res.json();
                 renderStationList(stations);
@@ -1392,7 +1452,6 @@
         async function loadStationsByTag(tag) {
             UI.radioStations.innerHTML = '<div class="text-gray-500 text-[9px] text-center py-4">LOADING STATIONS...</div>';
             try {
-                // Added hidebroken=true to filter dead links
                 const res = await fetch(`https://de1.api.radio-browser.info/json/stations/search?tag=${encodeURIComponent(tag)}&limit=15&order=clickcount&reverse=true&hidebroken=true`);
                 const stations = await res.json();
                 renderStationList(stations);
@@ -1408,7 +1467,6 @@
             stations.forEach(s => {
                 const div = document.createElement('div');
                 div.className = 'station-item';
-                // Adding favicon if available
                 const favicon = s.favicon ? `<img src="${s.favicon}" class="w-4 h-4 rounded mr-2 bg-black" onerror="this.style.display='none'">` : '';
                 
                 div.innerHTML = `
@@ -1426,12 +1484,9 @@
             });
         }
 
-        // ROBUST PLAY FUNCTION
         async function playRadioStation(el, url, name) {
-            // Reset Styles
             document.querySelectorAll('.station-item').forEach(i => i.classList.remove('playing'));
             
-            // Stop if clicking same station
             if (currentPlayingStationUrl === url && !audioObj.paused) {
                 audioObj.pause();
                 currentPlayingStationUrl = null;
@@ -1439,12 +1494,10 @@
                 return;
             }
 
-            // Show buffering state
             const originalName = el.querySelector('.station-name').innerText;
             el.querySelector('.station-name').innerText = `${t('radioBuffering')}...`;
             el.classList.add('playing');
 
-            // Stop previous
             if (audioObj.src) {
                 audioObj.pause();
                 audioObj.currentTime = 0;
@@ -1452,7 +1505,6 @@
 
             audioObj.src = url;
             
-            // Event: Error Handling
             audioObj.onerror = () => {
                 el.querySelector('.station-name').innerText = originalName;
                 el.classList.remove('playing');
@@ -1461,7 +1513,6 @@
                 currentPlayingStationUrl = null;
             };
 
-            // Event: Playing
             audioObj.onplaying = () => {
                 el.querySelector('.station-name').innerText = `${t('radioPlaying')} ▶`;
                 el.classList.add('playing');
