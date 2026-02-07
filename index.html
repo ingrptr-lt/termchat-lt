@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TermOS: Galactic [Ultimate] + DevOps</title>
+    <title>TermOS: Galactic [Ultimate] + CLI</title>
     
     <!-- PWA / METADATA -->
     <meta name="theme-color" content="#050505">
@@ -180,7 +180,7 @@
             border: 1px solid rgba(34, 211, 238, 0.3);
         }
 
-        /* RADIO STYLES UPDATED */
+        /* RADIO STYLES */
         .radio-genres { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
         .radio-genres::-webkit-scrollbar { display: none; }
         .genre-chip {
@@ -226,7 +226,7 @@
             .editor-body { display: flex; flex-direction: column; }
             #code-area { flex: 0 0 45%; min-height: 250px; }
             #preview-area { flex: 1; border-top: 1px solid #333; }
-            #copilot-panel { display: none; } /* Hide on very small screens or use toggle */
+            #copilot-panel { display: none; }
         }
 
         .editor-col { background: #0d1117; display: flex; flex-direction: column; overflow: hidden; position: relative; }
@@ -265,6 +265,23 @@
             padding: 5px; border-radius: 4px; outline: none; font-family: var(--font-mono); font-size: 11px;
         }
         .copilot-input:focus { border-color: #22d3ee; }
+
+        /* CLI STYLES */
+        #cli-overlay {
+            position: fixed; inset: 0; z-index: 1100; 
+            background: rgba(0, 0, 0, 0.95); display: flex; flex-direction: column; backdrop-filter: blur(5px);
+        }
+        .cli-content {
+            flex: 1; padding: 20px; font-family: 'Fira Code', monospace; font-size: 14px; color: #22d3ee; overflow-y: auto;
+        }
+        .cli-output div { margin-bottom: 5px; word-break: break-all; }
+        .cli-input-area {
+            display: flex; background: #050505; border-top: 1px solid #333; padding: 10px; align-items: center;
+        }
+        .cli-prompt { color: #22c55e; margin-right: 10px; font-weight: bold; }
+        .cli-input {
+            flex: 1; background: transparent; border: none; color: #fff; font-family: 'Fira Code', monospace; font-size: 14px; outline: none;
+        }
 
         .markdown-body h1, .markdown-body h2, .markdown-body h3 { font-weight: bold; margin-top: 0.5em; margin-bottom: 0.5em; color: #fff; }
         .markdown-body code { background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px; font-size: 0.9em; font-family: var(--font-mono); }
@@ -330,6 +347,11 @@
             
             <button onclick="shareApp()" class="p-2 rounded-full hover:bg-white/10 text-cyan-300 transition-colors glitch-hover hidden sm:flex" title="Airdrop / Share App">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+            </button>
+
+            <button onclick="toggleCLI()" class="hidden sm:flex bg-green-900/30 hover:bg-green-900/50 text-green-300 border border-green-500/30 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span id="btn-cli">CLI</span>
             </button>
 
             <button onclick="copySystemLog()" class="hidden sm:flex bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all items-center gap-1" title="Export System Log">
@@ -430,6 +452,7 @@
                     <option value="groq">Groq (Free/Fast)</option>
                     <option value="deepseek">DeepSeek (Official)</option>
                     <option value="zhipu">Zhipu AI (GLM)</option>
+                    <option value="deepinfra">DeepInfra (Serverless)</option>
                 </select>
             </div>
             <div>
@@ -562,12 +585,40 @@
         </div>
     </div>
 
+    <!-- CLI OVERLAY -->
+    <div id="cli-overlay" class="hidden-ui">
+        <div class="h-10 border-b border-gray-700 flex items-center justify-between px-4 bg-black">
+            <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <span class="text-xs text-green-400 font-bold font-mono">TERMINAL: TAILWIND-CLI-SIM</span>
+            </div>
+            <button onclick="toggleCLI()" class="text-gray-400 hover:text-white text-xl font-mono font-bold">&times;</button>
+        </div>
+        <div id="cli-output" class="cli-content">
+            <div class="text-white">Welcome to TermOS v4.0 CLI.</div>
+            <div class="text-gray-400 mb-4">Type 'help' for available commands.</div>
+        </div>
+        <div class="cli-input-area">
+            <span class="cli-prompt">user@termos:~$</span>
+            <input type="text" id="cli-input" class="cli-input" autocomplete="off" spellcheck="false">
+        </div>
+    </div>
+
     <script>
         /* --- CONFIGURATION & STATE --- */
         const PROVIDERS = {
             groq: { url: "https://api.groq.com/openai/v1/chat/completions", models: [{ id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B" }, { id: "mixtral-8x7b-32768", name: "Mixtral 8x7B" }, { id: "gemma2-9b-it", name: "Gemma 2 9B" }], keyLabel: "Groq API Key" },
             deepseek: { url: "https://api.deepseek.com/chat/completions", models: [{ id: "deepseek-chat", name: "DeepSeek V3" }, { id: "deepseek-coder", name: "DeepSeek Coder" }], keyLabel: "DeepSeek API Key" },
-            zhipu: { url: "https://open.bigmodel.cn/api/paas/v4/chat/completions", models: [{ id: "glm-4", name: "GLM-4" }, { id: "glm-4-flash", name: "GLM-4 Flash" }], keyLabel: "Zhipu API Key" }
+            zhipu: { url: "https://open.bigmodel.cn/api/paas/v4/chat/completions", models: [{ id: "glm-4", name: "GLM-4" }, { id: "glm-4-flash", name: "GLM-4 Flash" }], keyLabel: "Zhipu API Key" },
+            deepinfra: { 
+                url: "https://api.deepinfra.com/v1/openai/chat/completions", 
+                models: [
+                    { id: "meta-llama/Llama-3.3-70B-Instruct", name: "Llama 3.3 70B (DeepInfra)" },
+                    { id: "Qwen/Qwen2.5-72B-Instruct", name: "Qwen 2.5 72B" },
+                    { id: "meta-llama/Meta-Llama-3.1-8B-Instruct", name: "Llama 3.1 8B (Fast)" }
+                ], 
+                keyLabel: "DeepInfra API Key" 
+            }
         };
 
         let currentProvider = localStorage.getItem('termos_provider') || 'groq';
@@ -581,7 +632,8 @@
         let tempAvatarData = null;
         let currentRoom = "public"; 
         let mqttClient = null;
-        let currentFileSHA = null; // Stores SHA of file currently open in IDE
+        let isConnecting = false; // FIX: Prevent race conditions (Error 167)
+        let currentFileSHA = null;
 
         const I18N = {
             en: { init: "INITIALIZING NEURAL LINK...", mediaDeck: "MEDIA DECK", copyLog: "COPY LOG", profile: "PROFILE", kernel: "KERNEL", ide: "IDE", uplinkStatus: "Uplink Status: STANDBY", initBroadcast: "INITIALIZE BROADCAST", terminateLink: "TERMINATE LINK", p2pFiles: "P2P DATA CHANNEL", sendFile: "SEND FILE", scanFreq: ">> CONNECTING...", loadingGenres: "LOADING GENRES...", selectGenre: "SELECT GENRE", sysConsole: "System Console", apiKey: "API Key", saveReconnect: "SAVE & RECONNECT", resetSys: "EMERGENCY RESET", userId: "USER IDENTITY", upAvatar: "UPLOAD AVATAR", codename: "CODENAME", settings: "SETTINGS", language: "Language", genInvite: "GENERATE INVITE", saveId: "SAVE ID", cancel: "CANCEL", runPreview: "RUN PREVIEW", welcome: "System Online.", inviteGenerated: "Invite link copied!", inviteError: "Failed to generate invite.", fileSent: "File sent.", fileReceived: "File received: ", errorKey: "API Key Missing", errorAuth: "Invalid API Key", errorRate: "Rate Limit", searching: "Scanning...", generatingImg: "Rendering...", imgError: "Neural Network saturated.", radioBuffering: "BUFFERING...", radioError: "Stream Offline.", radioPlaying: "PLAYING", saveSuccess: "Identity Updated.", storageError: "Storage Full.", copilotThinking: "Analyzing Code...", gistSuccess: "Pushed successfully!", gistError: "Push Failed.", patchApplied: "Patch Applied." },
@@ -600,9 +652,10 @@
             transferStatus: document.getElementById('transfer-status'), transferProgress: document.getElementById('transfer-progress'), providerSelect: document.getElementById('provider-select'),
             modelSelect: document.getElementById('model-select'), lblApiKey: document.getElementById('lbl-api-key'), copilotInput: document.getElementById('copilot-input'),
             copilotChatLog: document.getElementById('copilot-chat-log'), copilotStatus: document.getElementById('copilot-status'),
-            // NEW IDE ELEMENTS
             ghTokenInput: document.getElementById('gh-token'), ghOwner: document.getElementById('gh-owner'), ghRepo: document.getElementById('gh-repo'), ghPath: document.getElementById('gh-path'),
-            repoSettings: document.getElementById('ide-repo-settings'), shaDisplay: document.getElementById('file-sha-display'), loadRepoInput: document.getElementById('load-repo-input')
+            repoSettings: document.getElementById('ide-repo-settings'), shaDisplay: document.getElementById('file-sha-display'), loadRepoInput: document.getElementById('load-repo-input'),
+            // CLI Elements
+            cliOverlay: document.getElementById('cli-overlay'), cliOutput: document.getElementById('cli-output'), cliInput: document.getElementById('cli-input')
         };
 
         const AudioFX = {
@@ -636,6 +689,7 @@
             UI.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleInput(); } });
             document.getElementById('avatar-upload').addEventListener('change', handleAvatarUpload);
             UI.copilotInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); askCopilot(); } });
+            UI.cliInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleCLIInput(); } });
             const urlParams = new URLSearchParams(window.location.search);
             const inviteState = urlParams.get('s');
             if(inviteState) { try { const data = JSON.parse(atob(inviteState)); if(data.r) currentRoom = data.r; window.history.replaceState({}, document.title, window.location.pathname); addSystemMessage("Invite applied.", "info"); } catch(e) {} }
@@ -719,6 +773,8 @@
             addUserMessage(text, true, userProfile.name, userProfile.avatar);
             if (mqttClient && mqttClient.isConnected()) {
                 try { const payload = JSON.stringify({ type: 'chat', user: userProfile.name, avatar: userProfile.avatar, text: text, ts: Date.now() }); const topic = currentRoom === "public" ? "termos/public" : `termos/rooms/${currentRoom}`; const msg = new Paho.MQTT.Message(payload); msg.destinationName = topic; msg.qos = 1; mqttClient.send(msg); } catch(e) { console.error("MQTT Error", e); }
+            } else {
+                addSystemMessage("Connection lost. Retrying...", "warning");
             }
         }
 
@@ -788,7 +844,7 @@
 
         function updateStatus(active) {
             if(active) { UI.apiDot.className = "w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_8px_#4ade80] animate-pulse"; UI.roomDisp.innerText = currentRoom === "public" ? "PUBLIC GRID" : `ROOM: ${currentRoom.toUpperCase()}`; UI.roomDisp.classList.add("text-green-400"); UI.roomDisp.classList.remove("text-red-500"); }
-            else { UI.apiDot.className = "w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]"; UI.roomDisp.innerText = "OFFLINE"; UI.roomDisp.classList.remove("green-400"); UI.roomDisp.classList.add("text-red-500"); }
+            else { UI.apiDot.className = "w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]"; UI.roomDisp.innerText = "RECONNECTING..."; UI.roomDisp.classList.remove("green-400"); UI.roomDisp.classList.add("text-red-500"); }
         }
 
         function copySystemLog() {
@@ -801,10 +857,8 @@
         function saveApiKey() {
             const key = UI.apiKeyInput.value.trim(); const provider = UI.providerSelect.value; const model = UI.modelSelect.value;
             if(key) { apiKeys[provider] = key; localStorage.setItem('termos_api_keys', JSON.stringify(apiKeys)); }
-            // Save GH Token
             const ght = UI.ghTokenInput.value.trim();
             if(ght) { ghToken = ght; localStorage.setItem('termos_gh_token', ghToken); }
-            
             currentProvider = provider; currentModel = model; localStorage.setItem('termos_provider', currentProvider); localStorage.setItem('termos_model', currentModel);
             updateStatus(!!apiKeys[currentProvider]); addSystemMessage(`Core Updated: ${provider}`, "info"); connectMQTT(); toggleAdmin();
         }
@@ -841,39 +895,88 @@
         function generateInviteLink() { try { const data = { r: currentRoom }; const b64 = btoa(JSON.stringify(data)); navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?s=${b64}`).then(() => addSystemMessage(t('inviteGenerated'), "info")); } catch(e) { addSystemMessage(t('inviteError'), "error"); } }
         function shareApp() { if (navigator.share) navigator.share({ title: 'TermOS', text: 'Join session.', url: window.location.href }).catch(()=>{}); else generateInviteLink(); }
 
+        /* --- MQTT FIX (AUTO RECONNECT & ROBUST HANDLING) --- */
         function connectMQTT() {
             if (typeof Paho === 'undefined') return;
+            if (isConnecting) return; // FIX: Prevent Error 167 (Reconnect in progress)
+            
+            isConnecting = true;
             const clientId = "termos_" + Math.random().toString(16).substr(2, 8);
             mqttClient = new Paho.MQTT.Client("broker.emqx.io", 8084, "/mqtt", clientId);
-            mqttClient.onConnectionLost = (responseObject) => { if (responseObject.errorCode !== 0) updateStatus(false); };
+            
+            mqttClient.onConnectionLost = (responseObject) => {
+                isConnecting = false;
+                if (responseObject.errorCode !== 0) {
+                    updateStatus(false);
+                    console.warn("MQTT Lost:", responseObject);
+                    // FIX: Auto-reconnect logic for Error 1106/0
+                    setTimeout(connectMQTT, 5000);
+                }
+            };
+            
             mqttClient.onMessageArrived = (message) => {
                 try {
                     const payload = JSON.parse(message.payloadString);
                     if (payload.user === userProfile.name) return;
-                    if (payload.type === 'chat') { AudioFX.receive(); addUserMessage(payload.text, false, payload.user, payload.avatar); }
-                    else if (payload.type === 'join') addSystemMessage(`${payload.user} entered.`, "info");
-                    else if (payload.type === 'webrtc') handleWebRTCMessage(payload);
-                } catch(e) {}
+                    
+                    if (payload.type === 'chat') { 
+                        AudioFX.receive(); 
+                        addUserMessage(payload.text, false, payload.user, payload.avatar || "👤"); 
+                    } else if (payload.type === 'join') { 
+                        addSystemMessage(`${payload.user} entered.`, "info");
+                    } else if (payload.type === 'webrtc') {
+                        handleWebRTCMessage(payload);
+                    }
+                } catch(e) { console.error("MQTT Parse Error", e); }
             };
-            const options = { timeout: 5, useSSL: true, onSuccess: () => {
-                const topic = currentRoom === "public" ? "termos/public" : `termos/rooms/${currentRoom}`;
-                mqttClient.subscribe(topic, { qos: 1 }); updateStatus(true);
-                mqttClient.send(new Paho.MQTT.Message(JSON.stringify({ type: 'join', user: userProfile.name, avatar: userProfile.avatar })));
-            }, onFailure: () => { updateStatus(false); } };
-            mqttClient.connect(options);
+
+            const options = { 
+                timeout: 5, 
+                useSSL: true, 
+                keepAliveInterval: 30, // Increased keepalive for stability
+                onSuccess: () => {
+                    isConnecting = false;
+                    const topic = currentRoom === "public" ? "termos/public" : `termos/rooms/${currentRoom}`;
+                    mqttClient.subscribe(topic, { qos: 1 }); 
+                    updateStatus(true);
+                    
+                    // Announce join
+                    try {
+                        const joinMsg = new Paho.MQTT.Message(JSON.stringify({ type: 'join', user: userProfile.name, avatar: userProfile.avatar }));
+                        joinMsg.destinationName = topic;
+                        mqttClient.send(joinMsg);
+                    } catch(e) { console.error("Join Error", e); }
+                }, 
+                onFailure: (error) => {
+                    isConnecting = false;
+                    console.error("MQTT Connection Failed", error);
+                    updateStatus(false);
+                    addSystemMessage("Connection Failed. Retrying in 5s...", "error");
+                    setTimeout(connectMQTT, 5000);
+                } 
+            };
+            
+            try {
+                mqttClient.connect(options);
+            } catch(e) {
+                isConnecting = false;
+                console.error("Connect Exception", e);
+                setTimeout(connectMQTT, 5000);
+            }
         }
 
         function joinRoom(roomName) {
             if(roomName === currentRoom) return;
             if(mqttClient && mqttClient.isConnected()) {
-                mqttClient.unsubscribe(currentRoom === "public" ? "termos/public" : `termos/rooms/${currentRoom}`);
-                mqttClient.send(new Paho.MQTT.Message(JSON.stringify({ type: 'leave', user: userProfile.name })));
+                try {
+                    const oldTopic = currentRoom === "public" ? "termos/public" : `termos/rooms/${currentRoom}`;
+                    mqttClient.unsubscribe(oldTopic);
+                    mqttClient.send(new Paho.MQTT.Message(JSON.stringify({ type: 'leave', user: userProfile.name })));
+                } catch(e) {}
             }
-            stopWebRTC(); currentRoom = roomName; updateStatus(true);
+            stopWebRTC(); currentRoom = roomName; updateStatus(false); // Force status update
+            connectMQTT(); // Trigger connection to new room
             if (mqttClient && mqttClient.isConnected()) {
-                const newTopic = `termos/rooms/${currentRoom}`;
-                mqttClient.subscribe(newTopic, { qos: 1 });
-                mqttClient.send(new Paho.MQTT.Message(JSON.stringify({ type: 'join', user: userProfile.name, avatar: userProfile.avatar })));
                 addSystemMessage(`Joined: ${roomName}`, "info");
             }
         }
@@ -996,10 +1099,8 @@
                     { role: "user", content: `Code:\n${code.substring(0, 4000)}` }
                 ];
                 const reply = await safeFetch(messages);
-                // Extract code block
                 const codeMatch = reply.match(/```(?:html)?([\s\S]*?)```/);
                 const cleanCode = codeMatch ? codeMatch[1].trim() : reply;
-                
                 UI.codeArea.value = cleanCode;
                 runCode();
                 const successMsg = document.createElement('div'); successMsg.className = "text-[10px] text-green-400 font-bold mb-2 border-l-2 border-green-500 pl-2"; successMsg.innerText = "✅ " + t('patchApplied'); UI.copilotChatLog.appendChild(successMsg);
@@ -1026,18 +1127,13 @@
             const parts = repoRef.split('/');
             if(parts.length < 2) { addSystemMessage("Invalid format. Use owner/repo", "error"); return; }
             const owner = parts[0]; const repo = parts[1];
-            
             try {
-                // Fetch default branch
                 const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
                 if(!repoRes.ok) throw new Error("Repo not found");
                 const repoData = await repoRes.json();
                 const defaultBranch = repoData.default_branch || 'main';
-                
-                // Try to find index.html or README.md
                 const filesToTry = ['index.html', 'index.htm', 'README.md', 'main.js'];
                 let loaded = false;
-                
                 for(let file of filesToTry) {
                     const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${file}?ref=${defaultBranch}`);
                     if(res.ok) {
@@ -1047,12 +1143,9 @@
                             UI.codeArea.value = content;
                             UI.shaDisplay.innerText = `SHA: ${data.sha.substring(0,7)}`;
                             currentFileSHA = data.sha;
-                            
-                            // Auto-fill settings
                             UI.ghOwner.value = owner;
                             UI.ghRepo.value = repo;
                             UI.ghPath.value = file;
-                            
                             addSystemMessage(`Installed: ${file} from ${owner}/${repo}`, "info");
                             runCode();
                             loaded = true;
@@ -1060,7 +1153,7 @@
                         }
                     }
                 }
-                if(!loaded) throw new Error("Could not find a supported file (index.html, README.md, etc.)");
+                if(!loaded) throw new Error("Could not find a supported file");
             } catch(e) { addSystemMessage("Install Error: " + e.message, "error"); }
         }
 
@@ -1070,45 +1163,102 @@
             const owner = UI.ghOwner.value.trim();
             const repo = UI.ghRepo.value.trim();
             const path = UI.ghPath.value.trim() || 'index.html';
-            
             if(!token || !owner || !repo) { alert("Please configure Repo Settings (Token, Owner, Repo) first."); toggleRepoSettings(); return; }
-            
             const content = UI.codeArea.value;
             const encodedContent = btoa(unescape(encodeURIComponent(content)));
             const message = `Update ${path} via TermOS Flagship`;
-
             try {
-                // Fetch current SHA if we don't have it (for updates)
                 let sha = currentFileSHA;
                 if(!sha) {
                     const checkRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, { headers: { 'Authorization': `token ${token}` } });
-                    if(checkRes.ok) { const data = await checkRes.json(); sha = data.sha; } else if(checkRes.status === 404) { sha = null; } // New file
+                    if(checkRes.ok) { const data = await checkRes.json(); sha = data.sha; } else if(checkRes.status === 404) { sha = null; }
                     else { throw new Error("Failed to check file status"); }
                 }
-
-                const payload = {
-                    message: message,
-                    content: encodedContent,
-                    sha: sha // Omitting this creates a new file. Including it updates.
-                };
-
+                const payload = { message: message, content: encodedContent, sha: sha };
                 const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' },
-                    body: JSON.stringify(payload)
+                    method: 'PUT', headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }, body: JSON.stringify(payload)
                 });
-
                 if (res.ok) {
                     const data = await res.json();
                     addSystemMessage(t('gistSuccess') + ` (Commit: ${data.commit.sha.substring(0,7)})`, "info");
                     currentFileSHA = data.content.sha;
                     UI.shaDisplay.innerText = `SHA: ${currentFileSHA.substring(0,7)}`;
                 } else {
-                    const err = await res.json();
-                    throw new Error(err.message);
+                    const err = await res.json(); throw new Error(err.message);
                 }
-            } catch (e) {
-                addSystemMessage(t('gistError') + `: ${e.message}`, "error");
+            } catch (e) { addSystemMessage(t('gistError') + `: ${e.message}`, "error"); }
+        }
+
+        /* --- TAILWIND CLI --- */
+        function toggleCLI() {
+            const overlay = UI.cliOverlay;
+            if(overlay.classList.contains('hidden-ui')) {
+                overlay.classList.remove('hidden-ui');
+                overlay.classList.add('flex-ui');
+                setTimeout(() => UI.cliInput.focus(), 100);
+            } else {
+                overlay.classList.add('hidden-ui');
+                overlay.classList.remove('flex-ui');
+            }
+        }
+
+        function cliLog(text, color = "#22d3ee") {
+            const div = document.createElement('div');
+            div.style.color = color;
+            div.innerText = text;
+            UI.cliOutput.appendChild(div);
+            UI.cliOutput.scrollTop = UI.cliOutput.scrollHeight;
+        }
+
+        function handleCLIInput() {
+            const rawInput = UI.cliInput.value.trim();
+            if(!rawInput) return;
+            UI.cliInput.value = '';
+            
+            cliLog(`user@termos:~$ ${rawInput}`, "#fff");
+            const parts = rawInput.split(' ');
+            const cmd = parts[0].toLowerCase();
+
+            // CLI COMMANDS
+            if (cmd === 'npx' && parts[1] === 'tailwindcss' && parts[2] === 'init') {
+                cliLog("Initializing Tailwind CSS...", "#22c55e");
+                setTimeout(() => {
+                    cliLog("Created tailwind.config.js", "#22c55e");
+                    const config = `/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ["./*.html", "./src/**/*.{js,ts,jsx,tsx}*/"],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}`;
+                    // Inject into editor
+                    if(UI.codeOverlay.classList.contains('hidden-ui')) toggleCodeEditor();
+                    UI.codeArea.value = config + "\n\n<!-- Add your HTML here -->";
+                    cliLog("Success: Configuration generated.", "#22c55e");
+                }, 800);
+            }
+            else if (cmd === 'add' && parts[1]) {
+                const classes = rawInput.substring(4); // remove "add "
+                cliLog(`Generating div with classes: ${classes}`, "#22c55e");
+                if(UI.codeOverlay.classList.contains('hidden-ui')) toggleCodeEditor();
+                const html = UI.codeArea.value;
+                const newHtml = html + `\n<div class="${classes}">New Element</div>\n`;
+                UI.codeArea.value = newHtml;
+                cliLog("Success: Element appended.", "#22c55e");
+                runCode();
+            }
+            else if (cmd === 'help') {
+                cliLog("Available commands:", "#eab308");
+                cliLog("  npx tailwindcss init  - Generate config file", "#fff");
+                cliLog("  add [classes]       - Add a div with classes to code", "#fff");
+                cliLog("  clear                - Clear terminal", "#fff");
+            }
+            else if (cmd === 'clear') {
+                UI.cliOutput.innerHTML = '<div class="text-white">Welcome to TermOS v4.0 CLI.</div><div class="text-gray-400 mb-4">Type \'help\' for available commands.</div>';
+            }
+            else {
+                cliLog(`Command not found: ${cmd}. Type 'help'.`, "#ef4444");
             }
         }
 
